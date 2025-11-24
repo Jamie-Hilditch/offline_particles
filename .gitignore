@@ -1,0 +1,110 @@
+# --------------------------------------------------------------------
+# Python package .gitignore
+# --------------------------------------------------------------------
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions / Numba cache
+*.so
+*.pyd
+*.dll
+*.dylib
+.pytest_cache/
+__pycache__/
+.numba_cache/
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.coverage
+.coverage.*
+.cache
+pytestdebug.log
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+*.ipynb~
+
+# Dask / joblib cache directories
+dask-worker-space/
+.joblib_cache/
+
+# MyPy / static analysis
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# IDE / editor configs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Local config
+*.local.json
+*.envrc
+
+# Profiling
+prof/
+*.prof
+
+# Coverage or profiling artifacts
+*.lprof
+*.pstats
+
+# Cython build dirs
+cython_debug/
+
+# Optional: documentation build output
+docs/_build/
+site/
+
+# Optional: compiled wheels for testing
+*.whl
