@@ -235,7 +235,7 @@ class ChunkedDaskArray(SpatialArray):
         """
         recompute, offsets = compute_new_bounds(
             particle_indices,
-            self._offsets,
+            self.offsets,
             self._subset_lower_bounds,
             self._subset_upper_bounds,
             self._bounds,
