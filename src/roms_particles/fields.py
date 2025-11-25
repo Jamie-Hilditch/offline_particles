@@ -86,7 +86,7 @@ class Field(abc.ABC):
     @abc.abstractmethod
     def get_data_subset(
         self, particle_indices: tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[float]], It: int, ft: float
-    ) -> npt.NDArray[float]:
+    ) -> tuple[npt.NDArray[float], tuple[float | None, float | None, float | None]]:
         """Get a subset of the field data for given particle indices and time.
 
         Parameters
@@ -103,6 +103,9 @@ class Field(abc.ABC):
         npt.NDArray[float]
             M-dimensional array of shape of field values covering the particles at the specified time.
             Here M is the number of spatial dimensions of the field (1, 2, or 3).
+        tuple[float | None, float | None, float | None]
+            Offsets applied to the particle indices (z, y, x) in order to index into the returned data.
+            This accounts for both the grid staggering and any subsetting of the data array.
         """
         pass
 
@@ -162,7 +165,7 @@ class StaticField(Field):
 
     def get_data_subset(
         self, particle_indices: tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[float]], It: int, ft: float
-    ) -> npt.NDArray[float]:
+    ) -> tuple[npt.NDArray[float], tuple[float | None, float | None, float | None]]:
         """Get a subset of the field data for given particle indices and time.
 
         Parameters
@@ -178,6 +181,9 @@ class StaticField(Field):
         npt.NDArray[float]
             M-dimensional array of shape of field values covering the particles.
             Here M is the number of spatial dimensions of the field (1, 2, or 3).
+        tuple[float | None, float | None, float | None]
+            Offsets applied to the particle indices (z, y, x) in order to index into the returned data.
+            This accounts for both the grid staggering and any subsetting of the data array.
         """
         return self._data.get_data_subset(particle_indices)
 
@@ -344,7 +350,7 @@ class TimeDependentField(Field):
 
     def get_data_subset(
         self, particle_indices: tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[float]], It: int, ft: float
-    ) -> npt.NDArray[float]:
+    ) -> tuple[npt.NDArray[float], tuple[float | None, float | None, float | None]]:
         """Get a subset of the field data for given particle indices and time.
 
         Parameters
@@ -360,16 +366,19 @@ class TimeDependentField(Field):
         npt.NDArray[float]
             M-dimensional array of shape of field values covering the particles.
             Here M is the number of spatial dimensions of the field (1, 2, or 3).
+        tuple[float | None, float | None, float | None]
+            Offsets applied to the particle indices (z, y, x) in order to index into the returned data.
+            This accounts for both the grid staggering and any subsetting of the data array.
         """
         # first make sure we're at the right time index
         self.set_time_index(It)
 
         # load the two time subsets
-        current_data = self._current_time_slice.get_data_subset(particle_indices)
-        next_data = self._next_time_slice.get_data_subset(particle_indices)
+        current_data, offsets = self._current_time_slice.get_data_subset(particle_indices)
+        next_data, _ = self._next_time_slice.get_data_subset(particle_indices)
 
         # linear interpolation in time
-        return current_data * (1.0 - ft) + next_data * ft
+        return current_data * (1.0 - ft) + next_data * ft, offsets
 
     @classmethod
     def from_numpy(
