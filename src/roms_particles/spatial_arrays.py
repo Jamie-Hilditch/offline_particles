@@ -2,26 +2,13 @@
 
 import abc
 import enum
-import itertools
 
-import cachetools
 import dask.array as da
 import numba
 import numpy as np
 import numpy.typing as npt
 
-from typing import Literal, Self
-
-# constants
-DEFAULT_CACHE_SIZE: int = 10_000
-CACHE_TYPES = {
-    "STD": cachetools.Cache,
-    "FIFO": cachetools.FIFOCache,
-    "LRU": cachetools.LRUCache,
-    "LFU": cachetools.LFUCache
-}
-
-# classes 
+from typing import Self
 
 @enum.unique
 class Stagger(enum.StrEnum):
@@ -182,6 +169,7 @@ class SpatialArray(abc.ABC):
         """
         pass
 
+
 class NumpyArray(SpatialArray):
     """Spatial array backed by a NumPy array."""
 
@@ -222,8 +210,9 @@ class NumpyArray(SpatialArray):
         # Here all the data is in memory so we can just return the full data array and the indices unchanged
         return self._data, global_indices
 
-class CachedDaskArray(SpatialArray):
-    """Spatial array backed by a dask array with chunk caching."""
+
+class ChunkedDaskArray(SpatialArray):
+    """Spatial array backed by a chunked dask array."""
 
     def __init__(
         self,
@@ -231,34 +220,26 @@ class CachedDaskArray(SpatialArray):
         z_stagger: Stagger,
         y_stagger: Stagger,
         x_stagger: Stagger,
-        *, 
-        cache_type: Literal["STD", "FIFO", "LRU", "LFU"] = "FIFO", 
-        cache_size: int | None = None
     ) -> Self:
         super().__init__(z_stagger, y_stagger, x_stagger)
         self._data = data
         self._ndim = self._data.ndim
         self._shape = self._data.shape
         self._chunks = data.chunks
-        self._bounds = tuple(np.cumulative_sum(chunk, include_initial=True) for chunk in self._chunks)
-        self._chunk_index_fn = CHUNK_INDEX_FUNCTIONS[self._ndim]
-        # create cache
-        if cache_size is None:
-            cache_size = DEFAULT_CACHE_SIZE
-        cache_type = CACHE_TYPES.get(cache_type)
-        if cache_type is None:
-            raise ValueError(f"Unknown cache type. Valid types are {CACHE_TYPES.keys()}")
-        self._cache = cache_type(cache_size)
-
+        self._bounds = tuple(
+            np.cumulative_sum(chunk, include_initial=True) for chunk in self._chunks
+        )
+        self._subset: npt.NDArray[float] | None = None  # type: ignore[call-arg]
+        # initialise lower and upper bounds to larger and smaller than possible values
+        self._subset_lower_bounds = np.array(self._shape, dtype=int)
+        self._subset_upper_bounds = np.zeros((self._ndim,), dtype=int)
 
     @property
     def shape(self) -> tuple[int, ...]:
         """Shape of the underlying data array."""
         return self._shape
 
-    def _get_chunk(
-        self, chunk_idx: tuple[int, ...]
-    ) -> npt.NDArray[float]:
+    def _get_chunk(self, chunk_idx: tuple[int, ...]) -> npt.NDArray[float]:
         """Get a chunk of data given its chunk index.
 
         Parameters
@@ -271,13 +252,7 @@ class CachedDaskArray(SpatialArray):
         npt.NDArray[float]
             Array of data for the specified chunk.
         """
-        """Get chunk from cache."""
-        try:
-            data_chunk = self._cache[chunk_idx]
-        except KeyError:
-            data_chunk = self._data.blocks[chunk_idx].compute()
-            self._cache[chunk_idx] = data_chunk
-        return data_chunk
+        return self._data.blocks[chunk_idx].compute()
 
     def get_data_subset(
         self, global_indices: npt.NDArray[int]
@@ -298,44 +273,18 @@ class CachedDaskArray(SpatialArray):
             (N,M) array containing the local integer indices.
             The local indices account for the possibility that the view may be only a subset of the full domain.
         """
-        # find the extent of the indices we need to load
-        lower = np.min(global_indices, axis=0)
-        upper = np.max(global_indices, axis=0) + 1  # add 1 since we will need this point to construct vertices
+        recompute = compute_new_bounds(
+            global_indices, self._subset_lower_bounds, self._subset_upper_bounds, self._bounds)
 
-        # find the chunk indices and lower bounds
-        lower_chunk_idx, lower_bounds = self._chunk_index_fn(lower, self._bounds)
-        upper_chunk_idx, _ = self._chunk_index_fn(upper, self._bounds)
-
-        # allocate the superchunk
-        superchunk_shape = tuple(
-            self._bounds[dim][upper_chunk_idx[dim] + 1] - self._bounds[dim][lower_chunk_idx[dim]]
-            for dim in range(self._ndim)
-        )
-        superchunk = np.empty(superchunk_shape, dtype=self._data.dtype)
-
-        # iterate over all required chunks and insert into superchunk
-        chunk_ranges = [range(lower_chunk_idx[dim], upper_chunk_idx[dim] + 1) for dim in range(self._ndim)]
-        for chunk_idx in itertools.product(*chunk_ranges):
-            # get the chunk data
-            data_chunk = self._get_chunk(chunk_idx)
-
-            # compute the slice into the superchunk
-            superchunk_slices = tuple(
-                slice(
-                    self._bounds[dim][chunk_idx[dim]] - lower_bounds[dim],
-                    self._bounds[dim][chunk_idx[dim] + 1] - lower_bounds[dim],
-                )
+        if recompute:
+            subset_slices = tuple(
+                slice(self._subset_lower_bounds[dim], self._subset_upper_bounds[dim])
                 for dim in range(self._ndim)
             )
+            self._subset = self._data[subset_slices].compute()
 
-            # insert the chunk data into the superchunk
-            superchunk[superchunk_slices] = data_chunk
-
-        # compute local indices
-        local_indices = global_indices - np.array(lower_bounds, dtype=global_indices.dtype).reshape((1, -1))
-
-        return superchunk, local_indices
-        
+        local_indices = global_indices - self._subset_lower_bounds[None, :]
+        return self._subset, local_indices
 
 
 @numba.jit(parallel=True, nogil=True, fastmath=True)
@@ -420,35 +369,54 @@ def offset_and_split_indices(
     _offset_indices(idx, offset_z, offset_y, offset_x, offset_idx)
     return _split_indices(offset_idx, shape)
 
+@numba.jit(nogil=True, fastmath=True)
+def compute_new_bounds(
+    global_indices: npt.NDArray[int],
+    lower: npt.NDArray[int],
+    upper: npt.NDArray[int],
+    bounds: tuple[npt.NDArray[int], ...],
+) -> bool:
+    """
+    Compute new lower and upper bounds for chunked data access.
+    Parameters:
+        global_indices: (N,M) array of global indices where N is the number of particles and M is the number of dimensions.
+        lower: (M,) array of lower bounds.
+        upper: (M,) array of upper bounds.
+        bounds: tuple of M arrays containing the chunk boundaries for each dimension.
+    Returns:
+        - bool indicating whether the bounds have changed.
+    """
+    M = global_indices.shape[1]
+    bounds_changed = False
+
+    for dim in range(M):
+        global_lower = np.min(global_indices[:, dim])
+        global_upper = np.max(global_indices[:, dim]) + 1  # add 1 for upper bound
+
+        # find chunk-aligned bounds
+        lower_bound = _lower_chunk_bound(global_lower, bounds[dim])
+        upper_bound = _upper_chunk_bound(global_upper, bounds[dim])
+
+        if lower_bound != lower[dim]:
+            lower[dim] = lower_bound
+            bounds_changed = True
+        if upper_bound != upper[dim]:
+            upper[dim] = upper_bound
+            bounds_changed = True
+
+    return bounds_changed
+
 # numba functions for chunk indexing
 @numba.jit(nogil=True)
-def chunk_index_1d(global_idx: npt.NDArray[int], bounds: tuple[npt.NDArray[int]]) -> tuple[tuple[int], tuple[int]]:
-    """Get chunk index and bound for 1D array."""
-    c0 = np.searchsorted(bounds[0], global_idx[0], side="right") - 1
-    b0 = bounds[0][c0]
-    return (c0,), (b0,)
+def _lower_chunk_bound(global_idx: int, bounds: npt.NDArray[int]) -> int:
+    """Get the bound of a chunk satisfying b <= global_idx."""
+    idx = np.searchsorted(bounds, global_idx, side="right") - 1
+    return bounds[idx]
+
 
 @numba.jit(nogil=True)
-def chunk_index_2d(global_idx: npt.NDArray[int], bounds: tuple[npt.NDArray[int], npt.NDArray[int]]) -> tuple[tuple[int, int], tuple[int, int]]:
-    c0 = np.searchsorted(bounds[0], global_idx[0], side="right") - 1
-    b0 = bounds[0][c0]
-    c1 = np.searchsorted(bounds[1], global_idx[1], side="right") - 1
-    b1 = bounds[1][c1]
-    return (c0, c1), (b0, b1)
+def _upper_chunk_bound(global_idx: int, bounds: npt.NDArray[int]) -> int:
+    """Get the bound of a chunk satisfying b >= global_idx."""
+    idx = np.searchsorted(bounds, global_idx, side="left")
+    return bounds[idx]
 
-@numba.jit(nogil=True)
-def chunk_index_3d(global_idx: npt.NDArray[int], bounds: tuple[npt.NDArray[int], npt.NDArray[int], npt.NDArray[int]]) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
-    c0 = np.searchsorted(bounds[0], global_idx[0], side="right") - 1
-    b0 = bounds[0][c0]
-    c1 = np.searchsorted(bounds[1], global_idx[1], side="right") - 1
-    b1 = bounds[1][c1]
-    c2 = np.searchsorted(bounds[2], global_idx[2], side="right") - 1
-    b2 = bounds[2][c2]
-    return (c0, c1, c2), (b0, b1, b2)
-
-# map ndim to functions
-CHUNK_INDEX_FUNCTIONS = {
-    1: chunk_index_1d,
-    2: chunk_index_2d,
-    3: chunk_index_3d
-}
