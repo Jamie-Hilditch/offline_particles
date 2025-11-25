@@ -85,14 +85,14 @@ class Field(abc.ABC):
 
     @abc.abstractmethod
     def get_data_subset(
-        self, global_indices: npt.NDArray[int], It: int, ft: float
+        self, particle_indices: tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[float]], It: int, ft: float
     ) -> npt.NDArray[float]:
         """Get a subset of the field data for given particle indices and time.
 
         Parameters
         ----------
-        particle_indices : npt.NDArray[int]
-            Array of shape (N, 3) containing the (z, y, x) indices of N particles.
+        particle_indices : tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[float]]
+            3-tuple of arrays of shape (N,) containing the (z, y, x) indices of N particles.
         It : int
             Current integer time index.
         ft : float
@@ -161,25 +161,25 @@ class StaticField(Field):
             )
 
     def get_data_subset(
-        self, global_indices: npt.NDArray[int], It: int = 0, ft: float = 0.0
+        self, particle_indices: tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[float]], It: int, ft: float
     ) -> npt.NDArray[float]:
-        """Get a subset of the field data for given particle indices.
+        """Get a subset of the field data for given particle indices and time.
 
         Parameters
         ----------
-        particle_indices : npt.NDArray[int]
-            Array of shape (N, 3) containing the (z, y, x) indices of N particles.
+        particle_indices : tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[float]]
+            3-tuple of arrays of shape (N,) containing the (z, y, x) indices of N particles.
         It : int
-            Current integer time index (ignored for static fields).
+            Current integer time index.
         ft : float
-            Fractional time between It and It + 1 (ignored for static fields).
+            Fractional time between It and It + 1.
         Returns
         -------
         npt.NDArray[float]
             M-dimensional array of shape of field values covering the particles.
             Here M is the number of spatial dimensions of the field (1, 2, or 3).
         """
-        return self._data.get_data_subset(global_indices)
+        return self._data.get_data_subset(particle_indices)
 
     @classmethod
     def from_numpy(
@@ -343,18 +343,18 @@ class TimeDependentField(Field):
         )
 
     def get_data_subset(
-        self, global_indices: npt.NDArray[int], It: int = 0, ft: float = 0.0
+        self, particle_indices: tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[float]], It: int, ft: float
     ) -> npt.NDArray[float]:
-        """Get a subset of the field data for given particle indices.
+        """Get a subset of the field data for given particle indices and time.
 
         Parameters
         ----------
-        particle_indices : npt.NDArray[int]
-            Array of shape (N, 3) containing the (z, y, x) indices of N particles.
+        particle_indices : tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[float]]
+            3-tuple of arrays of shape (N,) containing the (z, y, x) indices of N particles.
         It : int
-            Current integer time index (ignored for static fields).
+            Current integer time index.
         ft : float
-            Fractional time between It and It + 1 (ignored for static fields).
+            Fractional time between It and It + 1.
         Returns
         -------
         npt.NDArray[float]
@@ -365,8 +365,8 @@ class TimeDependentField(Field):
         self.set_time_index(It)
 
         # load the two time subsets
-        current_data = self._current_time_slice.get_data_subset(global_indices)
-        next_data = self._next_time_slice.get_data_subset(global_indices)
+        current_data = self._current_time_slice.get_data_subset(particle_indices)
+        next_data = self._next_time_slice.get_data_subset(particle_indices)
 
         # linear interpolation in time
         return current_data * (1.0 - ft) + next_data * ft

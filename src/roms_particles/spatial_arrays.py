@@ -124,14 +124,14 @@ class SpatialArray(abc.ABC):
 
     @abc.abstractmethod
     def get_data_subset(
-        self, particle_indices: npt.NDArray[float]
+        self, particle_indices: tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[float]]
     ) -> tuple[npt.NDArray[float], tuple[float | None, float | None, float | None]]:
-        """Get a subset of the data around the particle indices.
+        """Get a view of the data around the particle indices.
 
         Parameters
         ----------
-        particle_indices : npt.NDArray[float]
-            (N,3) Array of particle indices where N is the number of particles.
+        particle_indices : tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[float]]
+            3-tuple (z,y,x) of (N,) arrays of particle indices where N is the number of particles.
             Particle indices are floats defined relative to the centered grid.
 
         Returns
@@ -164,14 +164,14 @@ class NumpyArray(SpatialArray):
         return self._data.shape
 
     def get_data_subset(
-        self, particle_indices: npt.NDArray[float]
+        self, particle_indices: tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[float]]
     ) -> tuple[npt.NDArray[float], tuple[float | None, float | None, float | None]]:
         """Get a view of the data around the particle indices.
 
         Parameters
         ----------
-        particle_indices : npt.NDArray[float]
-            (N,3) Array of particle indices where N is the number of particles.
+        particle_indices : tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[float]]
+            3-tuple (z,y,x) of (N,) arrays of particle indices where N is the number of particles.
             Particle indices are floats defined relative to the centered grid.
 
         Returns
@@ -215,14 +215,14 @@ class ChunkedDaskArray(SpatialArray):
         return self._shape
 
     def get_data_subset(
-        self, particle_indices: npt.NDArray[float]
+        self, particle_indices: tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[float]]
     ) -> tuple[npt.NDArray[float], tuple[float | None, float | None, float | None]]:
         """Get a view of the data around the particle indices.
 
         Parameters
         ----------
-        particle_indices : npt.NDArray[float]
-            (N,3) Array of particle indices where N is the number of particles.
+        particle_indices : tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[float]]
+            3-tuple (z,y,x) of (N,) arrays of particle indices where N is the number of particles.
             Particle indices are floats defined relative to the centered grid.
 
         Returns
@@ -253,7 +253,7 @@ class ChunkedDaskArray(SpatialArray):
 
 @numba.jit(nogil=True, fastmath=True)
 def compute_new_bounds(
-    particle_indices: npt.NDArray[float],
+    particle_indices: tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[float]],
     offsets: tuple[float | None, float | None, float | None],
     lower: npt.NDArray[int],
     upper: npt.NDArray[int],
@@ -262,7 +262,7 @@ def compute_new_bounds(
     """
     Compute new lower and upper bounds for chunked data access.
     Parameters:
-        particle_indices: (N,M) array of global indices where N is the number of particles and M is the number of dimensions.
+        particle_indices: 3-tuple (z,y,x) of (N,) array of particle indices.
         offsets: tuple of offsets to apply to the indices where M is the number of non-None offsets.
         lower: (M,) array of lower bounds.
         upper: (M,) array of upper bounds.
@@ -281,8 +281,8 @@ def compute_new_bounds(
             out_offsets.append(None)
             continue
         # apply offset to particle indices
-        global_lower = np.min(particle_indices[:, dim]) + offsets[i]
-        global_upper = np.max(particle_indices[:, dim]) + offsets[i] + 1  # add 1 for upper bound
+        global_lower = np.min(particle_indices[dim]) + offsets[i]
+        global_upper = np.max(particle_indices[dim]) + offsets[i] + 1  # add 1 for upper bound
 
         # find chunk-aligned bounds
         lower_bound = _lower_chunk_bound(global_lower, bounds[dim])
