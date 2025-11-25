@@ -206,8 +206,8 @@ class Fieldset:
             f"{key} = {value}" for key, value in self._constants.items()
         )
         return (
-            f"FieldSet(\n\tt_size={self.t_size}, z_size={self.z_size}, y_size={self.y_size}, x_size={self.x_size}," +
-            f"\n\ttime = array(shape={self.time.shape}, dtype={self.time.dtype})," + 
-            f"\n\tfields = {{\n\t\t{field_str}\n\t}}" + 
-            f"\n\tconstants = {{\n\t\t{constants_str}\n\t}}\n)"
+            f"FieldSet(\n\tt_size={self.t_size}, z_size={self.z_size}, y_size={self.y_size}, x_size={self.x_size},"
+            + f"\n\ttime = array(shape={self.time.shape}, dtype={self.time.dtype}),"
+            + f"\n\tfields = {{\n\t\t{field_str}\n\t}}"
+            + f"\n\tconstants = {{\n\t\t{constants_str}\n\t}}\n)"
         )
