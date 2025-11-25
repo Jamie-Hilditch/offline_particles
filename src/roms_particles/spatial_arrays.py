@@ -135,9 +135,8 @@ class SpatialArray(abc.ABC):
         Returns
         -------
         tuple[npt.NDArray[int], npt.NDArray[float]]
-            Tuple of (N,M) arrays containing the local integer and fractional indices.
-            The local indices account for the staggering of the grid and the possibility that
-            the view may be only a subset of the full domain.
+            Tuple of (N,M) arrays containing the integer and fractional indices.
+            The output indices account for the staggering and dimensionality of the grid.
         """
         return offset_and_split_indices(
             particle_indices,
