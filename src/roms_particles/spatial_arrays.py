@@ -1,6 +1,7 @@
 """Submodule handling loading and data access for arrays of spatial data."""
 
 import abc
+import collections
 import enum
 import itertools
 
@@ -11,7 +12,8 @@ import numpy.typing as npt
 
 from typing import Self
 
-type BBox = tuple[float, float, float, float, float, float]
+BBox = collections.namedtuple("BBox", ("zmin", "zmax", "ymin", "ymax", "xmin", "xmax"))
+
 
 @enum.unique
 class Stagger(enum.StrEnum):
@@ -264,7 +266,9 @@ class ChunkedDaskArray(SpatialArray):
         """
         active_dims_bbox = tuple(
             dim_bounds
-            for dim_bounds, is_active in zip(itertools.batched(bounding_box, 2), self.dmask)
+            for dim_bounds, is_active in zip(
+                itertools.batched(bounding_box, 2), self.dmask
+            )
             if is_active
         )
 
@@ -313,12 +317,8 @@ def compute_new_bounds(
     for m in range(M):
         offset = offsets[m]
         dim_min, dim_max = active_dims_bbox[m]
-        new_lower = compute_new_lower_bound(
-            dim_min, offset, bounds[m]
-        )
-        new_upper = compute_new_upper_bound(
-            dim_max, offset, bounds[m]
-        )
+        new_lower = compute_new_lower_bound(dim_min, offset, bounds[m])
+        new_upper = compute_new_upper_bound(dim_max, offset, bounds[m])
 
         new_offsets.append(offset - new_lower)
 

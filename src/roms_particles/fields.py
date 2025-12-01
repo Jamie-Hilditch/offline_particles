@@ -107,7 +107,7 @@ class Field(abc.ABC):
         Returns
         -------
         FieldData
-            Tuple containing the field data array, the dimension mask, and offsets.
+            Namedtuple containing the field data array, the dimension mask, and offsets.
         """
         pass
 
@@ -168,9 +168,9 @@ class ConstantField(Field):
         Returns
         -------
         FieldData
-            Tuple containing the field data array, the dimension mask, and offsets.
+            Namedtuple containing the field data array, the dimension mask, and offsets.
         """
-        return (self._array, self._dmask, ())
+        return FieldData(array=self._array, dmask=self._dmask, offsets=())
 
 class StaticField(Field):
     """Class representing static fields that do not change over time."""
@@ -240,11 +240,11 @@ class StaticField(Field):
         Returns
         -------
         FieldData
-            Tuple containing the field data array, the dimension mask, and offsets.
+            Namedtuple containing the field data array, the dimension mask, and offsets.
         """
         # For static fields, we ignore time_index
         data_array, offsets = self._data.get_data_subset(bbox)
-        return (data_array, self._dmask, offsets)
+        return FieldData(array=data_array, dmask=self._dmask, offsets=offsets)
 
     @classmethod
     def from_numpy(
@@ -345,7 +345,7 @@ class TemporalField(Field):
         Returns
         -------
         FieldData
-            Tuple containing the field data array, the dimension mask, and offsets.
+            Namedtuple containing the field data array, the dimension mask, and offsets.
         """
         if time_index < 0 or time_index >= self._num_timesteps - 1:
             raise IndexError(
@@ -356,7 +356,7 @@ class TemporalField(Field):
         
         value = (1 - ft) * self._data[It] + ft * self._data[It + 1]
         array = np.asarray(value)
-        return (array, self._dmask, ())
+        return FieldData(array=array, dmask=self._dmask, offsets=())
 
 
 class TimeDependentField(Field):
@@ -500,7 +500,7 @@ class TimeDependentField(Field):
         Returns
         -------
         FieldData
-            Tuple containing the field data array, the dimension mask, and offsets.
+            Namedtuple containing the field data array, the dimension mask, and offsets.
         """
         It, ft = divmod(time_index, 1)
         It = int(It)
@@ -516,7 +516,7 @@ class TimeDependentField(Field):
 
         # linear interpolation in time
         data_array = current_data * (1.0 - ft) + next_data * ft
-        return (data_array, self._dmask, offsets)
+        return FieldData(array=data_array, dmask=self._dmask, offsets=offsets)
 
     @classmethod
     def from_numpy(

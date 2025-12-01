@@ -1,13 +1,15 @@
 """Submodule for constructing and running kernels on particles."""
 
+import collections
 import numba 
 import numpy.typing as npt
 
 from typing import Callable, Iterable, Self
 
-type Particle = npt.NDArray
-type FieldData = tuple[npt.NDArray[float], tuple[int, int, int], tuple[float,...]]
+"""The FieldData type for passing data into kernels."""
+FieldData = collections.namedtuple("FieldData", ("array", "dmask", "offsets"))
 
+type Particle = npt.NDArray
 type KernelFunction = Callable[[Particle, FieldData, ...], None]
 
 class ParticleKernel:
