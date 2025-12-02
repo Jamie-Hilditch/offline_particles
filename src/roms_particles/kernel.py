@@ -12,10 +12,12 @@ FieldData = collections.namedtuple("FieldData", ("array", "dmask", "offsets"))
 type Particle = npt.NDArray
 type KernelFunction = Callable[[Particle, FieldData, ...], None]
 
+
 class ParticleKernel:
     """A kernel to be executed on a particle."""
 
-    def __init__(self, 
+    def __init__(
+        self,
         kernel_function: KernelFunction,
         particle_fields: Iterable[str],
         simulation_fields: Iterable[str],
@@ -38,13 +40,21 @@ class ParticleKernel:
     def chain_with(self, other: Self) -> Self:
         """Create a ParticleKernel by chaining this kernel with another."""
 
-        combined_particle_fields = set(self.particle_fields).union(other.particle_fields)
-        combined_simulation_fields = tuple(set(self.simulation_fields).union(other.simulation_fields))
-        
+        combined_particle_fields = set(self.particle_fields).union(
+            other.particle_fields
+        )
+        combined_simulation_fields = tuple(
+            set(self.simulation_fields).union(other.simulation_fields)
+        )
+
         # find the indices of the fields in the combined tuple
         # these are tuples of ints so numba will treat them as compile time constants
-        first_indices = tuple(combined_simulation_fields.index(f) for f in self.simulation_fields)
-        second_indices = tuple(combined_simulation_fields.index(f) for f in other.simulation_fields)
+        first_indices = tuple(
+            combined_simulation_fields.index(f) for f in self.simulation_fields
+        )
+        second_indices = tuple(
+            combined_simulation_fields.index(f) for f in other.simulation_fields
+        )
 
         first_function = self._kernel_function
         second_function = other._kernel_function
@@ -57,16 +67,11 @@ class ParticleKernel:
         )
 
         return ParticleKernel(
-            chained_kernel,
-            combined_particle_fields,
-            combined_simulation_fields
+            chained_kernel, combined_particle_fields, combined_simulation_fields
         )
 
     @classmethod
-    def from_sequence(
-        cls, 
-        kernels: Iterable["ParticleKernel"]
-    ) -> "ParticleKernel":
+    def from_sequence(cls, kernels: Iterable["ParticleKernel"]) -> "ParticleKernel":
         """Create a ParticleKernel by combining a sequence of ParticleKernels."""
         kernel_iter = iter(kernels)
         combined_kernel = next(kernel_iter)
@@ -76,23 +81,18 @@ class ParticleKernel:
 
 
 def _vectorize_kernel_function(
-    particle_kernel_function: KernelFunction
+    particle_kernel_function: KernelFunction,
 ) -> KernelFunction:
     """Create a vectorized version of a particle kernel function."""
 
     @numba.njit(nogil=True, fastmath=True, parallel=True)
-    def vectorized_kernel_function(
-        particles: Particle,
-        *field_data: FieldData
-    ) -> None:
+    def vectorized_kernel_function(particles: Particle, *field_data: FieldData) -> None:
         n_particles = particles.shape[0]
         for i in numba.prange(n_particles):
-            particle_kernel_function(
-                particles[i],
-                *field_data
-            )
+            particle_kernel_function(particles[i], *field_data)
 
     return vectorized_kernel_function
+
 
 def _chain_kernel_functions(
     first_function: KernelFunction,
@@ -102,20 +102,11 @@ def _chain_kernel_functions(
 ) -> KernelFunction:
     """Chain two kernel functions together."""
 
-    def chained_function(
-        p: Particle,
-        *field_data: FieldData
-    ) -> None:
+    def chained_function(p: Particle, *field_data: FieldData) -> None:
         first_field_data = tuple(field_data[i] for i in first_indices)
         second_field_data = tuple(field_data[i] for i in second_indices)
 
-        first_function(
-            p, 
-            *first_field_data
-        )
-        second_function(
-            p,  
-            *second_field_data
-        )
+        first_function(p, *first_field_data)
+        second_function(p, *second_field_data)
 
     return chained_function

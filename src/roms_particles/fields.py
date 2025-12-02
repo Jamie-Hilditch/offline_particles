@@ -110,12 +110,11 @@ class Field(abc.ABC):
         """
         pass
 
+
 class ConstantField(Field):
     """Class representing a constant field with a single value."""
-    def __init__(
-        self,
-        value: float
-    ):
+
+    def __init__(self, value: float):
         super().__init__(
             z_stagger=Stagger.INVARIANT,
             y_stagger=Stagger.INVARIANT,
@@ -170,6 +169,7 @@ class ConstantField(Field):
             Namedtuple containing the field data array, the dimension mask, and offsets.
         """
         return FieldData(array=self._array, dmask=self._dmask, offsets=())
+
 
 class StaticField(Field):
     """Class representing static fields that do not change over time."""
@@ -284,8 +284,10 @@ type SpatialArrayFactory = Callable[
     [da.Array | npt.NDArray, Stagger, Stagger, Stagger], SpatialArray
 ]
 
+
 class TemporalField(Field):
     """Class representing a spatially invariant time dependent field."""
+
     def __init__(
         self,
         data: npt.NDArray,
@@ -296,7 +298,9 @@ class TemporalField(Field):
             x_stagger=Stagger.INVARIANT,
         )
         if data.ndim != 1:
-            raise ValueError("TemporalField requires a 1D array of time-dependent values.")
+            raise ValueError(
+                "TemporalField requires a 1D array of time-dependent values."
+            )
         self._data = data
         self._num_timesteps = self._data.shape[0]
 
@@ -352,7 +356,7 @@ class TemporalField(Field):
             )
         It, ft = divmod(time_index, 1)
         It = int(It)
-        
+
         value = (1 - ft) * self._data[It] + ft * self._data[It + 1]
         array = np.asarray(value)
         return FieldData(array=array, dmask=self._dmask, offsets=())
@@ -376,7 +380,9 @@ class TimeDependentField(Field):
         )
 
         if data.ndim < 2:
-            raise ValueError("TimeDependentField requires at least 2 dimensions (time + spatial). For spatially invariant fields, use ConstantField or TemporalField.")
+            raise ValueError(
+                "TimeDependentField requires at least 2 dimensions (time + spatial). For spatially invariant fields, use ConstantField or TemporalField."
+            )
         self._data = data
         self._spatial_array_factory = spatial_array_factory
 
@@ -482,11 +488,7 @@ class TimeDependentField(Field):
             self.x_stagger,
         )
 
-    def get_field_data(
-        self,
-        time_index: float,
-        bbox: BBox
-    ) -> FieldData:
+    def get_field_data(self, time_index: float, bbox: BBox) -> FieldData:
         """Get the field data at a given time index.
 
          Parameters
@@ -508,9 +510,7 @@ class TimeDependentField(Field):
         self.set_time_index(It)
 
         # load the two time subsets
-        current_data, offsets = self._current_time_slice.get_data_subset(
-            bbox
-        )
+        current_data, offsets = self._current_time_slice.get_data_subset(bbox)
         next_data, _ = self._next_time_slice.get_data_subset(bbox)
 
         # linear interpolation in time

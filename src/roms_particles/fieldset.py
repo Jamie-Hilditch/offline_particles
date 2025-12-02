@@ -29,7 +29,6 @@ class Fieldset:
         for name, field in kwargs.items():
             self.add_field(name, field)
 
-
     @property
     def t_size(self) -> int:
         """Size of the time dimension."""
@@ -119,7 +118,6 @@ class Fieldset:
         if name not in self._fields:
             raise KeyError(f"'{name}' does not exist in Fieldset.")
         return self._fields[name]
-            
 
     def __contains__(self, name: str) -> bool:
         """Check if a field exists in the fieldset.
