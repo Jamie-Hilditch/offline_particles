@@ -29,7 +29,7 @@ class ParticleKernel:
         self._vector_kernel_function = _vectorize_kernel_function(self._kernel_function)
 
     @property
-    def particle_fields(self) -> dict[str, npt.DTypeLike]:
+    def particle_fields(self) -> dict[str, np.dtype]:
         """The particle fields required by this kernel."""
         return self._particle_fields
 
@@ -81,7 +81,7 @@ class ParticleKernel:
         return combined_kernel
 
 
-def merge_particle_fields(kernels: Iterable[ParticleKernel]) -> dict[str, npt.DType]:
+def merge_particle_fields(kernels: Iterable[ParticleKernel]) -> dict[str, np.dtype]:
     """Merge the particle fields required by a sequence of ParticleKernels."""
     merged_fields: dict[str, npt.DType] = {}
     for kernel in kernels:
