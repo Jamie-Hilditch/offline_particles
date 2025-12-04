@@ -90,9 +90,9 @@ class Launcher:
     ) -> BBox:
         """Construct a bounding box around the given particles with index padding."""
 
-        z_indices = particles["z_idx"]
-        y_indices = particles["y_idx"]
-        x_indices = particles["x_idx"]
+        z_indices = particles["zidx"]
+        y_indices = particles["yidx"]
+        x_indices = particles["xidx"]
 
         z_min = z_indices.min() - self._index_padding
         z_max = z_indices.max() + self._index_padding
