@@ -286,7 +286,7 @@ class ChunkedDaskArray(SpatialArray):
             )
             self._subset = self._data[subset_slices].compute()
 
-        return self._subset, offsets
+        return self._subset, tuple(offsets)
 
 
 @numba.jit(nogil=True, fastmath=True)
@@ -296,7 +296,7 @@ def compute_new_bounds(
     lower: npt.NDArray[int],
     upper: npt.NDArray[int],
     bounds: tuple[npt.NDArray[int], ...],
-) -> tuple[bool, tuple[float, ...]]:
+) -> tuple[bool, npt.NDArray[float]]:
     """
     Compute new bounds for chunked data access.
     Parameters:
@@ -310,8 +310,8 @@ def compute_new_bounds(
         - tuple[float, ...]: offsets applied to the particle indices in order to index into the returned data.
     """
     recompute = False
-    new_offsets = ()
     M = len(active_dims_bbox)
+    new_offsets = np.empty((M,), dtype=float)
 
     for m in range(M):
         offset = offsets[m]
@@ -319,7 +319,7 @@ def compute_new_bounds(
         new_lower = compute_new_lower_bound(dim_min, offset, bounds[m])
         new_upper = compute_new_upper_bound(dim_max, offset, bounds[m])
 
-        new_offsets = new_offsets + (offset - new_lower,)
+        new_offsets[m] = offset - new_lower
 
         if new_lower != lower[m] or new_upper != upper[m]:
             recompute = True
