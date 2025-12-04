@@ -89,7 +89,15 @@ def _rk2_step_1(
 
 rk2_step_1_kernel = ParticleKernel(
     _rk2_step_1,
-    particle_fields=["zidx", "yidx", "xidx", "z", "_dxidx1", "_dyidx1", "_dz1"],
+    particle_fields={
+        "zidx": float, 
+        "yidx": float, 
+        "xidx": float, 
+        "z": float, 
+        "_dxidx1": float, 
+        "_dyidx1": float, 
+        "_dz1" :float
+    },
     simulation_fields=[
         "u",
         "v",
@@ -169,7 +177,15 @@ def _rk2_step_2(
 
 rk2_step_2_kernel = ParticleKernel(
     _rk2_step_2,
-    particle_fields=["zidx", "yidx", "xidx", "z", "_dxidx2", "_dyidx2", "_dz2"],
+    particle_fields={
+        "zidx": float, 
+        "yidx": float,
+        "xidx": float,
+        "z": float,
+        "_dxidx2": float,
+        "_dyidx2": float,
+        "_dz2": float,
+    },
     simulation_fields=[
         "_dt",
         "_RK2_alpha",
@@ -222,7 +238,18 @@ def _rk2_update(
 
 rk2_update_kernel = ParticleKernel(
     _rk2_update,
-    particle_fields=["zidx", "yidx", "xidx", "z", "_dxidx1", "_dyidx1", "_dz1", "_dxidx2", "_dyidx2", "_dz2"],
+    particle_fields={
+        "zidx": float,
+        "yidx": float,
+        "xidx": float,
+        "z": float,
+        "_dxidx1": float,
+        "_dyidx1": float,
+        "_dz1": float,
+        "_dxidx2": float,
+        "_dyidx2": float,
+        "_dz2": float
+    },
     simulation_fields=[
         "_dt",
         "_RK2_alpha",
