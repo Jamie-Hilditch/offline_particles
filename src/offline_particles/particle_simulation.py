@@ -4,7 +4,7 @@ import numpy as np
 
 from .fieldset import Fieldset
 from .kernel_data import KernelDataSource
-from .launchers import Launcher
+from .launcher import Launcher
 from .particle_kernel import merge_particle_fields
 from .tasks import SimulationState, Task
 from .timesteppers import Timestepper
