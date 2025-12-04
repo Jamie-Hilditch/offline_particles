@@ -15,9 +15,9 @@ from ..interpolation import (
     linear_interpolation,
     trilinear_interpolation,
 )
-from ..kernel import ParticleKernel
 from ..kernel_data import KernelData
 from ..kernel_tools import offset_indices, unwrap_scalar
+from ..particle_kernel import ParticleKernel
 from ..timesteppers import RK2Timestepper
 from .vertical_coordinate import (
     S_coordinate,

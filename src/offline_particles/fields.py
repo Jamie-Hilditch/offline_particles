@@ -7,7 +7,7 @@ import dask.array as da
 import numpy as np
 import numpy.typing as npt
 
-from .kernels import KernelData
+from .kernel_data import KernelData
 from .spatial_arrays import BBox, ChunkedDaskArray, NumpyArray, SpatialArray, Stagger
 
 

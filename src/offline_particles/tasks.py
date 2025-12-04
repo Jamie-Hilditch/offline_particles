@@ -6,7 +6,7 @@ from typing import Iterable
 
 import numpy as np
 
-from .kernels import ParticleKernel
+from .kernel_data import ParticleKernel
 from .launcher import Launcher
 
 
