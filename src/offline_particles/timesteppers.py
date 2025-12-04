@@ -22,7 +22,7 @@ class Timestepper(KernelDataSource, abc.ABC):
         time: float = 0.0,
         index_padding: int = 0,
     ) -> None:
-        super().__init__(index_padding)
+        super().__init__()
 
         # check time array is strictly increasing
         if not np.all(np.diff(time_array) > 0):
