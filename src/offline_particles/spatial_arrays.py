@@ -319,7 +319,7 @@ def compute_new_bounds(
         new_lower = compute_new_lower_bound(dim_min, offset, bounds[m])
         new_upper = compute_new_upper_bound(dim_max, offset, bounds[m])
 
-        new_offsets = new_offsets + (offset - new_lower)
+        new_offsets = new_offsets + (offset - new_lower,)
 
         if new_lower != lower[m] or new_upper != upper[m]:
             recompute = True
