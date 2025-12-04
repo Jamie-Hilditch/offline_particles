@@ -94,22 +94,22 @@ class Launcher:
         y_indices = particles["yidx"]
         x_indices = particles["xidx"]
 
-        z_min = z_indices.min() - self._index_padding
-        z_max = z_indices.max() + self._index_padding
+        zmin = z_indices.min() - self._index_padding
+        zmax = z_indices.max() + self._index_padding
 
-        y_min = y_indices.min() - self._index_padding
-        y_max = y_indices.max() + self._index_padding
+        ymin = y_indices.min() - self._index_padding
+        ymax = y_indices.max() + self._index_padding
 
-        x_min = x_indices.min() - self._index_padding
-        x_max = x_indices.max() + self._index_padding
+        xmin = x_indices.min() - self._index_padding
+        xmax = x_indices.max() + self._index_padding
 
         return BBox(
-            z_min=z_min,
-            z_max=z_max,
-            y_min=y_min,
-            y_max=y_max,
-            x_min=x_min,
-            x_max=x_max,
+            zmin=zmin,
+            zmax=zmax,
+            ymin=ymin,
+            ymax=ymax,
+            xmin=xmin,
+            xmax=xmax,
         )
 
     def get_kernel_data(self, name: str, time_index: float, bbox: BBox) -> KernelData:
