@@ -3,6 +3,7 @@
 from typing import Callable, Iterable, Self
 
 import numba
+import numpy as np
 import numpy.typing as npt
 
 from .kernel_data import KernelData
@@ -17,16 +18,18 @@ class ParticleKernel:
     def __init__(
         self,
         kernel_function: KernelFunction,
-        particle_fields: Iterable[str],
+        particle_fields: dict[str, npt.DTypeLike],
         simulation_fields: Iterable[str],
     ) -> None:
         self._kernel_function = numba.njit(nogil=True, fastmath=True)(kernel_function)
-        self._particle_fields = set(particle_fields)
+        self._particle_fields = {
+            field: np.dtype(dtype) for field, dtype in particle_fields.items()
+        }
         self._simulation_fields = tuple(simulation_fields)
         self._vector_kernel_function = _vectorize_kernel_function(self._kernel_function)
 
     @property
-    def particle_fields(self) -> set[str]:
+    def particle_fields(self) -> dict[str, npt.DTypeLike]:
         """The particle fields required by this kernel."""
         return self._particle_fields
 
@@ -38,8 +41,8 @@ class ParticleKernel:
     def chain_with(self, other: Self) -> Self:
         """Create a ParticleKernel by chaining this kernel with another."""
 
-        combined_particle_fields = set(self.particle_fields).union(
-            other.particle_fields
+        combined_particle_fields = merge_particle_fields(
+            self.particle_fields, other.particle_fields
         )
         combined_simulation_fields = tuple(
             set(self.simulation_fields).union(other.simulation_fields)
@@ -76,6 +79,21 @@ class ParticleKernel:
         for kernel in kernel_iter:
             combined_kernel = combined_kernel.chain_with(kernel)
         return combined_kernel
+
+
+def merge_particle_fields(kernels: Iterable[ParticleKernel]) -> dict[str, npt.DType]:
+    """Merge the particle fields required by a sequence of ParticleKernels."""
+    merged_fields: dict[str, npt.DType] = {}
+    for kernel in kernels:
+        for field, dtype in kernel.particle_fields.items():
+            if field in merged_fields:
+                if merged_fields[field] != np.dtype(dtype):
+                    raise ValueError(
+                        f"Conflicting dtypes for particle field '{field}': "
+                        f"{merged_fields[field]} vs {dtype}"
+                    )
+            else:
+                merged_fields[field] = np.dtype(dtype)
 
 
 def _vectorize_kernel_function(

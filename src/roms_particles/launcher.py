@@ -3,8 +3,8 @@
 
 import numpy.typing as npt
 
-from .kernel import ParticleKernel
 from .kernel_data import KernelData, KernelDataFunction, KernelDataSource
+from .particle_kernel import ParticleKernel
 from .spatial_arrays import BBox
 
 # -------------------------------

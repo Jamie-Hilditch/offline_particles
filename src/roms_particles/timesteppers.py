@@ -5,10 +5,10 @@ import abc
 import numpy as np
 import numpy.typing as npt
 
-from .kernel import ParticleKernel
 from .kernel_data import KernelData, KernelDataSource, register_kernel_data
 from .kernel_tools import unsafe_inverse_linear_interpolation
 from .launcher import Launcher
+from .particle_kernel import ParticleKernel
 from .spatial_arrays import BBox
 
 
@@ -77,7 +77,7 @@ class Timestepper(KernelDataSource, abc.ABC):
         self._tidx = self.get_time_index(self._time)
 
     @abc.abstractmethod
-    def timestep_particles(self, particles: npt.NDArray) -> None:
+    def timestep_particles(self, particles: npt.NDArray, launcher: Launcher) -> None:
         """Timestep the particles by one time step."""
         pass
 
