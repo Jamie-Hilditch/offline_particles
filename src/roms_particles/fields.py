@@ -7,7 +7,7 @@ import dask.array as da
 import numpy as np
 import numpy.typing as npt
 
-from .kernels import FieldData
+from .kernels import KernelData
 from .spatial_arrays import BBox, ChunkedDaskArray, NumpyArray, SpatialArray, Stagger
 
 
@@ -93,7 +93,7 @@ class Field(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_field_data(self, time_index: float, bbox: BBox) -> FieldData:
+    def get_kernel_data(self, time_index: float, bbox: BBox) -> KernelData:
         """Get the field data at a given time index.
 
          Parameters
@@ -105,7 +105,7 @@ class Field(abc.ABC):
 
         Returns
         -------
-        FieldData
+        KernelData
             Namedtuple containing the field data array, the dimension mask, and offsets.
         """
         pass
@@ -151,7 +151,7 @@ class ConstantField(Field):
         """
         pass
 
-    def get_field_data(self, time_index: float, bbox: BBox) -> FieldData:
+    def get_kernel_data(self, time_index: float, bbox: BBox) -> KernelData:
         """Get the field data at a given time index.
 
         Since this is a constant field, the time_index and bbox are ignored.
@@ -165,10 +165,10 @@ class ConstantField(Field):
 
         Returns
         -------
-        FieldData
+        KernelData
             Namedtuple containing the field data array, the dimension mask, and offsets.
         """
-        return FieldData(array=self._array, dmask=self._dmask, offsets=())
+        return KernelData(array=self._array, dmask=self._dmask, offsets=())
 
 
 class StaticField(Field):
@@ -224,7 +224,7 @@ class StaticField(Field):
                 f"Expected shape {expected_shape} but data has shape {self._data.shape}"
             )
 
-    def get_field_data(self, time_index: float, bbox: BBox) -> FieldData:
+    def get_kernel_data(self, time_index: float, bbox: BBox) -> KernelData:
         """Get the field data at a given time index.
 
         Since this is a static field, the time_index is ignored.
@@ -238,12 +238,12 @@ class StaticField(Field):
 
         Returns
         -------
-        FieldData
+        KernelData
             Namedtuple containing the field data array, the dimension mask, and offsets.
         """
         # For static fields, we ignore time_index
         data_array, offsets = self._data.get_data_subset(bbox)
-        return FieldData(array=data_array, dmask=self._dmask, offsets=offsets)
+        return KernelData(array=data_array, dmask=self._dmask, offsets=offsets)
 
     @classmethod
     def from_numpy(
@@ -335,7 +335,7 @@ class TemporalField(Field):
                 f"Expected length {simulation_shape[0]} but data has length {self._data.size}"
             )
 
-    def get_field_data(self, time_index: float, bbox: BBox) -> FieldData:
+    def get_kernel_data(self, time_index: float, bbox: BBox) -> KernelData:
         """Get the field data at a given time index.
 
          Parameters
@@ -347,7 +347,7 @@ class TemporalField(Field):
 
         Returns
         -------
-        FieldData
+        KernelData
             Namedtuple containing the field data array, the dimension mask, and offsets.
         """
         if time_index < 0 or time_index >= self._num_timesteps - 1:
@@ -359,7 +359,7 @@ class TemporalField(Field):
 
         value = (1 - ft) * self._data[It] + ft * self._data[It + 1]
         array = np.asarray(value)
-        return FieldData(array=array, dmask=self._dmask, offsets=())
+        return KernelData(array=array, dmask=self._dmask, offsets=())
 
 
 class TimeDependentField(Field):
@@ -488,7 +488,7 @@ class TimeDependentField(Field):
             self.x_stagger,
         )
 
-    def get_field_data(self, time_index: float, bbox: BBox) -> FieldData:
+    def get_kernel_data(self, time_index: float, bbox: BBox) -> KernelData:
         """Get the field data at a given time index.
 
          Parameters
@@ -500,7 +500,7 @@ class TimeDependentField(Field):
 
         Returns
         -------
-        FieldData
+        KernelData
             Namedtuple containing the field data array, the dimension mask, and offsets.
         """
         It, ft = divmod(time_index, 1)
@@ -515,7 +515,7 @@ class TimeDependentField(Field):
 
         # linear interpolation in time
         data_array = current_data * (1.0 - ft) + next_data * ft
-        return FieldData(array=data_array, dmask=self._dmask, offsets=offsets)
+        return KernelData(array=data_array, dmask=self._dmask, offsets=offsets)
 
     @classmethod
     def from_numpy(

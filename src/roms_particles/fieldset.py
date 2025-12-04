@@ -4,11 +4,10 @@ from collections.abc import ItemsView, KeysView, ValuesView
 from numbers import Number
 
 from .fields import ConstantField, Field
-from .kernel import FieldData
-from .spatial_arrays import BBox
+from .kernel_data import KernelDataSource
 
 
-class Fieldset:
+class Fieldset(KernelDataSource):
     def __init__(
         self,
         t_size: int,
@@ -74,6 +73,7 @@ class Fieldset:
         except ValueError as e:
             raise ValueError(f"Error validating shape of Field '{name}'.") from e
         self._fields[name] = field
+        self.register_kernel_data_function(name, field.get_kernel_data)
 
     def remove_field(self, name: str) -> None:
         """Remove a field from the fieldset.
@@ -82,19 +82,8 @@ class Fieldset:
         """
         if name not in self._fields:
             raise KeyError(f"Field '{name}' does not exist in Fieldset. Cannot remove.")
+        self.deregister_kernel_data_function(name)
         del self._fields[name]
-
-    def overwrite_field(self, name: str, field: Field) -> None:
-        """Overwrite an existing field in the fieldset.
-        Parameters:
-            name: name of the field
-            field: Field object
-        """
-        if name not in self._fields:
-            raise KeyError(
-                f"Field '{name}' does not exist in Fieldset. Cannot overwrite."
-            )
-        self._fields[name] = field
 
     def add_constant(self, name: str, value: Number) -> None:
         """Convenience method for adding a constant field to the fieldset.
@@ -102,11 +91,7 @@ class Fieldset:
             name: name of the constant
             value: value of the constant
         """
-        if name in self._fields:
-            raise KeyError(
-                f"'{name}' already exists in Fieldset. First remove it before adding a new one."
-            )
-        self._fields[name] = ConstantField(value)
+        self.add_field(name, ConstantField(value))
 
     def __getitem__(self, name: str) -> Field:
         """Get a field from the fieldset.
@@ -145,14 +130,3 @@ class Fieldset:
             f"FieldSet(\n\tt_size={self.t_size}, z_size={self.z_size}, y_size={self.y_size}, x_size={self.x_size},"
             + f"\n\t{field_str}\n)"
         )
-
-    def get_field_data(self, name: str, tidx: float, bbox: BBox) -> FieldData:
-        """Get a subset of field data within a bounding box.
-        Parameters:
-            name: name of the field
-            tidx: time index
-            bbox: bounding box (t_min, t_max, z_min, z_max, y_min, y_max, x_min, x_max)
-        Returns:
-            FieldData: a namedtuple containing the field data array, dimension mask, and offsets
-        """
-        return self._fields[name].get_field_data(tidx, bbox)

@@ -1,16 +1,14 @@
 """Submodule for constructing and running kernels on particles."""
 
-import collections
 from typing import Callable, Iterable, Self
 
 import numba
 import numpy.typing as npt
 
-"""The FieldData type for passing data into kernels."""
-FieldData = collections.namedtuple("FieldData", ("array", "dmask", "offsets"))
+from .kernel_data import KernelData
 
 type Particle = npt.NDArray
-type KernelFunction = Callable[[Particle, FieldData, ...], None]
+type KernelFunction = Callable[[Particle, KernelData, ...], None]
 
 
 class ParticleKernel:
@@ -86,10 +84,12 @@ def _vectorize_kernel_function(
     """Create a vectorized version of a particle kernel function."""
 
     @numba.njit(nogil=True, fastmath=True, parallel=True)
-    def vectorized_kernel_function(particles: Particle, *field_data: FieldData) -> None:
+    def vectorized_kernel_function(
+        particles: Particle, *kernel_data: KernelData
+    ) -> None:
         n_particles = particles.shape[0]
         for i in numba.prange(n_particles):
-            particle_kernel_function(particles[i], *field_data)
+            particle_kernel_function(particles[i], *kernel_data)
 
     return vectorized_kernel_function
 
@@ -102,11 +102,11 @@ def _chain_kernel_functions(
 ) -> KernelFunction:
     """Chain two kernel functions together."""
 
-    def chained_function(p: Particle, *field_data: FieldData) -> None:
-        first_field_data = tuple(field_data[i] for i in first_indices)
-        second_field_data = tuple(field_data[i] for i in second_indices)
+    def chained_function(p: Particle, *kernel_data: KernelData) -> None:
+        first_kernel_data = tuple(kernel_data[i] for i in first_indices)
+        second_kernel_data = tuple(kernel_data[i] for i in second_indices)
 
-        first_function(p, *first_field_data)
-        second_function(p, *second_field_data)
+        first_function(p, *first_kernel_data)
+        second_function(p, *second_kernel_data)
 
     return chained_function
