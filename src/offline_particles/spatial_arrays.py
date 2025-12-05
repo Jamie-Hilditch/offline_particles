@@ -212,7 +212,7 @@ class NumpyArray(SpatialArray):
             This accounts for both the grid staggering and any subsetting of the data array.
         """
         # Here all the data is in memory so we can just return the full data array and the indices unchanged
-        return self._data, self.active_offsets
+        return self._data, np.array(self.active_offsets, dtype=float)
 
 
 class ChunkedDaskArray(SpatialArray):
@@ -246,7 +246,7 @@ class ChunkedDaskArray(SpatialArray):
     def get_data_subset(
         self,
         bounding_box: BBox,
-    ) -> tuple[npt.NDArray[float], tuple[float, ...]]:
+    ) -> tuple[npt.NDArray[float], npt.NDArray[float]]:
         """Get a view of the data around the particle indices.
 
         Parameters
@@ -286,7 +286,7 @@ class ChunkedDaskArray(SpatialArray):
             )
             self._subset = self._data[subset_slices].compute()
 
-        return self._subset, tuple(offsets)
+        return self._subset, offsets
 
 
 @numba.jit(nogil=True, fastmath=True)

@@ -8,7 +8,7 @@ import numpy.typing as npt
 
 from .spatial_arrays import BBox, ChunkedDaskArray, NumpyArray, SpatialArray, Stagger
 
-type FieldData = tuple[npt.NDArray[float], tuple[float, ...]]
+type FieldData = tuple[npt.NDArray[float], npt.NDArray[float]]
 
 class Field(abc.ABC):
     """Abstract base class for fields used in particle tracking."""
