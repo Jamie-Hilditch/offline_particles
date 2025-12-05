@@ -7,7 +7,7 @@ from .kernel_tools import split_index
 
 
 @numba.njit(nogil=True, fastmath=True)
-def linear_interpolation(idx0: float, array: npt.NDArray[float]) -> float:
+def linear_interpolation(idx: tuple[float], array: npt.NDArray[float]) -> float:
     """Perform linear interpolation on a 1D array.
     
     Parameters:
@@ -17,7 +17,7 @@ def linear_interpolation(idx0: float, array: npt.NDArray[float]) -> float:
     Returns:
         The interpolated value as a float.
     """
-    I0, f0 = split_index(idx0)
+    I0, f0 = split_index(idx[0])
     g0 = 1.0 - f0
 
     v0 = array[I0]
@@ -26,19 +26,18 @@ def linear_interpolation(idx0: float, array: npt.NDArray[float]) -> float:
     return g0 * v0 + f0 * v1
 
 @numba.njit(nogil=True, fastmath=True)
-def bilinear_interpolation(idx0: float, idx1: float, array: npt.NDArray[float]) -> float:
+def bilinear_interpolation(idx: tuple[float, float], array: npt.NDArray[float]) -> float:
     """Perform bilinear interpolation on a 2D array.
     
     Parameters:
-        idx0: The floating-point index in the first dimension.
-        idx1: The floating-point index in the second dimension.
+        idx: The floating-point indices.
         array: 2D array of values to interpolate within.
     
     Returns:
         The interpolated value as a float.
     """
-    I0, f0 = split_index(idx0)
-    I1, f1 = split_index(idx1)
+    I0, f0 = split_index(idx[0])
+    I1, f1 = split_index(idx[1])
     g0 = 1.0 - f0
     g1 = 1.0 - f1
 
@@ -56,22 +55,20 @@ def bilinear_interpolation(idx0: float, idx1: float, array: npt.NDArray[float]) 
 
 @numba.njit(nogil=True, fastmath=True)
 def trilinear_interpolation(
-    idx0: float, idx1: float, idx2: float, array: npt.NDArray[float]
+    idx: tuple[float, float, float], array: npt.NDArray[float]
 ) -> float:
     """Perform trilinear interpolation on a 3D array.
     
     Parameters:
-        idx0: The floating-point index in the first dimension.
-        idx1: The floating-point index in the second dimension.
-        idx2: The floating-point index in the third dimension.
+        idx: The floating-point indices.
         array: 3D array of values to interpolate within.
     
     Returns:
         The interpolated value as a float.
     """
-    I0, f0 = split_index(idx0)
-    I1, f1 = split_index(idx1)
-    I2, f2 = split_index(idx2)
+    I0, f0 = split_index(idx[0])
+    I1, f1 = split_index(idx[1])
+    I2, f2 = split_index(idx[2])
     g0 = 1.0 - f0
     g1 = 1.0 - f1
     g2 = 1.0 - f2
