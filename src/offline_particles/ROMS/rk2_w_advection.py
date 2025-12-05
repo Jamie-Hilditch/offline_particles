@@ -15,7 +15,6 @@ from ..interpolation import (
     linear_interpolation,
     trilinear_interpolation,
 )
-
 from ..kernel_tools import offset_indices_1D, offset_indices_2D, offset_indices_3D
 from ..particle_kernel import ParticleKernel
 from ..timesteppers import RK2Timestepper
