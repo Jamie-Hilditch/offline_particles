@@ -71,7 +71,7 @@ def compute_zidx_from_S(
     h_value: float,
     zeta_value: float,
     C: npt.NDArray[float],
-    C_offset: float,
+    C_offset: npt.NDArray[float],
 ) -> float:
     """Compute zidx from S-coordinate."""
     C_size = C.shape[0]

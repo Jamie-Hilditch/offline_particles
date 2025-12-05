@@ -61,4 +61,4 @@ def split_index(idx: float) -> tuple[int, float]:
     """
     int_idx = np.floor(idx)
     frac_idx = idx - int_idx
-    return int_idx.astype(np.int32), frac_idx
+    return int(int_idx), frac_idx
