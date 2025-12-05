@@ -30,7 +30,7 @@ def unsafe_inverse_linear_interpolation(array: npt.NDArray, value: float) -> flo
 @numba.njit(nogil=True, fastmath=True)
 def offset_indices_1D(pidx0: float, offsets: tuple[float]) -> float:
     """Offset a particle index."""
-    return pidx0 + offsets[0]
+    return (pidx0 + offsets[0],)
 
 
 @numba.njit(nogil=True, fastmath=True)
