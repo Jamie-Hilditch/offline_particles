@@ -156,7 +156,7 @@ class Fieldset:
     def values(self) -> ValuesView[Field]:
         return self._fields.values()
 
-    def items(self) -> ItemsView[tuple[str, Field]]:
+    def items(self) -> ItemsView[str, Field]:
         return self._fields.items()
 
     def __repr__(self) -> str:
