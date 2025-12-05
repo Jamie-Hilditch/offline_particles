@@ -6,10 +6,8 @@ import numba
 import numpy as np
 import numpy.typing as npt
 
-from .kernel_data import KernelData
-
 type Particle = npt.NDArray
-type KernelFunction = Callable[[Particle, KernelData, ...], None]
+type KernelFunction = Callable[[Particle, ...], None]
 
 
 class ParticleKernel:
@@ -135,7 +133,7 @@ def _vectorize_kernel_function(
 
     @numba.njit(nogil=True, fastmath=True, parallel=True)
     def vectorized_kernel_function(
-        particles: Particle, *kernel_data: KernelData
+        particles: Particle, *kernel_data
     ) -> None:
         n_particles = particles.shape[0]
         for i in numba.prange(n_particles):

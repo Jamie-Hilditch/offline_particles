@@ -6,7 +6,6 @@ from typing import Callable
 import dask.array as da
 import numpy.typing as npt
 
-from .kernel_data import KernelData
 from .spatial_arrays import BBox, ChunkedDaskArray, NumpyArray, SpatialArray, Stagger
 
 type FieldData = tuple[npt.NDArray[float], tuple[float, ...]]
@@ -164,7 +163,7 @@ class StaticField(Field):
                 f"Expected shape {expected_shape} but data has shape {self._data.shape}"
             )
 
-    def get_field_data(self, time_index: float, bbox: BBox) -> KernelData:
+    def get_field_data(self, time_index: float, bbox: BBox) -> FieldData:
         """Get the field data at a given time index.
 
         Since this is a static field, the time_index is ignored.
@@ -349,7 +348,7 @@ class TimeDependentField(Field):
             self.x_stagger,
         )
 
-    def get_field_data(self, time_index: float, bbox: BBox) -> KernelData:
+    def get_field_data(self, time_index: float, bbox: BBox) -> FieldData:
         """Get the field data at a given time index.
 
          Parameters
