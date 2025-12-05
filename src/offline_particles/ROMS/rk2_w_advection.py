@@ -153,27 +153,27 @@ def _rk2_step_2(
     zidx = compute_zidx_from_S(S, hc, NZ, h_value, zeta_value, C, C_off)
     return zidx
     
-    # # horizontal advection in index space
-    # # offset indices for u, v, dx, dy
-    # u_idx = offset_indices_3D(zidx, yidx, xidx, u_off)
-    # v_idx = offset_indices_3D(zidx, yidx, xidx, v_off)
-    # dx_idx = offset_indices_2D(yidx, xidx, dx_off)
-    # dy_idx = offset_indices_2D(yidx, xidx, dy_off)
+    # horizontal advection in index space
+    # offset indices for u, v, dx, dy
+    u_idx = offset_indices_3D(zidx, yidx, xidx, u_off)
+    v_idx = offset_indices_3D(zidx, yidx, xidx, v_off)
+    dx_idx = offset_indices_2D(yidx, xidx, dx_off)
+    dy_idx = offset_indices_2D(yidx, xidx, dy_off)
 
-    # # interpolate u, v, dx, dy onto particle
-    # u_interp = trilinear_interpolation(u_idx, u)
-    # v_interp = trilinear_interpolation(v_idx, v)
-    # dx_interp = bilinear_interpolation(dx_idx, dx)
-    # dy_interp = bilinear_interpolation(dy_idx, dy)
+    # interpolate u, v, dx, dy onto particle
+    u_interp = trilinear_interpolation(u_idx, u)
+    v_interp = trilinear_interpolation(v_idx, v)
+    dx_interp = bilinear_interpolation(dx_idx, dx)
+    dy_interp = bilinear_interpolation(dy_idx, dy)
 
-    # # compute rate of change of indices
-    # particle["_dxidx2"] = u_interp / dx_interp
-    # particle["_dyidx2"] = v_interp / dy_interp
+    # compute rate of change of indices
+    particle["_dxidx2"] = u_interp / dx_interp
+    particle["_dyidx2"] = v_interp / dy_interp
 
-    # # vertical advection in physical space
-    # w_idx = offset_indices_3D(zidx, yidx, xidx, w_off)
-    # w_interp = trilinear_interpolation(w_idx, w)
-    # particle["_dz2"] = w_interp
+    # vertical advection in physical space
+    w_idx = offset_indices_3D(zidx, yidx, xidx, w_off)
+    w_interp = trilinear_interpolation(w_idx, w)
+    particle["_dz2"] = w_interp
 
 rk2_step_2_kernel = ParticleKernel(
     _rk2_step_2,
