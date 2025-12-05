@@ -4,7 +4,6 @@ import abc
 from typing import Callable
 
 import dask.array as da
-import numpy as np
 import numpy.typing as npt
 
 from .kernel_data import KernelData
