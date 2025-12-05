@@ -131,7 +131,7 @@ def _vectorize_kernel_function(
 ) -> KernelFunction:
     """Create a vectorized version of a particle kernel function."""
 
-    @numba.njit(nogil=True, fastmath=True, parallel=True)
+    @numba.njit(nogil=True, fastmath=True, parallel=False)
     def vectorized_kernel_function(
         particles: Particle, *kernel_data
     ) -> None:
