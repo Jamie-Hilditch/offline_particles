@@ -144,25 +144,25 @@ class RK2Timestepper(Timestepper):
     def timestep_particles(self, particles: npt.NDArray, launcher: Launcher) -> None:
         """Launch the RK2 kernels to timestep the particles."""
         # Stage 1
-        print("Launching RK2 step 1 kernel")
+        # print("Launching RK2 step 1 kernel")
         launcher.launch_kernel(self._rk_step_1_kernel, particles, self._tidx)
-        print("Finished RK2 step 1 kernel")
+        # print("Finished RK2 step 1 kernel")
 
         # Compute intermediate time and time index
-        print("Computing intermediate time index")
+        # print("Computing intermediate time index")
         intermediate_time = self._time + self._alpha * self._dt
         intermediate_tidx = self.get_time_index(intermediate_time)
-        print("Finished computing intermediate time index")
+        # print("Finished computing intermediate time index")
         # Stage 2
-        print("Launching RK2 step 2 kernel")
+        # print("Launching RK2 step 2 kernel")
         launcher.launch_kernel(self._rk_step_2_kernel, particles, intermediate_tidx)
-        print("Finished RK2 step 2 kernel")
+        # print("Finished RK2 step 2 kernel")
         # Advance time
-        print("Advancing time")
+        # print("Advancing time")
         self.advance_time()
-        print("Finished advancing time")
+        # print("Finished advancing time")
 
         # Update particle positions
-        print("Launching RK2 update kernel")
+        # print("Launching RK2 update kernel")
         launcher.launch_kernel(self._rk_update_kernel, particles, self._tidx)
-        print("Finished RK2 update kernel")
+        # print("Finished RK2 update kernel")

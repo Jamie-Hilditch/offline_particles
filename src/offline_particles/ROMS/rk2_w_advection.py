@@ -151,7 +151,6 @@ def _rk2_step_2(
     
     S = S_from_z(z, h_value, zeta_value)
     zidx = compute_zidx_from_S(S, hc, NZ, h_value, zeta_value, C, C_off)
-    return zidx
     
     # horizontal advection in index space
     # offset indices for u, v, dx, dy
