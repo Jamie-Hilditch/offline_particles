@@ -77,7 +77,7 @@ class ParticleKernel:
         """Create a ParticleKernel by chaining this kernel with another."""
 
         combined_particle_fields = merge_particle_fields(
-            self.particle_fields, other.particle_fields
+            [self.particle_fields, other.particle_fields]
         )
         combined_scalars = tuple(set(self.scalars).union(other.scalars))
         combined_simulation_fields = tuple(
