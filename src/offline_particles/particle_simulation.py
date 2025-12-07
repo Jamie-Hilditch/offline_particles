@@ -81,6 +81,7 @@ class ParticleSimulation:
 
         # create particles array
         self._particles = np.empty((nparticles,), dtype=self._particle_dtype)
+        self._particles["status"] = 0  # initialize all particles as active
 
     @property
     def timestepper(self) -> Timestepper:
