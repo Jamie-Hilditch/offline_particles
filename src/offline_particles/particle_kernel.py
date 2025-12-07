@@ -9,6 +9,12 @@ import numpy.typing as npt
 type Particle = npt.NDArray
 type KernelFunction = Callable[[Particle, ...], None]
 
+DEFAULT_PARTICLE_FIELDS: dict[str, npt.DTypeLike] = {
+    "status": np.uint8,
+    "zidx": np.float64,
+    "yidx": np.float64,
+    "xidx": np.float64,
+}
 
 class ParticleKernel:
     """A kernel to be executed on a particle."""
@@ -137,7 +143,7 @@ class ParticleKernel:
 
 def merge_particle_fields(kernels: Iterable[ParticleKernel]) -> dict[str, np.dtype]:
     """Merge the particle fields required by a sequence of ParticleKernels."""
-    merged_fields: dict[str, npt.DType] = {}
+    merged_fields = DEFAULT_PARTICLE_FIELDS.copy()
     for kernel in kernels:
         for field, dtype in kernel.particle_fields.items():
             if field in merged_fields:
@@ -163,6 +169,9 @@ def _vectorize_kernel_function(
     def vectorized_kernel_function(particles: Particle, *kernel_data) -> None:
         n_particles = particles.shape[0]
         for i in numba.prange(n_particles):
+            # skip inactive particles
+            if particles["status"][i] > 0:
+                continue
             particle_kernel_function(particles[i], *kernel_data)
 
     return vectorized_kernel_function
