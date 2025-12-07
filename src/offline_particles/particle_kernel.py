@@ -55,7 +55,7 @@ class ParticleKernel:
     @property
     def fastmath(self) -> bool:
         """Whether the kernel function is compiled with fastmath."""
-        return self._fastmath   
+        return self._fastmath
 
     @property
     def nogil(self) -> bool:
@@ -110,8 +110,19 @@ class ParticleKernel:
             second_indices,
         )
 
+        # compilation options
+        fastmath = self.fastmath and other.fastmath
+        nogil = self.nogil and other.nogil
+        parallel = self.parallel and other.parallel
+
         return ParticleKernel(
-            chained_kernel, combined_particle_fields, combined_simulation_fields
+            chained_kernel,
+            combined_particle_fields,
+            combined_scalars,
+            combined_simulation_fields,
+            fastmath=fastmath,
+            nogil=nogil,
+            parallel=parallel,
         )
 
     @classmethod
