@@ -17,7 +17,7 @@ def linear_interpolation(idx: tuple[float], array: npt.NDArray[float]) -> float:
     Returns:
         The interpolated value as a float.
     """
-    I0, f0 = split_index(idx[0])
+    I0, f0 = split_index(idx[0], array.shape[0] - 1)
     g0 = 1.0 - f0
 
     v0 = array[I0]
@@ -36,8 +36,8 @@ def bilinear_interpolation(idx: tuple[float, float], array: npt.NDArray[float]) 
     Returns:
         The interpolated value as a float.
     """
-    I0, f0 = split_index(idx[0])
-    I1, f1 = split_index(idx[1])
+    I0, f0 = split_index(idx[0], array.shape[0] - 1)
+    I1, f1 = split_index(idx[1], array.shape[1] - 1)
     g0 = 1.0 - f0
     g1 = 1.0 - f1
 
@@ -66,9 +66,9 @@ def trilinear_interpolation(
     Returns:
         The interpolated value as a float.
     """
-    I0, f0 = split_index(idx[0])
-    I1, f1 = split_index(idx[1])
-    I2, f2 = split_index(idx[2])
+    I0, f0 = split_index(idx[0], array.shape[0] - 1)
+    I1, f1 = split_index(idx[1], array.shape[1] - 1)
+    I2, f2 = split_index(idx[2], array.shape[2] - 1)
     g0 = 1.0 - f0
     g1 = 1.0 - f1
     g2 = 1.0 - f2

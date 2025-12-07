@@ -50,7 +50,7 @@ def offset_indices_3D(
 
 
 @numba.njit(nogil=True, fastmath=True)
-def split_index(idx: float) -> tuple[int, float]:
+def split_index(idx: float, max_idx: int) -> tuple[int, float]:
     """Split a single index into its integer and fractional parts.
 
     Parameters:
@@ -60,5 +60,6 @@ def split_index(idx: float) -> tuple[int, float]:
 
     """
     int_idx = np.floor(idx)
+    int_idx = np.clip(int_idx, 0, max_idx)
     frac_idx = idx - int_idx
     return int(int_idx), frac_idx
