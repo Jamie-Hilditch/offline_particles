@@ -278,7 +278,6 @@ class ChunkedDaskArray(SpatialArray):
             self._subset_upper_bounds,
             self._bounds,
         )
-        print("new lower bounds:", self._subset_lower_bounds)
 
         if recompute:
             subset_slices = tuple(
