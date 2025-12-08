@@ -5,7 +5,7 @@ import numpy as np
 import numpy.typing as npt
 
 
-@numba.njit(nogil=True, fastmath=True, debug=True)
+@numba.njit(nogil=True, fastmath=True)
 def unsafe_inverse_linear_interpolation(array: npt.NDArray, value: float) -> float:
     """Perform an unsafe inverse linear interpolation on a 1D array.
 
@@ -27,13 +27,13 @@ def unsafe_inverse_linear_interpolation(array: npt.NDArray, value: float) -> flo
     return idx + fraction
 
 
-@numba.njit(nogil=True, fastmath=True, debug=True)
+@numba.njit(nogil=True, fastmath=True)
 def offset_indices_1D(pidx0: float, offsets: tuple[float]) -> float:
     """Offset a particle index."""
     return (pidx0 + offsets[0],)
 
 
-@numba.njit(nogil=True, fastmath=True, debug=True)
+@numba.njit(nogil=True, fastmath=True)
 def offset_indices_2D(
     pidx0: float, pidx1: float, offsets: tuple[float, float]
 ) -> tuple[float, float]:
@@ -41,7 +41,7 @@ def offset_indices_2D(
     return pidx0 + offsets[0], pidx1 + offsets[1]
 
 
-@numba.njit(nogil=True, fastmath=True, debug=True)
+@numba.njit(nogil=True, fastmath=True)
 def offset_indices_3D(
     pidx0: float, pidx1: float, pidx2: float, offsets: tuple[float, float, float]
 ) -> tuple[float, float, float]:
@@ -49,7 +49,7 @@ def offset_indices_3D(
     return pidx0 + offsets[0], pidx1 + offsets[1], pidx2 + offsets[2]
 
 
-@numba.njit(nogil=True, fastmath=True, debug=True)
+@numba.njit(nogil=True, fastmath=True)
 def split_index(idx: float, max_idx: int) -> tuple[int, float]:
     """Split a single index into its integer and fractional parts.
 
