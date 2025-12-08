@@ -143,7 +143,6 @@ class Launcher:
             array, offsets = self.get_field_data(name, time_index, bbox)
             kernel_arguments.append(array)
             kernel_arguments.append(offsets)
-            print(f"Launcher: added field '{name}' with offsets {offsets}")
        
         # call the vectorized kernel function
         kernel._vector_kernel_function(particles, *kernel_arguments)

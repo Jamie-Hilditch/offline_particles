@@ -270,6 +270,7 @@ class ChunkedDaskArray(SpatialArray):
             )
             if is_active
         )
+        print("active_dims_bbox:", active_dims_bbox)
 
         recompute, offsets = compute_new_bounds(
             active_dims_bbox,
@@ -278,6 +279,7 @@ class ChunkedDaskArray(SpatialArray):
             self._subset_upper_bounds,
             self._bounds,
         )
+        print("new lower bounds:", self._subset_lower_bounds)
 
         if recompute:
             subset_slices = tuple(
