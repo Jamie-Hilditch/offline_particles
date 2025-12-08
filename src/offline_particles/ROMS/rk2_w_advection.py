@@ -108,6 +108,7 @@ rk2_step_1_kernel = ParticleKernel(
         "C",
         "zeta",
     ],
+    debug=True
 )
 
 

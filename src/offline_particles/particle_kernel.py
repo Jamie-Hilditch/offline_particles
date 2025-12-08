@@ -29,8 +29,9 @@ class ParticleKernel:
         fastmath: bool = True,
         nogil: bool = True,
         parallel: bool = True,
+        debug: bool = False,
     ) -> None:
-        self._kernel_function = numba.njit(nogil=True, fastmath=True)(kernel_function)
+        self._kernel_function = numba.njit(nogil=nogil, fastmath=fastmath, debug=debug)(kernel_function)
         self._particle_fields = {
             field: np.dtype(dtype) for field, dtype in particle_fields.items()
         }
@@ -39,8 +40,9 @@ class ParticleKernel:
         self._fastmath = fastmath
         self._nogil = nogil
         self._parallel = parallel
+        self._debug = debug
         self._vector_kernel_function = _vectorize_kernel_function(
-            self._kernel_function, fastmath=fastmath, nogil=nogil, parallel=parallel
+            self._kernel_function, fastmath=fastmath, nogil=nogil, parallel=parallel, debug=debug
         )
 
     @property
