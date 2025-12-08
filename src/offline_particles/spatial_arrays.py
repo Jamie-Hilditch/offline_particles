@@ -270,7 +270,6 @@ class ChunkedDaskArray(SpatialArray):
             )
             if is_active
         )
-        print("active_dims_bbox:", active_dims_bbox)
 
         recompute, offsets = compute_new_bounds(
             active_dims_bbox,
@@ -381,6 +380,7 @@ def compute_new_upper_bound(
 def _lower_chunk_bound(global_idx: float, bounds: npt.NDArray[int]) -> int:
     """Get the bound of a chunk satisfying b <= global_idx."""
     idx = np.searchsorted(bounds, global_idx, side="right") - 1
+    idx = max(0, idx)
     return bounds[idx]
 
 
@@ -388,4 +388,5 @@ def _lower_chunk_bound(global_idx: float, bounds: npt.NDArray[int]) -> int:
 def _upper_chunk_bound(global_idx: float, bounds: npt.NDArray[int]) -> int:
     """Get the bound of a chunk satisfying b >= global_idx."""
     idx = np.searchsorted(bounds, global_idx, side="left")
+    idx = min(len(bounds) - 1, idx)
     return bounds[idx]
