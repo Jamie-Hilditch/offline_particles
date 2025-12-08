@@ -161,13 +161,11 @@ def merge_particle_fields(kernels: Iterable[ParticleKernel]) -> dict[str, np.dty
 
 def _vectorize_kernel_function(
     particle_kernel_function: KernelFunction,
-    fastmath: bool,
-    nogil: bool,
-    parallel: bool,
+    **kwargs,
 ) -> KernelFunction:
     """Create a vectorized version of a particle kernel function."""
 
-    @numba.njit(nogil=nogil, fastmath=fastmath, parallel=parallel)
+    @numba.njit(**kwargs)
     def vectorized_kernel_function(particles: Particle, *kernel_data) -> None:
         n_particles = particles.shape[0]
         for i in numba.prange(n_particles):
