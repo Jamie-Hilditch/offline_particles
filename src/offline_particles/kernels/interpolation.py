@@ -3,7 +3,7 @@
 import numpy as np
 import numpy.typing as npt
 
-from ..interpolation import trilinear_interpolation
+from ..interpolation import bilinear_interpolation, trilinear_interpolation
 from ..kernel_tools import offset_indices_2D, offset_indices_3D
 from ..particle_kernel import ParticleKernel
 
@@ -40,7 +40,7 @@ def create_horizontal_bilinear_interpolation_kernel(field: str, particle_field: 
         field_off,
     ):
         idx = offset_indices_2D(particle["yidx"], particle["xidx"], field_off)
-        interp_value = trilinear_interpolation(idx, field_data)
+        interp_value = bilinear_interpolation(idx, field_data)
         particle[particle_field] = interp_value
 
     return ParticleKernel(
