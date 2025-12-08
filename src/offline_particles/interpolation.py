@@ -6,7 +6,7 @@ import numpy.typing as npt
 from .kernel_tools import split_index
 
 
-@numba.njit(nogil=True, fastmath=True)
+@numba.njit(nogil=True, fastmath=True, debug=True)
 def linear_interpolation(idx: tuple[float], array: npt.NDArray[float]) -> float:
     """Perform linear interpolation on a 1D array.
     
@@ -25,7 +25,7 @@ def linear_interpolation(idx: tuple[float], array: npt.NDArray[float]) -> float:
 
     return g0 * v0 + f0 * v1
 
-@numba.njit(nogil=True, fastmath=True)
+@numba.njit(nogil=True, fastmath=True, debug=True)
 def bilinear_interpolation(idx: tuple[float, float], array: npt.NDArray[float]) -> float:
     """Perform bilinear interpolation on a 2D array.
     
@@ -53,7 +53,7 @@ def bilinear_interpolation(idx: tuple[float, float], array: npt.NDArray[float]) 
         f0 * f1 * v11
     )
 
-@numba.njit(nogil=True, fastmath=True)
+@numba.njit(nogil=True, fastmath=True, debug=True)
 def trilinear_interpolation(
     idx: tuple[float, float, float], array: npt.NDArray[float]
 ) -> float:
