@@ -168,12 +168,11 @@ def _vectorize_kernel_function(
     @numba.njit(**kwargs)
     def vectorized_kernel_function(particles: Particle, *kernel_data) -> None:
         n_particles = particles.shape[0]
-        for i in numba.prange(n_particles):
-            particle = particles[i]
+        for pidx in numba.prange(n_particles):
             # skip inactive particles
-            # if particle["status"] > 0:
-            #    continue
-            particle_kernel_function(particle, *kernel_data)
+            if particles["status"][pidx] > 0:
+                continue
+            particle_kernel_function(particles, pidx, *kernel_data)
 
     return vectorized_kernel_function
 
@@ -192,9 +191,9 @@ def _chain_kernel_functions(
 
     # source code
     src = []
-    src.append("def chained_function(p, *args):")
-    src.append(f"    first_function(p, {a_args})")
-    src.append(f"    second_function(p, {b_args})")
+    src.append("def chained_function(p, i, *args):")
+    src.append(f"    first_function(p, i, {a_args})")
+    src.append(f"    second_function(p, i, {b_args})")
     src_code = "\n".join(src)
 
     # local namespace for exec

@@ -7,15 +7,16 @@ from ..particle_kernel import ParticleKernel
 
 
 def _finite_indices(
-    particle: npt.NDArray,
+    particles: npt.NDArray,
+    pidx: int
 ) -> None:
     """Kernel to check if particle positions are finite."""
     if (
-        not np.isfinite(particle["zidx"])
-        or not np.isfinite(particle["yidx"])
-        or not np.isfinite(particle["xidx"])
+        not np.isfinite(particles["zidx"][pidx])
+        or not np.isfinite(particles["yidx"][pidx])
+        or not np.isfinite(particles["xidx"][pidx])
     ):
-        particle["status"] = 1 # Mark particle as inactive if any position is not finite
+        particles["status"][pidx] = 1 # Mark particle as inactive if any position is not finite
         
 finite_indices_kernel = ParticleKernel(
     _finite_indices,
@@ -31,7 +32,8 @@ finite_indices_kernel = ParticleKernel(
 )
 
 def _inbounds(
-    particle: npt.NDArray,
+    particles: npt.NDArray,
+    pidx: int,
     zidx_min: float,
     zidx_max: float,
     yidx_min: float,
@@ -41,14 +43,14 @@ def _inbounds(
 ) -> None:
     """Kernel to check if particle indices are in bounds."""
     if (
-        particle["zidx"] < zidx_min
-        or particle["zidx"] > zidx_max
-        or particle["yidx"] < yidx_min
-        or particle["yidx"] > yidx_max
-        or particle["xidx"] < xidx_min
-        or particle["xidx"] > xidx_max
+        particles["zidx"][pidx] < zidx_min
+        or particles["zidx"][pidx] > zidx_max
+        or particles["yidx"][pidx] < yidx_min
+        or particles["yidx"][pidx] > yidx_max
+        or particles["xidx"][pidx] < xidx_min
+        or particles["xidx"][pidx] > xidx_max
     ):
-        particle["status"] = 2 # Mark particle as inactive if any index is out of bounds
+        particles["status"][pidx] = 2 # Mark particle as inactive if any index is out of bounds
         
 inbounds_kernel = ParticleKernel(
     _inbounds,

@@ -14,13 +14,14 @@ def create_trilinear_interpolation_kernel(field: str, particle_field: str | None
         particle_field = field
 
     def kernel_fn(
-        particle,
+        particles,
+        pidx,
         field_data,
         field_off,
     ):
-        idx = offset_indices_3D(particle["zidx"], particle["yidx"], particle["xidx"], field_off)
+        idx = offset_indices_3D(particles["zidx"][pidx], particles["yidx"][pidx], particles["xidx"][pidx], field_off)
         interp_value = trilinear_interpolation(idx, field_data)
-        particle[particle_field] = interp_value
+        particles[particle_field][pidx] = interp_value
 
     return ParticleKernel(
         kernel_fn,
@@ -35,13 +36,14 @@ def create_horizontal_bilinear_interpolation_kernel(field: str, particle_field: 
         particle_field = field
 
     def kernel_fn(
-        particle,
+        particles,
+        pidx,
         field_data,
         field_off,
     ):
-        idx = offset_indices_2D(particle["yidx"], particle["xidx"], field_off)
+        idx = offset_indices_2D(particles["yidx"][pidx], particles["xidx"][pidx], field_off)
         interp_value = bilinear_interpolation(idx, field_data)
-        particle[particle_field] = interp_value
+        particles[particle_field][pidx] = interp_value
 
     return ParticleKernel(
         kernel_fn,
