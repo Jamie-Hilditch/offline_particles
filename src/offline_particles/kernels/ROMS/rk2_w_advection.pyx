@@ -11,7 +11,7 @@ from cython.parallel cimport prange
 
 from ..core cimport unpack_fielddata_1d, unpack_fielddata_2d, unpack_fielddata_3d
 from ..interpolation cimport trilinear_interpolation, bilinear_interpolation, linear_interpolation
-from .vertical_coordinate cimport S_from_z, z_from_S, compute_zidx_from_S, sigma_coordinate
+from .vertical_coordinate cimport compute_z, compute_zidx
 
 import functools
 
@@ -80,10 +80,18 @@ cdef void _rk2_step_1(particles, scalars, fielddata):
                 yidx[i] + zeta_offy, 
                 xidx[i] + zeta_offx
             )
-            cdef double sigma_value = sigma_coordinate(zidx[i], NZ)
-            cdef double C_value = linear_interpolation(C_array, zidx[i] + C_offz)
-            cdef double S_value = S_coordinate(hc, sigma_value, h_value, C_value)
-            z[i] = z_from_S(S_value, h_value, zeta_value)
+            cdef double C_value = linear_interpolation(
+                C_array,
+                zidx[i] + C_offz
+            )
+            z[i] = compute_z(
+                zidx[i],
+                NZ,
+                hc,
+                h_value,
+                C_value,
+                zeta_value
+            )
 
             # then interpolate horizontal velocities in index space
             cdef double u_value = trilinear_interpolation(
@@ -192,8 +200,7 @@ cdef void _rk2_step_2(particles, scalars, fielddata):
                 yidx_int + zeta_offy, 
                 xidx_int + zeta_offx
             )
-            cdef double S_value = S_from_z(z_int, h_value, zeta_value)
-            cdef double zidx_int = compute_zidx_from_S(S_value, hc, NZ, h_value, zeta_value, C_array, C_offz)
+            cdef double zidx_int = compute_zidx(z_int, h_value, zeta_value, hc, NZ, C_array, C_offz)
 
             # interpolate horizontal velocities in index space
             cdef double u_value = trilinear_interpolation(
@@ -291,8 +298,7 @@ cdef void _rk2_update(particles, scalars, fieldata):
                 yidx[i] + zeta_offy, 
                 xidx[i] + zeta_offx
             )
-            cdef double S_value = S_from_z(z[i], h_value, zeta_value)
-            zidx[i] = compute_zidx_from_S(S_value, hc, NZ, h_value, zeta_value, C_array, C_offz)
+            zidx[i] = compute_zidx(z[i], h_value, zeta_value, hc, NZ, C_array, C_offz)
 
 # define python wrappers
 cpdef rk2_step_1(particles, scalars, fielddata):
