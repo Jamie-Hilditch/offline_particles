@@ -3,6 +3,7 @@
 import types
 from typing import Callable, Iterable, Mapping, NamedTuple, Self
 
+import numpy as np
 import numpy.typing as npt
 
 from ..fields import FieldData
@@ -21,13 +22,20 @@ class ParticleKernel:
 
     def __init__(
         self, 
-        pyfunc: KernelFunction, 
+        fn: KernelFunction | Iterable[KernelFunction], 
         particle_fields: dict[str, npt.DTypeLike],
         scalars: dict[str, npt.DTypeLike],
         simulation_fields: Iterable[str],
-        cfunc: KernelFunction | None = None
     ):
-        self._pyfunc = pyfunc
+        # store kernels as tuple of functions
+        if callable(fn):
+            self._funcs = (fn,)
+        else:
+            funcs = tuple(fn)
+            if not all(callable(f) for f in funcs):
+                raise TypeError("All kernel functions must be callable")
+            self._funcs = funcs
+        
         self._particle_fields = {
             field: np.dtype(dtype) for field, dtype in particle_fields.items()
         }
@@ -35,7 +43,6 @@ class ParticleKernel:
             scalar: np.dtype(dtype) for scalar, dtype in scalars.items()
         }
         self._simulation_fields = frozenset(simulation_fields)
-        self._cfunc = cfunc
 
     @property
     def particle_fields(self) -> Mapping[str, np.dtype]:
@@ -52,76 +59,62 @@ class ParticleKernel:
         """The required simulation fields."""
         return self._simulation_fields
 
+    @property
+    def functions(self) -> tuple[KernelFunction, ...]:
+        """The kernel functions."""
+        return self._funcs
+
+    @staticmethod
+    def func_name(fn: KernelFunction) -> str:
+        return getattr(fn, "__qualname__", getattr(fn, "__name__", repr(fn)))
+
+    def __repr__(self) -> str:
+        funcs = ", ".join(self.func_name(fn) for fn in self._funcs)
+
+        return (
+            f"{self.__class__.__name__}("
+            f"funcs=[{funcs}], "
+            f"particle_fields={list(self._particle_fields)}, "
+            f"scalars={list(self._scalars)}, "
+            f"simulation_fields={sorted(self._simulation_fields)}"
+            f")"
+        )
+
+    def __str__(self) -> str:
+        return "Particle Kernel: " + " → ".join(self.func_name(fn) for fn in self._funcs)
+
+
+    def __call__(
+        self, 
+        particles: NamedTuple, 
+        scalars: dict[str, npt.NDArray], 
+        fielddata: dict[str, FieldData]
+    ) -> None:
+        """Execute the kernel on the given particles."""
+        for fn in self._funcs:
+            fn(particles, scalars, fielddata)
+
     @classmethod 
     def chain(
         cls,
         *kernels: Self
     ) -> Self:
         """Create a ParticleKernel by merging multiple kernels."""
-        pyfunc, cfunc = _chain_kernel_functions(kernels)
+        funcs = tuple(fn for kernel in kernels for fn in kernel._funcs)
         particle_fields = _merge_particle_fields(kernels)
         scalars = _merge_scalars(kernels)
         simulation_fields = _merge_simulation_fields(kernels)
 
         return cls(
-            pyfunc,
+            funcs,
             particle_fields,
             scalars,
             simulation_fields,
-            cfunc
         )
 
     def chain_with(self, *others: Self) -> Self:
         """Chain this kernel with other kernels."""
         return ParticleKernel.chain(self, *others)
-
-#############################################
-### Kernel chaining and merging functions ###
-##############################################
-
-# Define a C function pointer type
-ctypedef void (*CFuncPtr)(object particles, object scalars, object fielddata)
-
-cdef CFuncPtr _make_chained_cfunc(tuple cfuncs):
-    """
-    Return a C function pointer that calls all cfuncs in the list.
-    Returns NULL if the list is empty.
-    """
-    if not cfuncs:
-        return NULL
-
-    # Define the chained C function at module scope
-    cdef void chained_cfunc(object particles, object scalars, object fielddata):
-        cdef int i
-        for i in range(len(cfuncs)):
-            cfuncs[i](particles, scalars, fielddata)
-
-    return chained_cfunc
-
-
-def _chain_kernel_functions(
-    kernels: Iterable[ParticleKernel]
-) -> tuple[KernelFunction, KernelFunction | None]:
-    """Chain multiple kernel functions into a single function.
-    
-    Returns both a python and a Cython function.
-    """
-
-    cfuncs = tuple(k._cfunc for k in kernels)
-    if None in cfuncs:
-        cfunc = None
-    else:
-        cfunc = _make_chained_cfunc(list(cfuncs))
-
-    if cfunc is None:
-        pyfuncs = tuple(k._pyfunc for k in kernels)
-        def pyfunc(particles, scalars, fielddata):
-             for fn in pyfuncs:
-                 fn(particles, scalars, fielddata)
-    else:
-        def pyfunc(particles, scalars, fielddata):
-            cfunc(particles, scalars, fielddata)    
-    return pyfunc, cfunc
 
 def _merge_particle_fields(
     kernels: Iterable[ParticleKernel]

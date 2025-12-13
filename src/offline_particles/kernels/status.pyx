@@ -11,9 +11,10 @@ __all__ = [
     "domain_bounds",
     "finite_indices_kernel",
     "domain_bounds_kernel",
+    "validation_kernel",
 ]
 
-cdef void _finite_indices(particles) nogil:
+cdef void _finite_indices(particles):
     """
     Sets particles.status[i] = 1 if any indices are not finite.
     """
@@ -28,15 +29,14 @@ cdef void _finite_indices(particles) nogil:
     cdef Py_ssize_t i, n
     n = status.shape[0]
 
-    with nogil:
-        for i in prange(n, schedule="static"):
-            # Skip inactive particles
-            if status[i] != 0:
-                continue
+    for i in prange(n, schedule="static", nogil=True):
+        # Skip inactive particles
+        if status[i] != 0:
+            continue
 
-            # if any index is non-finite mark as invalid
-            if not cython.isfinite(zidx[i]) or not cython.isfinite(yidx[i]) or not cython.isfinite(xidx[i]):
-                status[i] = 1
+        # if any index is non-finite mark as invalid
+        if not isfinite(zidx[i]) or not isfinite(yidx[i]) or not isfinite(xidx[i]):
+            status[i] = 1
 
 cdef _domain_bounds(particles, scalars, fielddata):
     """
@@ -56,20 +56,19 @@ cdef _domain_bounds(particles, scalars, fielddata):
     cdef double xmin = scalars["xmin"]
     cdef double xmax = scalars["xmax"]
 
-    cdef Py_ssize_t i, 
+    cdef Py_ssize_t i, n
     n = status.shape[0]
 
-    with nogil:
-        for i in prange(n, schedule="static"):
-            # Skip inactive particles
-            if status[i] != 0:
-                continue
+    for i in prange(n, schedule="static", nogil=True):
+        # Skip inactive particles
+        if status[i] != 0:
+            continue
 
-            # if any index is out of bounds mark as invalid
-            if (zidx[i] < 0.0 or zidx[i] > zmax or
-                yidx[i] < 0.0 or yidx[i] > ymax or
-                xidx[i] < 0.0 or xidx[i] > xmax):
-                status[i] = 2
+        # if any index is out of bounds mark as invalid
+        if (zidx[i] < 0.0 or zidx[i] > zmax or
+            yidx[i] < 0.0 or yidx[i] > ymax or
+            xidx[i] < 0.0 or xidx[i] > xmax):
+            status[i] = 2
 
 # Python wrapper functions
 cpdef finite_indices(particles, scalars, fielddata):
@@ -114,3 +113,5 @@ domain_bounds_kernel = ParticleKernel(
     },
     simulation_fields=[],
 )
+
+validation_kernel = ParticleKernel.chain(finite_indices_kernel, domain_bounds_kernel)

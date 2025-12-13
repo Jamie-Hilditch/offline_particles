@@ -6,16 +6,15 @@ This module implements vertical advection in physical space using the vertical
 velocity w and then transforms that into index space.
 """
 
-cimport cython 
 from cython.parallel cimport prange
 
-from ..core cimport unpack_fielddata_1d, unpack_fielddata_2d, unpack_fielddata_3d
-from ..interpolation cimport trilinear_interpolation, bilinear_interpolation, linear_interpolation
-from .vertical_coordinate cimport compute_z, compute_zidx
+from .._core cimport unpack_fielddata_1d, unpack_fielddata_2d, unpack_fielddata_3d
+from .._interpolation.linear cimport trilinear_interpolation, bilinear_interpolation, linear_interpolation
+from ._vertical_coordinate cimport compute_z, compute_zidx
 
 import functools
 
-from ...particle_kernel import ParticleKernel
+from ._kernels import ParticleKernel
 from ...timesteppers import RK2Timestepper
 
 
@@ -64,77 +63,76 @@ cdef void _rk2_step_1(particles, scalars, fielddata):
     C_array, C_offz = unpack_fielddata_1d(fielddata["C"])
 
     # loop over particles
-    cdef Py_ssize_t i
-    cdef Py_ssize_t nparticles = status.shape[0]
+    cdef Py_ssize_t i, nparticles
+    nparticles = status.shape[0]
 
     # declare loop variables
     cdef double h_value, zeta_value, C_value
     cdef double u_value, v_value, dx_value, dy_value
 
-    with nogil:
-        for i in prange(nparticles, schedule='static'):
+    for i in prange(nparticles, schedule='static', nogil=True):
 
-            # skip inactive particles
-            if status[i] != 0:
-                continue 
+        # skip inactive particles
+        if status[i] != 0:
+            continue 
 
-            # first compute z 
-            h_value = bilinear_interpolation(
-                h_array, 
-                yidx[i] + h_offy, 
-                xidx[i] + h_offx
-            )
-            zeta_value = bilinear_interpolation(
-                zeta_array, 
-                yidx[i] + zeta_offy, 
-                xidx[i] + zeta_offx
-            )
-            C_value = linear_interpolation(
-                C_array,
-                zidx[i] + C_offz
-            )
-            z[i] = compute_z(
-                zidx[i],
-                NZ,
-                hc,
-                h_value,
-                C_value,
-                zeta_value
-            )
+        # first compute z 
+        h_value = bilinear_interpolation(
+            h_array, 
+            yidx[i] + h_offy, 
+            xidx[i] + h_offx
+        )
+        zeta_value = bilinear_interpolation(
+            zeta_array, 
+            yidx[i] + zeta_offy, 
+            xidx[i] + zeta_offx
+        )
+        C_value = linear_interpolation(
+            C_array,
+            zidx[i] + C_offz
+        )
+        z[i] = compute_z(
+            zidx[i],
+            NZ,
+            hc,
+            h_value,
+            C_value,
+            zeta_value
+        )
 
-            # then interpolate horizontal velocities in index space
-            u_value = trilinear_interpolation(
-                u_array,    
-                zidx[i] + u_offz,
-                yidx[i] + u_offy,
-                xidx[i] + u_offx
-            )
-            v_value = trilinear_interpolation(
-                v_array,
-                zidx[i] + v_offz,
-                yidx[i] + v_offy,
-                xidx[i] + v_offx
-            )
-            dx_value = bilinear_interpolation(
-                dx_array,
-                yidx[i] + dx_offy,
-                xidx[i] + dx_offx
-            )
-            dy_value = bilinear_interpolation(
-                dy_array,
-                yidx[i] + dy_offy,
-                xidx[i] + dy_offx
-            )
-            dxidx1[i] = u_value / dx_value
-            dyidx1[i] = v_value / dy_value
+        # then interpolate horizontal velocities in index space
+        u_value = trilinear_interpolation(
+            u_array,    
+            zidx[i] + u_offz,
+            yidx[i] + u_offy,
+            xidx[i] + u_offx
+        )
+        v_value = trilinear_interpolation(
+            v_array,
+            zidx[i] + v_offz,
+            yidx[i] + v_offy,
+            xidx[i] + v_offx
+        )
+        dx_value = bilinear_interpolation(
+            dx_array,
+            yidx[i] + dx_offy,
+            xidx[i] + dx_offx
+        )
+        dy_value = bilinear_interpolation(
+            dy_array,
+            yidx[i] + dy_offy,
+            xidx[i] + dy_offx
+        )
+        dxidx1[i] = u_value / dx_value
+        dyidx1[i] = v_value / dy_value
 
-            # finally do vertical advection in physical space
-            dz1[i] = trilinear_interpolation(
-                w_array,
-                zidx[i] + w_offz,
-                yidx[i] + w_offy,
-                xidx[i] + w_offx
-            )
+        # finally do vertical advection in physical space
+        dz1[i] = trilinear_interpolation(
+            w_array,
+            zidx[i] + w_offz,
+            yidx[i] + w_offy,
+            xidx[i] + w_offx
+        )
 
            
 
@@ -187,70 +185,71 @@ cdef void _rk2_step_2(particles, scalars, fielddata):
     C_array, C_offz = unpack_fielddata_1d(fielddata["C"])
 
     # loop over particles
-    cdef Py_ssize_t nparticles = status.shape[0]
+    cdef Py_ssize_t i, nparticles 
+    nparticles = status.shape[0]
 
     # declare loop variables
     cdef double z_int, yidx_int, xidx_int
     cdef double h_value, zeta_value, C_value, zidx_int
     cdef double u_value, v_value, dx_value, dy_value
 
-    with nogil:
-        for i in prange(nparticles, schedule='static'):
-            # skip inactive particles
-            if status[i] != 0:
-                continue 
 
-            # intermediate positions
-            z_int = z[i] + alpha * dt * dz1[i]
-            yidx_int = yidx[i] + alpha * dt * dyidx1[i]
-            xidx_int = xidx[i] + alpha * dt * dxidx1[i]
+    for i in prange(nparticles, schedule='static', nogil=True):
+        # skip inactive particles
+        if status[i] != 0:
+            continue 
 
-            # compute intermediate zidx
-            h_value = bilinear_interpolation(
-                h_array, 
-                yidx_int + h_offy, 
-                xidx_int + h_offx
-            )
-            zeta_value = bilinear_interpolation(
-                zeta_array, 
-                yidx_int + zeta_offy, 
-                xidx_int + zeta_offx
-            )
-            zidx_int = compute_zidx(z_int, h_value, zeta_value, hc, NZ, C_array, C_offz)
+        # intermediate positions
+        z_int = z[i] + alpha * dt * dz1[i]
+        yidx_int = yidx[i] + alpha * dt * dyidx1[i]
+        xidx_int = xidx[i] + alpha * dt * dxidx1[i]
 
-            # interpolate horizontal velocities in index space
-            u_value = trilinear_interpolation(
-                u_array,    
-                zidx_int + u_offz,
-                yidx_int + u_offy,
-                xidx_int + u_offx
-            )
-            v_value = trilinear_interpolation(
-                v_array,
-                zidx_int + v_offz,
-                yidx_int + v_offy,
-                xidx_int + v_offx
-            )
-            dx_value = bilinear_interpolation(
-                dx_array,
-                yidx_int + dx_offy,
-                xidx_int + dx_offx
-            )
-            dy_value = bilinear_interpolation(
-                dy_array,
-                yidx_int + dy_offy,
-                xidx_int + dy_offx
-            )
-            dxidx2[i] = u_value / dx_value
-            dyidx2[i] = v_value / dy_value
+        # compute intermediate zidx
+        h_value = bilinear_interpolation(
+            h_array, 
+            yidx_int + h_offy, 
+            xidx_int + h_offx
+        )
+        zeta_value = bilinear_interpolation(
+            zeta_array, 
+            yidx_int + zeta_offy, 
+            xidx_int + zeta_offx
+        )
+        zidx_int = compute_zidx(z_int, h_value, zeta_value, hc, NZ, C_array, C_offz)
 
-            # finally do vertical advection in physical space
-            dz2[i] = trilinear_interpolation(
-                w_array,
-                zidx_int + w_offz,
-                yidx_int + w_offy,
-                xidx_int + w_offx
-            )
+        # interpolate horizontal velocities in index space
+        u_value = trilinear_interpolation(
+            u_array,    
+            zidx_int + u_offz,
+            yidx_int + u_offy,
+            xidx_int + u_offx
+        )
+        v_value = trilinear_interpolation(
+            v_array,
+            zidx_int + v_offz,
+            yidx_int + v_offy,
+            xidx_int + v_offx
+        )
+        dx_value = bilinear_interpolation(
+            dx_array,
+            yidx_int + dx_offy,
+            xidx_int + dx_offx
+        )
+        dy_value = bilinear_interpolation(
+            dy_array,
+            yidx_int + dy_offy,
+            xidx_int + dy_offx
+        )
+        dxidx2[i] = u_value / dx_value
+        dyidx2[i] = v_value / dy_value
+
+        # finally do vertical advection in physical space
+        dz2[i] = trilinear_interpolation(
+            w_array,
+            zidx_int + w_offz,
+            yidx_int + w_offy,
+            xidx_int + w_offx
+        )
             
 
 cdef void _rk2_update(particles, scalars, fielddata):
@@ -288,7 +287,8 @@ cdef void _rk2_update(particles, scalars, fielddata):
     C_array, C_offz = unpack_fielddata_1d(fielddata["C"])
 
     # loop over particles
-    cdef Py_ssize_t nparticles = status.shape[0]
+    cdef Py_ssize_t i, nparticles 
+    nparticles = status.shape[0]
 
     # rk constants
     cdef double b1 = 1.0 / (2.0 * alpha)
@@ -297,29 +297,28 @@ cdef void _rk2_update(particles, scalars, fielddata):
     # declare loop variables
     cdef double h_value, zeta_value
 
-    with nogil:
-        for i in prange(nparticles, schedule='static'):
-            # skip inactive particles
-            if status[i] != 0:
-                continue 
+    for i in prange(nparticles, schedule='static', nogil=True):
+        # skip inactive particles
+        if status[i] != 0:
+            continue 
 
-            # update positions
-            z[i] = z[i] + b1 * dt * dz1[i] + b2 * dt * dz2[i]
-            yidx[i] = yidx[i] + b1 * dt * dyidx1[i] + b2 * dt * dyidx2[i]
-            xidx[i] = xidx[i] + b1 * dt * dxidx1[i] + b2 * dt * dxidx2[i]
+        # update positions
+        z[i] = z[i] + b1 * dt * dz1[i] + b2 * dt * dz2[i]
+        yidx[i] = yidx[i] + b1 * dt * dyidx1[i] + b2 * dt * dyidx2[i]
+        xidx[i] = xidx[i] + b1 * dt * dxidx1[i] + b2 * dt * dxidx2[i]
 
-            # compute zidx
-            h_value = bilinear_interpolation(
-                h_array, 
-                yidx[i] + h_offy, 
-                xidx[i] + h_offx
-            )
-            zeta_value = bilinear_interpolation(
-                zeta_array, 
-                yidx[i] + zeta_offy, 
-                xidx[i] + zeta_offx
-            )
-            zidx[i] = compute_zidx(z[i], h_value, zeta_value, hc, NZ, C_array, C_offz)
+        # compute zidx
+        h_value = bilinear_interpolation(
+            h_array, 
+            yidx[i] + h_offy, 
+            xidx[i] + h_offx
+        )
+        zeta_value = bilinear_interpolation(
+            zeta_array, 
+            yidx[i] + zeta_offy, 
+            xidx[i] + zeta_offx
+        )
+        zidx[i] = compute_zidx(z[i], h_value, zeta_value, hc, NZ, C_array, C_offz)
 
 # define python wrappers
 cpdef rk2_w_advection_step_1(particles, scalars, fielddata):
