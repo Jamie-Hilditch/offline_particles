@@ -1,6 +1,5 @@
 """Core functions for writing kernels in Cython."""
 
-cimport cython
 import numpy as np
 
 cdef inline tuple unpack_fielddata_1d(fd):
