@@ -1,6 +1,5 @@
 """Submodule defining particle kernels."""
 
-from . import roms, status
 from ._kernels import (
     KernelFunction,
     ParticleKernel,
@@ -16,7 +15,5 @@ __all__ = [
     "merge_particle_fields",
     "merge_scalars",
     "merge_simulation_fields",
-    "status",
-    "roms",
     "validation_kernel",
 ]
