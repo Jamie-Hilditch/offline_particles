@@ -1,12 +1,9 @@
 """Submodule defining the top-level particle simulation class."""
 
-import collections
-from typing import NamedTuple
 
-import numpy as np
 
 from .fieldset import Fieldset
-from .kernels import ParticleKernel, merge_particle_fields
+from .kernels import merge_particle_fields
 from .launcher import Launcher
 from .particles import Particles
 from .tasks import SimulationState, Task
@@ -74,7 +71,7 @@ class ParticleSimulation:
             "xidx_max", lambda tidx: self._xidx_bounds[1]
         )
 
-        # construct the particles 
+        # construct the particles
         kernels = list(self._timestepper.kernels())
         for task in self._tasks.values():
             kernels.append(task.kernels())
@@ -221,4 +218,3 @@ class SimulationBuilder:
             yidx_bounds=self._yidx_bounds,
             xidx_bounds=self._xidx_bounds,
         )
-

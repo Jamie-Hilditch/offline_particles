@@ -7,7 +7,6 @@ import numpy.typing as npt
 
 
 class Particles:
-
     __slots__ = ("_length", "_arrays", "_frozen")
 
     def __init__(self, nparticles: int, **fields: npt.DTypeLike) -> None:
@@ -19,7 +18,8 @@ class Particles:
         """
         self._length = nparticles
         self._arrays = {
-            field: np.zeros((nparticles,), dtype=dtype) for field, dtype in fields.items()
+            field: np.zeros((nparticles,), dtype=dtype)
+            for field, dtype in fields.items()
         }
 
         # make the object immutable
@@ -27,7 +27,9 @@ class Particles:
 
     def __setattr__(self, name: str, value: Any) -> None:
         if getattr(self, "_frozen", False):
-            raise AttributeError(f"'Particles' object is immutable; cannot set attribute '{name}'")
+            raise AttributeError(
+                f"'Particles' object is immutable; cannot set attribute '{name}'"
+            )
         super().__setattr__(name, value)
 
     def __getattr__(self, name: str) -> npt.NDArray:
@@ -42,10 +44,7 @@ class Particles:
         return self._length
 
     def __repr__(self) -> str:
-        fields = ", ".join(
-            f"{name}:{arr.dtype}"
-            for name, arr in self._arrays.items()
-        )
+        fields = ", ".join(f"{name}:{arr.dtype}" for name, arr in self._arrays.items())
         return (
             f"{self.__class__.__name__}("
             f"nparticles={self._length}, "
