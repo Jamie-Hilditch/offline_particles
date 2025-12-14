@@ -12,8 +12,6 @@ We follow the same variable naming conventions as ROMS:
 - z: physical vertical coordinate
 """
 
-cimport cython 
-
 #############################
 ### computing z from zidx ###
 #############################

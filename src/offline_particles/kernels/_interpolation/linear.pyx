@@ -1,7 +1,5 @@
 """Functions for interpolation."""
 
-cimport cython
-
 cdef inline Py_ssize_t truncate_index(double idx, Py_ssize_t max_idx) noexcept nogil:
     cdef Py_ssize_t i = <Py_ssize_t>idx
     if i < 0:
