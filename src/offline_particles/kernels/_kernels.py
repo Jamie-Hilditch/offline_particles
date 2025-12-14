@@ -7,9 +7,10 @@ import numpy as np
 import numpy.typing as npt
 
 from ..fields import FieldData
+from ..particles import Particles
 
 type KernelFunction = Callable[
-    [NamedTuple, dict[str, npt.NDArray], dict[str, FieldData]], None
+    [Particles, dict[str, npt.NDArray], dict[str, FieldData]], None
 ]
 
 DEFAULT_PARTICLE_FIELDS: dict[str, npt.DTypeLike] = {
@@ -100,9 +101,9 @@ class ParticleKernel:
     def chain(cls, *kernels: Self) -> Self:
         """Create a ParticleKernel by merging multiple kernels."""
         funcs = tuple(fn for kernel in kernels for fn in kernel._funcs)
-        particle_fields = _merge_particle_fields(kernels)
-        scalars = _merge_scalars(kernels)
-        simulation_fields = _merge_simulation_fields(kernels)
+        particle_fields = merge_particle_fields(kernels)
+        scalars = merge_scalars(kernels)
+        simulation_fields = merge_simulation_fields(kernels)
 
         return cls(
             funcs,
@@ -116,7 +117,7 @@ class ParticleKernel:
         return ParticleKernel.chain(self, *others)
 
 
-def _merge_particle_fields(kernels: Iterable[ParticleKernel]) -> dict[str, np.dtype]:
+def merge_particle_fields(kernels: Iterable[ParticleKernel]) -> dict[str, np.dtype]:
     """Merge particle fields from multiple kernels."""
     merged_fields: dict[str, np.dtype] = DEFAULT_PARTICLE_FIELDS.copy()
     for kernel in kernels:
@@ -132,7 +133,7 @@ def _merge_particle_fields(kernels: Iterable[ParticleKernel]) -> dict[str, np.dt
     return merged_fields
 
 
-def _merge_scalars(kernels: Iterable[ParticleKernel]) -> dict[str, np.dtype]:
+def merge_scalars(kernels: Iterable[ParticleKernel]) -> dict[str, np.dtype]:
     """Merge scalar fields from multiple kernels."""
     merged_scalars: dict[str, np.dtype] = {}
     for kernel in kernels:
@@ -149,7 +150,7 @@ def _merge_scalars(kernels: Iterable[ParticleKernel]) -> dict[str, np.dtype]:
     return merged_scalars
 
 
-def _merge_simulation_fields(kernels: Iterable[ParticleKernel]) -> frozenset[str]:
+def merge_simulation_fields(kernels: Iterable[ParticleKernel]) -> frozenset[str]:
     """Merge simulation fields from multiple kernels."""
     merged_fields: set[str] = set()
     for kernel in kernels:

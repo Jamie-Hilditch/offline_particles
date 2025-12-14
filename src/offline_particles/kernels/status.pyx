@@ -49,12 +49,12 @@ cdef _domain_bounds(particles, scalars, fielddata):
     yidx = particles.yidx
     xidx = particles.xidx
 
-    cdef double zmin = scalars["zmin"]
-    cdef double zmax = scalars["zmax"]
-    cdef double ymin = scalars["ymin"]
-    cdef double ymax = scalars["ymax"]
-    cdef double xmin = scalars["xmin"]
-    cdef double xmax = scalars["xmax"]
+    cdef double zmin = scalars["zidx_min"]
+    cdef double zmax = scalars["zidx_max"]
+    cdef double ymin = scalars["yidx_min"]
+    cdef double ymax = scalars["yidx_max"]
+    cdef double xmin = scalars["xidx_min"]
+    cdef double xmax = scalars["xidx_max"]
 
     cdef Py_ssize_t i, n
     n = status.shape[0]
@@ -104,12 +104,12 @@ domain_bounds_kernel = ParticleKernel(
         "xidx": np.float64, 
     },
     scalars={
-        "zmin": np.float64,
-        "zmax": np.float64,
-        "ymin": np.float64,
-        "ymax": np.float64,
-        "xmin": np.float64,
-        "xmax": np.float64,
+        "zidx_min": np.float64,
+        "zidx_max": np.float64,
+        "yidx_min": np.float64,
+        "yidx_max": np.float64,
+        "xidx_min": np.float64,
+        "xidx_max": np.float64,
     },
     simulation_fields=[],
 )

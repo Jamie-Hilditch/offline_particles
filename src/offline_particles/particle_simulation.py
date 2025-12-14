@@ -1,10 +1,14 @@
 """Submodule defining the top-level particle simulation class."""
 
+import collections
+from typing import NamedTuple
+
 import numpy as np
 
 from .fieldset import Fieldset
+from .kernels import ParticleKernel, merge_particle_fields
 from .launcher import Launcher
-from .particle_kernel import merge_particle_fields
+from .particles import Particles
 from .tasks import SimulationState, Task
 from .timesteppers import Timestepper
 
@@ -70,18 +74,13 @@ class ParticleSimulation:
             "xidx_max", lambda tidx: self._xidx_bounds[1]
         )
 
-        # construct the particle dtype
+        # construct the particles 
         kernels = list(self._timestepper.kernels())
         for task in self._tasks.values():
             kernels.append(task.kernels())
+        # merge required particle fields from all kernels
         particle_fields = merge_particle_fields(kernels)
-        self._particle_dtype = np.dtype(
-            [(field, dtype) for field, dtype in particle_fields.items()]
-        )
-
-        # create particles array
-        self._particles = np.empty((nparticles,), dtype=self._particle_dtype)
-        self._particles["status"] = 0  # initialize all particles as active
+        self._particles = Particles(nparticles, **particle_fields)
 
     @property
     def timestepper(self) -> Timestepper:
@@ -222,3 +221,4 @@ class SimulationBuilder:
             yidx_bounds=self._yidx_bounds,
             xidx_bounds=self._xidx_bounds,
         )
+
