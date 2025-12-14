@@ -24,7 +24,7 @@ cdef void _finite_indices(particles):
     cdef double[::1] zidx, yidx, xidx
     status = particles.status
     zidx = particles.zidx
-    idx = particles.yidx
+    yidx = particles.yidx
     xidx = particles.xidx
     
     # loop over particles
