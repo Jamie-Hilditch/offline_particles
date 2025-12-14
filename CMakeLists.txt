@@ -11,6 +11,7 @@ find_program(CYTHON_EXECUTABLE cython REQUIRED)
 
 # Declare extension modules
 set(EXTENSION_MODULES
+    kernels._core
     kernels.status
     kernels.roms.rk2_w_advection
 )
