@@ -4,6 +4,7 @@ project(${SKBUILD_PROJECT_NAME} LANGUAGES C VERSION ${SKBUILD_PROJECT_VERSION})
 # required packages
 find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
 find_program(CYTHON_EXECUTABLE cython REQUIRED)
+find_package(OpenMP REQUIRED)
 
 # ------------------------------------------------------------
 # Define inputs
@@ -59,6 +60,11 @@ foreach(module IN LISTS EXTENSION_MODULES)
 
     python_add_library(${target_name} MODULE ${c_file})
     set_target_properties(${target_name} PROPERTIES OUTPUT_NAME ${module_name}${Python_SOABI_SUFFIX})
+
+    if(OpenMP_CXX_FOUND)
+        target_compile_options(${target_name} PRIVATE ${OpenMP_CXX_FLAGS})
+        target_link_libraries(${target_name} PRIVATE OpenMP::OpenMP_CXX)
+    endif()
 
     # install
     install(
