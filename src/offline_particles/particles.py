@@ -33,7 +33,7 @@ class Particles:
         super().__setattr__(name, value)
 
     def __getattr__(self, name: str) -> npt.NDArray:
-        if name.startswith("_"):
+        if name in {"_length", "_arrays", "_frozen"}:
             return super().__getattribute__(name)
         try:
             return self._arrays[name]
