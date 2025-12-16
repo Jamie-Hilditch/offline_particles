@@ -4,11 +4,14 @@ import abc
 import collections
 import enum
 import itertools
+import logging
 from typing import Self
 
 import dask.array as da
 import numpy as np
 import numpy.typing as npt
+
+logger = logging.getLogger(__name__)
 
 BBox = collections.namedtuple("BBox", ("zmin", "zmax", "ymin", "ymax", "xmin", "xmax"))
 
@@ -279,6 +282,7 @@ class ChunkedDaskArray(SpatialArray):
 
         # if new bounds don't match existing update and load new subset
         if self._subset_bounds != new_bounds:
+            logger.debug("Loading new data subset with bounds: %s", new_bounds)
             self._subset_bounds = new_bounds
             subset_slices = tuple(slice(*bounds) for bounds in new_bounds)
             self._subset = self._data[subset_slices].compute()
