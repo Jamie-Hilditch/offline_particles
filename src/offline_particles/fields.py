@@ -5,6 +5,7 @@ import collections
 from typing import Callable
 
 import dask.array as da
+import numpy as np
 import numpy.typing as npt
 
 from .spatial_arrays import BBox, ChunkedDaskArray, NumpyArray, SpatialArray, Stagger
@@ -249,6 +250,7 @@ class TimeDependentField(Field):
             )
         self._data = data
         self._spatial_array_factory = spatial_array_factory
+        self._array = np.empty(shape = (0,) * (data.ndim - 1), dtype = data.dtype)  # type: ignore[call-arg]
 
         # time index
         if self._data.shape[0] < 2:
@@ -378,8 +380,11 @@ class TimeDependentField(Field):
         next_data, _ = self._next_time_slice.get_data_subset(bbox)
 
         # linear interpolation in time
-        array = current_data * (1.0 - ft) + next_data * ft
-        return FieldData(array, offsets)
+        if self._array.shape != current_data.shape:
+            self._array = np.empty_like(current_data)
+        np.multiply(current_data, 1.0 - ft, out=self._working_array)
+        self._array += next_data * ft
+        return FieldData(self._working_array, offsets)
 
     @classmethod
     def from_numpy(
