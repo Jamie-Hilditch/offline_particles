@@ -5,7 +5,6 @@ import collections
 from typing import Callable
 
 import dask.array as da
-import numba
 import numpy as np
 import numpy.typing as npt
 
@@ -238,6 +237,7 @@ class TimeDependentField(Field):
         y_stagger: Stagger | str,
         x_stagger: Stagger | str,
         spatial_array_factory: SpatialArrayFactory = NumpyArray,
+        output_dtype: npt.DTypeLike = np.float64,
     ):
         super().__init__(
             z_stagger=Stagger(z_stagger),
@@ -251,7 +251,11 @@ class TimeDependentField(Field):
             )
         self._data = data
         self._spatial_array_factory = spatial_array_factory
-        self._array = np.empty(shape = (0,) * (data.ndim - 1), dtype = data.dtype)  # type: ignore[call-arg]
+        self._data_dtype = data.dtype
+        self._output_dtype = output_dtype
+
+        # temporary arrays for interpolation 
+        self._allocate_interpolation_arrays((0,) * (data.ndim - 1))
 
         # time index
         if self._data.shape[0] < 2:
@@ -264,6 +268,13 @@ class TimeDependentField(Field):
         self._next_time_slice = self._spatial_array_factory(
             self._data[1, ...], self.z_stagger, self.y_stagger, self.x_stagger
         )
+
+    def _allocate_interpolation_arrays(self, shape: tuple[int, ...]) -> None:
+        """Allocate temporary arrays for interpolation."""
+        self._array_shape = shape
+        self._gt_current = np.empty(shape=shape, dtype=self._data.dtype)
+        self._ft_next = np.empty(shape=shape, dtype=self._data.dtype)
+        self._output = np.empty(shape=shape, dtype=self._output_dtype)
 
     @property
     def data(self) -> da.Array | npt.NDArray:
@@ -381,10 +392,17 @@ class TimeDependentField(Field):
         next_data, _ = self._next_time_slice.get_data_subset(bbox)
 
         # linear interpolation in time
-        if self._array.shape != current_data.shape:
-            self._array = np.empty_like(current_data)
-        _linearly_interpolate_time_dependent_field(current_data, next_data, ft, self._array)
-        return FieldData(self._array, offsets)
+        if self._array_shape != current_data.shape:
+            self._allocate_interpolation_arrays(current_data.shape)
+        
+        ft = self._data_dtype(ft) 
+        gt = self._data_dtype(1 - ft)
+
+        np.multiply(current_data, gt, out=self._gt_current)
+        np.multiply(next_data, ft, out=self._ft_next)
+        np.add(self._gt_current, self._ft_next, out=self._output, casting='unsafe')
+
+        return FieldData(self._output, offsets)
 
     @classmethod
     def from_numpy(
@@ -413,14 +431,3 @@ class TimeDependentField(Field):
         else:
             factory = ChunkedDaskArray
         return cls(data, z_stagger, y_stagger, x_stagger, factory)
-
-@numba.njit(nogil=True, fastmath=True, parallel=True)
-def _linearly_interpolate_time_dependent_field(
-    current: npt.NDArray,
-    next: npt.NDArray,
-    ft: float,
-    output: npt.NDArray,
-) -> None:
-    """Linearly interpolate a time-dependent field."""
-    gt = 1.0 - ft
-    output[...] = current * gt + next * ft
