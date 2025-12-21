@@ -5,6 +5,7 @@ import collections
 from typing import Callable
 
 import dask.array as da
+import numba
 import numpy as np
 import numpy.typing as npt
 
@@ -382,8 +383,7 @@ class TimeDependentField(Field):
         # linear interpolation in time
         if self._array.shape != current_data.shape:
             self._array = np.empty_like(current_data)
-        np.multiply(current_data, 1.0 - ft, out=self._array)
-        self._array += next_data * ft
+        _linearly_interpolate_time_dependent_field(current_data, next_data, ft, self._array)
         return FieldData(self._array, offsets)
 
     @classmethod
@@ -413,3 +413,14 @@ class TimeDependentField(Field):
         else:
             factory = ChunkedDaskArray
         return cls(data, z_stagger, y_stagger, x_stagger, factory)
+
+@numba.njit(nogil=True, fastmath=True, parallel=True)
+def _linearly_interpolate_time_dependent_field(
+    current: npt.NDArray,
+    next: npt.NDArray,
+    ft: float,
+    output: npt.NDArray,
+) -> None:
+    """Linearly interpolate a time-dependent field."""
+    gt = 1.0 - ft
+    output[...] = current * gt + next * ft
