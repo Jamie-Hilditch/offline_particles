@@ -395,8 +395,8 @@ class TimeDependentField(Field):
         if self._array_shape != current_data.shape:
             self._allocate_interpolation_arrays(current_data.shape)
         
-        ft = self._data_dtype(ft) 
-        gt = self._data_dtype(1 - ft)
+        ft = self._data_dtype.type(ft) 
+        gt = self._data_dtype.type(1 - ft)
 
         np.multiply(current_data, gt, out=self._gt_current)
         np.multiply(next_data, ft, out=self._ft_next)
