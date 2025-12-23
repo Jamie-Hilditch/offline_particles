@@ -254,7 +254,7 @@ class TimeDependentField(Field):
         self._data_dtype = data.dtype
         self._output_dtype = output_dtype
 
-        # temporary arrays for interpolation 
+        # temporary arrays for interpolation
         self._allocate_interpolation_arrays((0,) * (data.ndim - 1))
 
         # time index
@@ -394,13 +394,13 @@ class TimeDependentField(Field):
         # linear interpolation in time
         if self._array_shape != current_data.shape:
             self._allocate_interpolation_arrays(current_data.shape)
-        
-        ft = self._data_dtype.type(ft) 
+
+        ft = self._data_dtype.type(ft)
         gt = self._data_dtype.type(1 - ft)
 
         np.multiply(current_data, gt, out=self._gt_current)
         np.multiply(next_data, ft, out=self._ft_next)
-        np.add(self._gt_current, self._ft_next, out=self._output, casting='unsafe')
+        np.add(self._gt_current, self._ft_next, out=self._output, casting="unsafe")
 
         return FieldData(self._output, offsets)
 
