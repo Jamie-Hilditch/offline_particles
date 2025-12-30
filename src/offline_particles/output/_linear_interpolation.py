@@ -8,6 +8,12 @@ from ..kernels.output import (
 )
 from ._output import Output
 
+DMASK_DIM_MAPPING_2D = {
+    (True, True, False): ("z", "y"),
+    (True, False, True): ("z", "x"),
+    (False, True, True): ("y", "x"),
+}
+
 
 def linearly_interpolate_fields(
     fieldset: Fieldset,
@@ -38,7 +44,7 @@ def linearly_interpolate_fields(
             dim = dims[dmask.index(True)]
             kernel = linear_interpolation_kernel(var, tmp_name, dim)
         elif ndim == 2:
-            dim = tuple(dims[i] for i in range(3) if dmask[i])
+            dim = DMASK_DIM_MAPPING_2D[dmask]
             kernel = bilinear_interpolation_kernel(var, tmp_name, dim)
         elif ndim == 3:
             kernel = trilinear_interpolation_kernel(var, tmp_name)

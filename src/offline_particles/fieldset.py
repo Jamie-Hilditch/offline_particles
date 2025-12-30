@@ -1,8 +1,9 @@
 """Submodule for Fieldset, a collection of fields from a simulation."""
 
 import types
-from numbers import Number
-from typing import ItemsView, KeysView, Mapping, ValuesView
+from typing import Any, ItemsView, KeysView, Mapping, ValuesView
+
+import numpy as np
 
 from .fields import Field
 
@@ -28,7 +29,7 @@ class Fieldset:
         y_size: int,
         x_size: int,
         *,
-        constants: dict[str, Number] | None = None,
+        constants: Mapping[str, Any] | None = None,
         **fields: Field,
     ) -> None:
         super().__init__()
@@ -39,7 +40,7 @@ class Fieldset:
         self._x_size = x_size
 
         self._fields: dict[str, Field] = {}
-        self._constants: dict[str, Number] = {}
+        self._constants: dict[str, np.number] = {}
 
         # add constants
         if constants is not None:
@@ -81,7 +82,7 @@ class Fieldset:
         return types.MappingProxyType(self._fields)
 
     @property
-    def constants(self) -> Mapping[str, Number]:
+    def constants(self) -> Mapping[str, np.number]:
         """Dictionary of constants in the fieldset."""
         return types.MappingProxyType(self._constants)
 
@@ -101,7 +102,7 @@ class Fieldset:
             raise ValueError(f"Error validating shape of Field '{name}'.") from e
         self._fields[name] = field
 
-    def add_constant(self, name: str, value: Number) -> None:
+    def add_constant(self, name: str, value: Any) -> None:
         """Convenience method for adding a constant field to the fieldset.
         Parameters:
             name: name of the constant
@@ -111,7 +112,7 @@ class Fieldset:
             raise KeyError(
                 f"'{name}' already exists in Fieldset. First remove it before adding a new one."
             )
-        self._constants[name] = value
+        self._constants[name] = _numpyify_constant(value)
 
     def remove(self, name: str) -> None:
         """Remove a field or constant from the fieldset.
@@ -166,3 +167,14 @@ class Fieldset:
             f"Fieldset(\n\tt_size={self.t_size}, z_size={self.z_size}, y_size={self.y_size}, x_size={self.x_size},"
             + f"\n\t{constant_str}\n\t{field_str}\n)"
         )
+
+
+def _numpyify_constant(value: Any) -> np.number:
+    """Convert a value to a numpy scalar."""
+    try:
+        arr = np.asarray(value)
+        if arr.size != 1:
+            raise ValueError(f"Expected a single value, got array of size {arr.size}.")
+        return arr.item()
+    except (ValueError, TypeError) as e:
+        raise ValueError(f"Cannot convert value '{value}' to a numpy scalar.") from e

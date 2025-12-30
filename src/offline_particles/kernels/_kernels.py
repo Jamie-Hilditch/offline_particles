@@ -1,7 +1,7 @@
 """Particle Kernels."""
 
 import types
-from typing import Callable, Iterable, Mapping, NamedTuple, Self
+from typing import Callable, Iterable, Mapping, Self
 
 import numpy as np
 import numpy.typing as npt
@@ -10,14 +10,14 @@ from ..fields import FieldData
 from ..particles import Particles
 
 type KernelFunction = Callable[
-    [Particles, dict[str, npt.NDArray], dict[str, FieldData]], None
+    [Particles, dict[str, np.number], dict[str, FieldData]], None
 ]
 
-DEFAULT_PARTICLE_FIELDS: dict[str, npt.DTypeLike] = {
-    "status": np.uint8,
-    "zidx": np.float64,
-    "yidx": np.float64,
-    "xidx": np.float64,
+DEFAULT_PARTICLE_FIELDS: dict[str, np.dtype] = {
+    "status": np.dtype(np.uint8),
+    "zidx": np.dtype(np.float64),
+    "yidx": np.dtype(np.float64),
+    "xidx": np.dtype(np.float64),
 }
 
 
@@ -27,18 +27,19 @@ class ParticleKernel:
     def __init__(
         self,
         fn: KernelFunction | Iterable[KernelFunction],
-        particle_fields: dict[str, npt.DTypeLike],
-        scalars: dict[str, npt.DTypeLike],
+        particle_fields: Mapping[str, npt.DTypeLike],
+        scalars: Mapping[str, npt.DTypeLike],
         simulation_fields: Iterable[str],
     ):
         # store kernels as tuple of functions
         if callable(fn):
-            self._funcs = (fn,)
+            funcs = (fn,)
         else:
             funcs = tuple(fn)
-            if not all(callable(f) for f in funcs):
-                raise TypeError("All kernel functions must be callable")
-            self._funcs = funcs
+
+        if not all(callable(f) for f in funcs):
+            raise TypeError("All kernel functions must be callable")
+        self._funcs: tuple[KernelFunction, ...] = funcs
 
         self._particle_fields = {
             field: np.dtype(dtype) for field, dtype in particle_fields.items()
@@ -89,8 +90,8 @@ class ParticleKernel:
 
     def __call__(
         self,
-        particles: NamedTuple,
-        scalars: dict[str, npt.NDArray],
+        particles: Particles,
+        scalars: dict[str, np.number],
         fielddata: dict[str, FieldData],
     ) -> None:
         """Execute the kernel on the given particles."""
@@ -114,7 +115,7 @@ class ParticleKernel:
 
     def chain_with(self, *others: Self) -> Self:
         """Chain this kernel with other kernels."""
-        return ParticleKernel.chain(self, *others)
+        return self.__class__.chain(self, *others)
 
 
 def merge_particle_fields(kernels: Iterable[ParticleKernel]) -> dict[str, np.dtype]:

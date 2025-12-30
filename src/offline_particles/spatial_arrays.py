@@ -147,6 +147,12 @@ class SpatialArray(abc.ABC):
 
     @property
     @abc.abstractmethod
+    def dtype(self) -> np.dtype:
+        """Data type of the underlying data array."""
+        pass
+
+    @property
+    @abc.abstractmethod
     def shape(self) -> tuple[int, ...]:
         """Shape of the underlying data array."""
         pass
@@ -187,6 +193,11 @@ class NumpyArray(SpatialArray):
     ) -> Self:
         super().__init__(z_stagger, y_stagger, x_stagger)
         self._data = np.array(data)
+
+    @property
+    def dtype(self) -> np.dtype:
+        """Data type of the underlying data array."""
+        return self._data.dtype
 
     @property
     def shape(self) -> tuple[int, ...]:
@@ -238,6 +249,11 @@ class ChunkedDaskArray(SpatialArray):
         # placeholders for array and bounds of current subset
         self._subset: npt.NDArray[float] | None = None  # type: ignore[call-arg]
         self._subset_bounds: tuple[tuple[int, int], ...] | None = None
+
+    @property
+    def dtype(self) -> np.dtype:
+        """Data type of the underlying data array."""
+        return self._data.dtype
 
     @property
     def shape(self) -> tuple[int, ...]:

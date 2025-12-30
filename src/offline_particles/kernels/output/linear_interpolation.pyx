@@ -10,6 +10,17 @@ from cython.parallel cimport prange
 from .._core cimport unpack_fielddata_1d, unpack_fielddata_2d, unpack_fielddata_3d
 from .._interpolation.linear cimport trilinear_interpolation, bilinear_interpolation, linear_interpolation 
 
+# export all python objects
+__all__ = [
+    "linear_interpolation_kernel_function",
+    "bilinear_interpolation_kernel_function",
+    "trilinear_interpolation_kernel_function",
+    "linear_interpolation_kernel",
+    "bilinear_interpolation_kernel",
+    "trilinear_interpolation_kernel",
+    "vertical_interpolation_kernel",
+    "horizontal_interpolation_kernel",
+]
 
 # linear interpolation kernels 
 
@@ -141,7 +152,7 @@ def linear_interpolation_kernel(field: str, output_name: str | None = None, dime
         simulation_fields=[field]
     )
 
-def bilinear_interpolation_kernel(field: str, output_name: str | None = None, dimensions: Literal[("z", "y"), ("z", "x"), ("y", "x")] = ("y", "x")) -> ParticleKernel:
+def bilinear_interpolation_kernel(field: str, output_name: str | None = None, dimensions: tuple[str, str] = ("y", "x")) -> ParticleKernel:
     """Return a ParticleKernel that performs bilinear interpolation of field data."""
     valid_dimensions = {("z", "y"), ("z", "x"), ("y", "x")}
     if dimensions not in valid_dimensions:

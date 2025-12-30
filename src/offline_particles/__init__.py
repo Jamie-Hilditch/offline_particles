@@ -1,22 +1,23 @@
 """Offline line advection of particles in ROMS simulations."""
 
 from . import kernels
+from .events import Event, IterationSchedule, SimulationState, TimeSchedule
 from .fields import StaticField, TimeDependentField
 from .fieldset import Fieldset
-from .particle_simulation import Simulation, SimulationBuilder
-from .tasks import SimulationState, Task
+from .simulation import Simulation, SimulationBuilder
 from .timesteppers import RK2Timestepper, Timestepper
 
 __all__ = [
-    "ConstantField",
     "TimeDependentField",
     "TemporalField",
     "StaticField",
     "Fieldset",
     "Simulation",
     "SimulationBuilder",
+    "Event",
+    "IterationSchedule",
     "SimulationState",
-    "Task",
+    "TimeSchedule",
     "RK2Timestepper",
     "Timestepper",
     "kernels",

@@ -1,16 +1,23 @@
 """Submodule for particle kernel launchers."""
 
-from numbers import Number
-from typing import Callable
+from typing import Callable, NotRequired, Protocol, cast
 
-import numpy.typing as npt
+import numpy as np
 
 from .fields import FieldData
 from .fieldset import Fieldset
 from .kernels import ParticleKernel
+from .particles import Particles
 from .spatial_arrays import BBox
 
-type ScalarDataSource = Callable[[float], Number]
+
+class ScalarDataSource(Protocol):
+    """Protocol for scalar data source functions."""
+
+    __scalar_data_name__: NotRequired[str]
+
+    def __call__(self, time_index: float) -> np.number: ...
+
 
 # -------------------------------
 # Kernel Launcher
@@ -36,7 +43,11 @@ class Launcher:
 
         # register constants attached to fieldset as scalar data sources
         for name, value in self._fieldset.constants.items():
-            self.register_scalar_data_source(name, lambda time_index: value)
+
+            def value_func(time_index: float) -> np.generic:
+                return value
+
+            self.register_scalar_data_source(name, cast(ScalarDataSource, value_func))
 
     def register_scalar_data_source(self, name: str, func: ScalarDataSource) -> None:
         """Register a scalar data source function."""
@@ -82,7 +93,7 @@ class Launcher:
 
     def construct_bbox(
         self,
-        particles: npt.NDArray,
+        particles: Particles,
     ) -> BBox:
         """Construct a bounding box around the given particles with index padding."""
 
@@ -126,7 +137,7 @@ class Launcher:
         return self._fieldset[name].get_field_data(time_index, bbox)
 
     def launch_kernel(
-        self, kernel: ParticleKernel, particles: npt.NDArray, time_index: float
+        self, kernel: ParticleKernel, particles: Particles, time_index: float
     ) -> None:
         """Launch a kernel."""
         # construct kernel inputs
@@ -154,6 +165,8 @@ def register_scalar_data_source(
     """
 
     def decorator(func: ScalarDataSource) -> ScalarDataSource:
+        if hasattr(func, "__scalar_data_name__"):
+            raise RuntimeError(f"{func} already defines __scalar_data_name__")
         func.__scalar_data_name__ = name
         return func
 

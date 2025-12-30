@@ -2,7 +2,6 @@
 
 import abc
 import collections
-from typing import Callable
 
 import dask.array as da
 import numpy as np
@@ -28,9 +27,6 @@ class Field(abc.ABC):
         self._z_offset = z_stagger.offset
         self._y_offset = y_stagger.offset
         self._x_offset = x_stagger.offset
-        self._dmask = tuple(
-            map(int, (z_stagger.is_active, y_stagger.is_active, x_stagger.is_active))
-        )
 
     @property
     def z_stagger(self) -> Stagger:
@@ -73,9 +69,19 @@ class Field(abc.ABC):
         return (self._z_offset, self._y_offset, self._x_offset)
 
     @property
-    def dmask(self) -> tuple[int, int, int]:
-        """Dimension mask indicating active dimensions."""
-        return self._dmask
+    def dmask(self) -> tuple[bool, bool, bool]:
+        """Mask indicating which dimensions are active."""
+        return (
+            self._z_stagger.is_active,
+            self._y_stagger.is_active,
+            self._x_stagger.is_active,
+        )
+
+    @property
+    @abc.abstractmethod
+    def dtype(self) -> np.dtype:
+        """Data type of the field."""
+        pass
 
     @property
     @abc.abstractmethod
@@ -142,6 +148,11 @@ class StaticField(Field):
 
     def __str__(self) -> str:
         return f"StaticField on z={self.z_stagger.name}, y={self.y_stagger.name}, x={self.x_stagger.name} grid"
+
+    @property
+    def dtype(self) -> np.dtype:
+        """Data type of the field."""
+        return self._data.dtype
 
     @property
     def spatial_shape(self) -> tuple[int, ...]:
@@ -222,9 +233,7 @@ class StaticField(Field):
         return cls(data=spatial_array)
 
 
-type SpatialArrayFactory = Callable[
-    [da.Array | npt.NDArray, Stagger, Stagger, Stagger], SpatialArray
-]
+type SpatialArrayFactory = type[NumpyArray] | type[ChunkedDaskArray]
 
 
 class TimeDependentField(Field):
@@ -292,6 +301,11 @@ class TimeDependentField(Field):
 
     def __str__(self) -> str:
         return f"TimeDependentField on z={self.z_stagger.name}, y={self.y_stagger.name}, x={self.x_stagger.name} grid"
+
+    @property
+    def dtype(self) -> np.dtype:
+        """Data type of the field."""
+        return self._data_dtype
 
     @property
     def spatial_shape(self) -> tuple[int, ...]:

@@ -19,6 +19,16 @@ import numpy as np
 from .._kernels import ParticleKernel
 from ...timesteppers import RK2Timestepper
 
+# export all python objects
+__all__ = [
+    "rk2_w_advection_step_1",
+    "rk2_w_advection_step_2",
+    "rk2_w_advection_update",
+    "rk2_w_advection_step_1_kernel",
+    "rk2_w_advection_step_2_kernel",
+    "rk2_w_advection_update_kernel",
+    "rk2_w_advection_timestepper",
+]
 
 cdef void _rk2_step_1(particles, scalars, fielddata):
     # unpack required particle fields
