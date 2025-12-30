@@ -20,9 +20,14 @@ class _FrozenArrayMapping:
         """
         shapes = {arr.shape for arr in arrays.values()}
         if len(shapes) != 1:
-            raise ValueError("All arrays must have the same shape. Got shapes: " + ", ".join(str(s) for s in shapes))
+            raise ValueError(
+                "All arrays must have the same shape. Got shapes: "
+                + ", ".join(str(s) for s in shapes)
+            )
         self._shape = shapes.pop()
-        self._dtypes = types.MappingProxyType({name: arr.dtype for name, arr in arrays.items()})
+        self._dtypes = types.MappingProxyType(
+            {name: arr.dtype for name, arr in arrays.items()}
+        )
         self._arrays = types.MappingProxyType(arrays)
         self._frozen = True
 
@@ -37,7 +42,9 @@ class _FrozenArrayMapping:
         try:
             return self._arrays[name]
         except KeyError:
-            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+            raise AttributeError(
+                f"'{self.__class__.__name__}' object has no attribute '{name}'"
+            )
 
     def __getitem__(self, name: str) -> npt.NDArray:
         return self._arrays[name]
@@ -54,12 +61,7 @@ class _FrozenArrayMapping:
 
     def __repr__(self) -> str:
         fields = ", ".join(f"{name}:{dtype}" for name, dtype in self.dtypes.items())
-        return (
-            f"{self.__class__.__name__}("
-            f"shape={self.shape}, "
-            f"fields={{ {fields} }}"
-            f")"
-        )
+        return f"{self.__class__.__name__}(shape={self.shape}, fields={{ {fields} }})"
 
     def __str__(self) -> str:
         public = [name for name in self._arrays if not name.startswith("_")]
@@ -82,6 +84,7 @@ class _FrozenArrayMapping:
             f")"
         )
 
+
 class Particles(_FrozenArrayMapping):
     __slots__ = ("_length",)
 
@@ -103,6 +106,7 @@ class Particles(_FrozenArrayMapping):
     def __len__(self) -> int:
         return self._length
 
+
 class ParticlesView(_FrozenArrayMapping):
     """A read-only view of particle arrays."""
 
@@ -115,8 +119,7 @@ class ParticlesView(_FrozenArrayMapping):
             parent: The parent Particles object.
         """
         arrays = {
-            name: self.readonly_view(parent[name])
-            for name in parent.dtypes.keys()
+            name: self.readonly_view(parent[name]) for name in parent.dtypes.keys()
         }
         self._length = len(parent)
         super().__init__(**arrays)

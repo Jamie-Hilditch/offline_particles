@@ -17,6 +17,7 @@ class Timestepper(abc.ABC):
         time_array: npt.NDArray,
         dt: float,
         time: float = 0.0,
+        iteration: int = 0,
         index_padding: int = 0,
     ) -> None:
         super().__init__()
@@ -26,25 +27,31 @@ class Timestepper(abc.ABC):
             raise ValueError("Time array must be strictly increasing.")
         self._time_array = time_array
 
-        # store timestep, current time and current time index
+        # store iteration, timestep, current time and current time index
+        self._iteration = iteration
         self._dt = dt
         self.set_time(time)
 
         self._index_padding = index_padding
 
     @property
+    def iteration(self) -> int:
+        """The current iteration for this timestepper."""
+        return self._iteration
+
+    @property
     def dt(self) -> float:
-        """The time step for this launcher."""
+        """The time step for this timestepper."""
         return self._dt
 
     @property
     def time(self) -> float:
-        """The current time for this launcher."""
+        """The current time for this timestepper."""
         return self._time
 
     @property
     def tidx(self) -> float:
-        """The current time index for this launcher."""
+        """The current time index for this timestepper."""
         return self._tidx
 
     @property
@@ -83,6 +90,7 @@ class Timestepper(abc.ABC):
         """Advance the current time by dt and update the time index."""
         self._time += self._dt
         self._tidx = self.get_time_index(self._time)
+        self._iteration += 1
 
     def set_time(self, time: float) -> None:
         """Set the current time and update the time index."""

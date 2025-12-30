@@ -1,10 +1,24 @@
 """Submodule defining the top-level particle simulation class."""
 
+import functools
+import itertools
+import types
+from typing import Mapping
+
+from .events import (
+    AbstractSchedule,
+    Event,
+    IterationSchedule,
+    IterationScheduler,
+    SimulationState,
+    TimeSchedule,
+    TimeScheduler,
+)
 from .fieldset import Fieldset
 from .kernels import merge_particle_fields
 from .launcher import Launcher
-from .particles import Particles
-from .tasks import SimulationState, Task
+from .output import AbstractOutputWriter, AbstractOutputWriterBuilder, ZarrOutputBuilder
+from .particles import Particles, ParticlesView
 from .timesteppers import Timestepper
 
 
@@ -16,7 +30,9 @@ class Simulation:
         nparticles: int,
         timestepper: Timestepper,
         fieldset: Fieldset,
-        tasks: dict[str, Task],
+        iteration_scheduler: IterationScheduler,
+        time_scheduler: TimeScheduler,
+        output_writers: Mapping[str, AbstractOutputWriter],
         *,
         zidx_bounds: tuple[float, float] | None = None,
         yidx_bounds: tuple[float, float] | None = None,
@@ -29,7 +45,8 @@ class Simulation:
         """
         self._timestepper = timestepper
         self._fieldset = fieldset
-        self._tasks = tasks
+        self._iteration_scheduler = iteration_scheduler
+        self._time_scheduler = time_scheduler
 
         # set default index bounds if not provided
         if zidx_bounds is None:
@@ -70,12 +87,19 @@ class Simulation:
         )
 
         # construct the particles
+        # first gather all kernels
         kernels = list(self._timestepper.kernels())
-        for task in self._tasks.values():
-            kernels.append(task.kernels())
-        # merge required particle fields from all kernels
+        for event in self._iteration_scheduler.events:
+            kernels.extend(event.kernels())
+        for event in self._time_scheduler.events:
+            kernels.extend(event.kernels())
+        # then merge required particle fields from all kernels
         particle_fields = merge_particle_fields(kernels)
         self._particles = Particles(nparticles, **particle_fields)
+        self._particles_view = ParticlesView(self._particles)
+
+        # invoke any events scheduled for the initial time/iteration
+        self._invoke_events()
 
     @property
     def timestepper(self) -> Timestepper:
@@ -105,6 +129,15 @@ class Simulation:
         return self._timestepper.time
 
     @property
+    def iteration(self) -> int:
+        """Get the current simulation iteration.
+
+        Returns:
+            int: The current iteration of the simulation.
+        """
+        return self._timestepper.iteration
+
+    @property
     def dt(self) -> float:
         """Get the timestep size.
 
@@ -124,12 +157,30 @@ class Simulation:
 
     @property
     def particles(self):
-        """Get the current particle data.
+        """A view into the current particle data.
 
         Returns:
             The current state of the particles in the simulation.
         """
-        return self._particles
+        return self._particles_view
+
+    @property
+    def iteration_scheduler(self) -> IterationScheduler:
+        """Get the iteration scheduler used in the simulation.
+
+        Returns:
+            IterationScheduler: The iteration scheduler instance.
+        """
+        return self._iteration_scheduler
+
+    @property
+    def time_scheduler(self) -> TimeScheduler:
+        """Get the time scheduler used in the simulation.
+
+        Returns:
+            TimeScheduler: The time scheduler instance.
+        """
+        return self._time_scheduler
 
     @property
     def state(self) -> SimulationState:
@@ -142,12 +193,25 @@ class Simulation:
             time=self.time,
             dt=self.dt,
             tidx=self.tidx,
-            particles=self.particles,
+            particles=self._particles_view,
         )
+
+    def _invoke_events(self) -> None:
+        """Invoke any scheduled events at the current time or iteration."""
+        for event in itertools.chain(
+            self._iteration_scheduler(self.iteration), self._time_scheduler(self.time)
+        ):
+            # launch kernels
+            for kernel in event.kernels:
+                self._launcher.launch_kernel(kernel, self._particles, self.tidx)
+            # invoke event function
+            event(self.state)
 
     def step(self) -> None:
         """Advance the particle simulation by one timestep."""
         self._timestepper.timestep_particles(self._particles, self._launcher)
+        # run any scheduled events
+        self._invoke_events()
 
 
 class SimulationBuilder:
@@ -159,7 +223,6 @@ class SimulationBuilder:
         zidx_bounds: tuple[float, float] | None = None,
         yidx_bounds: tuple[float, float] | None = None,
         xidx_bounds: tuple[float, float] | None = None,
-        **tasks: Task,
     ) -> None:
         """Class for building a Simulation.
 
@@ -172,34 +235,53 @@ class SimulationBuilder:
         self._yidx_bounds = yidx_bounds
         self._xidx_bounds = xidx_bounds
 
-        # tasks
-        self._tasks = {}
-        for key, task in tasks.items():
-            self.add_task(key, task)
+        # events
+        self._iteration_scheduler = IterationScheduler()
+        self._time_scheduler = TimeScheduler()
 
-    def add_task(self, key: str, task: Task) -> None:
-        """Add a task to the simulation.
+        # output writers
+        self._output_writers: dict[str, AbstractOutputWriter] = dict()
 
-        Args:
-            task: The task to be added to the launcher.
-        """
-        if key in self._tasks:
-            raise KeyError(
-                f"Task with key '{key}' already exists in the simulation. Please remove it before adding a new one."
-            )
-        self._tasks[key] = task
-
-    def remove_task(self, key: str) -> None:
-        """Remove a task from the simulation.
+    @functools.singledispatchmethod
+    def add_event(self, schedule: AbstractSchedule, event: Event) -> None:
+        """Add an event to the simulation.
 
         Args:
-            key: The key of the task to be removed.
+            schedule: The schedule for the event.
+            event: The event to be added to the launcher.
         """
-        if key not in self._tasks:
-            raise KeyError(
-                f"Task with key '{key}' does not exist in the simulation. Cannot remove."
-            )
-        del self._tasks[key]
+        raise NotImplementedError(
+            "add_event only supports IterationSchedule or TimeSchedule"
+        )
+
+    @add_event.register
+    def _(
+        self,
+        schedule: IterationSchedule,
+        event: Event,
+    ) -> None:
+        """Add an iteration-based event to the simulation."""
+        self._iteration_scheduler.register_event(schedule, event)
+
+    @add_event.register
+    def _(
+        self,
+        schedule: TimeSchedule,
+        event: Event,
+    ) -> None:
+        """Add a time-based event to the simulation."""
+        self._time_scheduler.register_event(schedule, event)
+
+    def add_output_writer(self, builder: AbstractOutputWriterBuilder) -> None:
+        """Add an output writer to the simulation.
+
+        Args:
+            writer: The output writer instance.
+        """
+        name = builder.name
+        if name in self._output_writers:
+            raise ValueError(f"Output writer '{name}' already exists.")
+        self._output_writers[name] = builder
 
     def build_simulation(self, nparticles: int) -> Simulation:
         """Build and return the Simulation.
@@ -207,11 +289,27 @@ class SimulationBuilder:
         Args:
             nparticles: The number of particles in the simulation.
         """
+        # build output writers and make mapping immutable
+        output_writers = {
+            name: builder.build(nparticles)
+            for name, builder in self._output_writers.items()
+        }
+        output_writers = types.MappingProxyType(output_writers)
+
+        # add output events to the simulation
+        for writer in output_writers.values():
+            events = writer.create_events()
+            schedule = writer.schedule
+            for event in events:
+                self.add_event(schedule, event)
+
         return Simulation(
             nparticles=nparticles,
             timestepper=self._timestepper,
             fieldset=self._fieldset,
-            tasks=self._tasks,
+            iteration_scheduler=self._iteration_scheduler,
+            time_scheduler=self._time_scheduler,
+            output_writers=output_writers,
             zidx_bounds=self._zidx_bounds,
             yidx_bounds=self._yidx_bounds,
             xidx_bounds=self._xidx_bounds,
