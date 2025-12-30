@@ -17,7 +17,7 @@ from .events import (
 from .fieldset import Fieldset
 from .kernels import merge_particle_fields
 from .launcher import Launcher
-from .output import AbstractOutputWriter, AbstractOutputWriterBuilder, ZarrOutputBuilder
+from .output import AbstractOutputWriter, AbstractOutputWriterBuilder
 from .particles import Particles, ParticlesView
 from .timesteppers import Timestepper
 
