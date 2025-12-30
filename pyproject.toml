@@ -27,7 +27,7 @@ dev = [
 
 [tool.ruff.lint]
 extend-select = ["I"]
-max-line-length = 120
+line-length = 120
 ignore = ["E266"]
 
 [tool.cython-lint]
