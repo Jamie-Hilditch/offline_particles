@@ -5,6 +5,9 @@ import itertools
 import types
 from typing import Mapping
 
+import numpy as np
+import numpy.typing as npt
+
 from .events import (
     AbstractSchedule,
     Event,
@@ -173,6 +176,37 @@ class Simulation:
                 self._launcher.launch_kernel(kernel, self._particles, self.tidx)
             # invoke event function
             event(self.state)
+
+    def set_indices(
+        self,
+        zidx: npt.ArrayLike | None = None,
+        yidx: npt.ArrayLike | None = None,
+        xidx: npt.ArrayLike | None = None,
+    ) -> None:
+        """Set the particles indices."""
+
+        # first make the inputs compatible with the particle arrays
+        # allow this to error if the shapes / types are incompatible
+        # before modifying any particle data
+        if zidx is not None:
+            zidx = np.asarray(zidx, dtype=np.float64)
+            zidx = np.broadcast_to(zidx, self._particles.zidx.shape)
+
+        if yidx is not None:
+            yidx = np.asarray(yidx, dtype=np.float64)
+            yidx = np.broadcast_to(yidx, self._particles.yidx.shape)
+
+        if xidx is not None:
+            xidx = np.asarray(xidx, dtype=np.float64)
+            xidx = np.broadcast_to(xidx, self._particles.xidx.shape)
+
+        # now set the indices
+        if zidx is not None:
+            self._particles.zidx[:] = zidx
+        if yidx is not None:
+            self._particles.yidx[:] = yidx
+        if xidx is not None:
+            self._particles.xidx[:] = xidx
 
     def step(self) -> None:
         """Advance the particle simulation by one timestep."""
