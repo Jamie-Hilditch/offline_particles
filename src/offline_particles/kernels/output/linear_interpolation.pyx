@@ -3,6 +3,8 @@
 from functools import partial
 from typing import Literal
 
+import numpy as np
+
 from .._kernels import ParticleKernel
 
 from cython.parallel cimport prange
