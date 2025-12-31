@@ -112,6 +112,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         store: zarr.storage.StoreLike,
         *,
         chunksize: int = DEFAULT_CHUNKSIZE,
+        particle_dimension_name: str = "particle",
         time_name: str = "time",
         array_kwargs: dict[str, Any] | None = None,
     ) -> None:
@@ -132,6 +133,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         self._outputs: dict[str, tuple[Output, dict[str, Any]]] = {}
 
         self._chunksize = chunksize
+        self._particle_dimension_name = particle_dimension_name
         self._time_name = time_name
         if array_kwargs is None:
             array_kwargs = {}
@@ -186,11 +188,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
     ) -> ZarrOutputWriter:
         # initialise outputs
         time_output = zarr.create_array(
-            self._store,
-            name=self._time_name,
-            shape=(0,),
-            dtype="f8",
-            chunks=(1,),
+            self._store, name=self._time_name, shape=(0,), dtype="f8", chunks=(1,), dimension_names=(self._time_name,)
         )
         outputs = {
             name: (
@@ -219,5 +217,6 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             shape=shape,
             dtype=output.dtype,
             chunks=chunks,
+            dimension_names=(self._time_name, self._particle_dimension_name),
             **array_kwargs,
         )
