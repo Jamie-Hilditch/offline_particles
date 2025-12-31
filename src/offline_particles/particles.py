@@ -1,7 +1,7 @@
 """The particles."""
 
 import types
-from typing import Any, Mapping
+from typing import Mapping
 
 import numpy as np
 import numpy.typing as npt
@@ -10,7 +10,7 @@ import numpy.typing as npt
 class _FrozenArrayMapping:
     """A mapping-like object that holds equi-shaped arrays and prevents modification."""
 
-    __slots__ = ("_shape", "_dtypes", "_arrays", "_frozen")
+    __slots__ = ("_shape", "_dtypes", "_arrays")
 
     def __init__(self, **arrays: npt.NDArray) -> None:
         """Initialize the mapping with given arrays.
@@ -21,19 +21,17 @@ class _FrozenArrayMapping:
         shapes = {arr.shape for arr in arrays.values()}
         if len(shapes) != 1:
             raise ValueError("All arrays must have the same shape. Got shapes: " + ", ".join(str(s) for s in shapes))
-        self._shape = shapes.pop()
-        self._dtypes = types.MappingProxyType({name: arr.dtype for name, arr in arrays.items()})
-        self._arrays = types.MappingProxyType(arrays)
-        self._frozen = True
+        object.__setattr__(self, "_shape", shapes.pop())
+        object.__setattr__(self, "_dtypes", types.MappingProxyType({name: arr.dtype for name, arr in arrays.items()}))
+        object.__setattr__(self, "_arrays", types.MappingProxyType(arrays))
 
-    def __setattr__(self, name: str, value: Any) -> None:
-        if getattr(self, "_frozen", False):
-            raise AttributeError(f"'{self.__class__.__name__}' object is immutable; cannot set attribute '{name}'")
-        super().__setattr__(name, value)
+    def __setattr__(self, name, value):
+        raise AttributeError(f"{self.__class__.__name__} is immutable")
 
     def __getattr__(self, name: str) -> npt.NDArray:
         try:
-            return self._arrays[name]
+            arrays = object.__getattribute__(self, "_arrays")
+            return arrays[name]
         except KeyError:
             raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
@@ -44,6 +42,11 @@ class _FrozenArrayMapping:
     def shape(self) -> tuple[int, ...]:
         """The shape of the arrays in the mapping."""
         return self._shape
+
+    @property
+    def arrays(self) -> Mapping[str, npt.NDArray]:
+        """The arrays in the mapping."""
+        return self._arrays
 
     @property
     def dtypes(self) -> Mapping[str, np.dtype]:
@@ -80,7 +83,7 @@ class Particles(_FrozenArrayMapping):
             nparticles: The number of particles.
             **fields: The particle fields and their dtypes.
         """
-        self._length = nparticles
+        object.__setattr__(self, "_length", nparticles)
         arrays = {field: np.zeros((nparticles,), dtype=dtype) for field, dtype in fields.items()}
 
         super().__init__(**arrays)
@@ -101,7 +104,7 @@ class ParticlesView(_FrozenArrayMapping):
             parent: The parent Particles object.
         """
         arrays = {name: self.readonly_view(parent[name]) for name in parent.dtypes.keys()}
-        self._length = len(parent)
+        object.__setattr__(self, "_length", len(parent))
         super().__init__(**arrays)
 
     @staticmethod
