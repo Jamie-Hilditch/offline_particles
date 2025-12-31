@@ -25,9 +25,11 @@ dev = [
   "ty>=0.0.8",
 ]
 
+[tool.ruff]
+line-length = 120
+
 [tool.ruff.lint]
 extend-select = ["I"]
-line-length = 120
 ignore = ["E266"]
 
 [tool.cython-lint]
