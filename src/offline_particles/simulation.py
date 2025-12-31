@@ -168,9 +168,7 @@ class Simulation:
 
     def _invoke_events(self) -> None:
         """Invoke any scheduled events at the current time or iteration."""
-        for event in itertools.chain(
-            self._iteration_scheduler(self.iteration), self._time_scheduler(self.time)
-        ):
+        for event in itertools.chain(self._iteration_scheduler(self.iteration), self._time_scheduler(self.time)):
             # launch kernels
             for kernel in event.kernels:
                 self._launcher.launch_kernel(kernel, self._particles, self.tidx)
@@ -244,9 +242,7 @@ class SimulationBuilder:
             schedule: The schedule for the event.
             event: The event to be added to the launcher.
         """
-        raise NotImplementedError(
-            "add_event only supports IterationSchedule or TimeSchedule"
-        )
+        raise NotImplementedError("add_event only supports IterationSchedule or TimeSchedule")
 
     @add_event.register
     def _(
@@ -284,10 +280,7 @@ class SimulationBuilder:
             nparticles: The number of particles in the simulation.
         """
         # build output writers and make mapping immutable
-        output_writers = {
-            name: builder.build(nparticles)
-            for name, builder in self._output_writers.items()
-        }
+        output_writers = {name: builder.build(nparticles) for name, builder in self._output_writers.items()}
         output_writers = types.MappingProxyType(output_writers)
 
         # add output events to the simulation

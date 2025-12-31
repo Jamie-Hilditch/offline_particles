@@ -49,9 +49,7 @@ def linearly_interpolate_fields(
         elif ndim == 3:
             kernel = trilinear_interpolation_kernel(var, tmp_name)
         else:
-            raise ValueError(
-                f"Field '{var}' has unsupported number of dimensions: {ndim}"
-            )
+            raise ValueError(f"Field '{var}' has unsupported number of dimensions: {ndim}")
 
         outputs.append(Output(var, tmp_name, kernel))
 

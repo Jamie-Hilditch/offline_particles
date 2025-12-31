@@ -173,9 +173,7 @@ class StaticField(Field):
         )
         expected_shape = tuple(s for s in staggered_shape if s is not None)
         if self._data.shape != expected_shape:
-            raise ValueError(
-                f"Expected shape {expected_shape} but data has shape {self._data.shape}"
-            )
+            raise ValueError(f"Expected shape {expected_shape} but data has shape {self._data.shape}")
 
     def get_field_data(self, time_index: float, bbox: BBox) -> FieldData:
         """Get the field data at a given time index.
@@ -327,9 +325,7 @@ class TimeDependentField(Field):
         )
         expected_shape = tuple(s for s in staggered_shape if s is not None)
         if self._data.shape != expected_shape:
-            raise ValueError(
-                f"Expected shape {expected_shape} but data has shape {self._data.shape}"
-            )
+            raise ValueError(f"Expected shape {expected_shape} but data has shape {self._data.shape}")
 
     @property
     def previous_time_slice(self) -> SpatialArray:
@@ -382,9 +378,7 @@ class TimeDependentField(Field):
             return self.decrement_time()
         # else check range
         if It < 0 or It > self._num_timesteps - 2:
-            raise IndexError(
-                f"Valid range of time indices is 0,...,{self._num_timesteps - 2}, got {It}."
-            )
+            raise IndexError(f"Valid range of time indices is 0,...,{self._num_timesteps - 2}, got {It}.")
 
         self._It = It
         self._previous_time_slice = self._spatial_array_factory(

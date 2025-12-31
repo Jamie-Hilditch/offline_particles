@@ -5,7 +5,7 @@ import dataclasses
 import functools
 from typing import Mapping
 
-import numpy.typing as npt
+import numpy as np
 
 from ..events import AbstractSchedule, Event, SimulationState
 from ..kernels import ParticleKernel, merge_particle_fields
@@ -18,7 +18,7 @@ class Output:
     name: str
     particle_field: str
     kernels: tuple[ParticleKernel, ...]
-    dtype: npt.DType = dataclasses.field(init=False)
+    dtype: np.dtype = dataclasses.field(init=False)
 
     def __init__(
         self,
@@ -29,9 +29,7 @@ class Output:
         """Initialize the Output."""
         kernel_fields = merge_particle_fields(kernels)
         if particle_field not in kernel_fields:
-            raise ValueError(
-                f"Particle field '{particle_field}' not found in provided kernels."
-            )
+            raise ValueError(f"Particle field '{particle_field}' not found in provided kernels.")
 
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "particle_field", particle_field)
@@ -112,9 +110,7 @@ class AbstractOutputWriter(abc.ABC):
             events.append(event)
 
         # finalise write round
-        finalise_write_round_event = Event(
-            self.event_name("finalise"), self.finalise_write_round
-        )
+        finalise_write_round_event = Event(self.event_name("finalise"), self.finalise_write_round)
         events.append(finalise_write_round_event)
 
         return events

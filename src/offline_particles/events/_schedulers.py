@@ -33,10 +33,7 @@ class TimeSchedule:
         if not forward and self.dt >= 0:
             raise ValueError("dt must be a negative number for backward time")
         if abs(self.dt) < resolution:
-            raise ValueError(
-                f"dt must be at least {resolution} in magnitude to avoid "
-                "floating point issues"
-            )
+            raise ValueError(f"dt must be at least {resolution} in magnitude to avoid floating point issues")
 
 
 type AbstractSchedule = IterationSchedule | TimeSchedule
@@ -171,9 +168,7 @@ class TimeScheduler:
         tick = self._discretise_time(time)
         triggered_events: list[Event] = []
 
-        while (nt := self._next_tick) is not None and (
-            nt <= tick if self._forward else nt >= tick
-        ):
+        while (nt := self._next_tick) is not None and (nt <= tick if self._forward else nt >= tick):
             for dt, event in self._events.pop(nt, []):
                 triggered_events.append(event)
                 # Reschedule the event for its next occurrence

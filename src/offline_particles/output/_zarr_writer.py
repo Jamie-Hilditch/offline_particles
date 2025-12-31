@@ -56,9 +56,7 @@ class ZarrOutputWriter(AbstractOutputWriter):
     @property
     def outputs(self) -> Mapping[str, Output]:
         """The outputs declared for this writer."""
-        return types.MappingProxyType(
-            {key: output for key, (output, _) in self._outputs.items()}
-        )
+        return types.MappingProxyType({key: output for key, (output, _) in self._outputs.items()})
 
     def write_time(self, state: SimulationState) -> None:
         """Write the current simulation time.
@@ -91,9 +89,7 @@ class ZarrOutputWriter(AbstractOutputWriter):
         # check time output
         time_count = self._time_array.shape[0]
         if time_count != expected_count:
-            raise RuntimeError(
-                f"Time output has {time_count} entries, expected {expected_count}."
-            )
+            raise RuntimeError(f"Time output has {time_count} entries, expected {expected_count}.")
 
         # check all other outputs
         for name, (_, output_array) in self._outputs.items():

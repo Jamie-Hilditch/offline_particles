@@ -160,9 +160,7 @@ class Fieldset:
             field: Field object
         """
         if name in self:
-            raise KeyError(
-                f"Field '{name}' already exists in Fieldset. First remove it before adding a new one."
-            )
+            raise KeyError(f"Field '{name}' already exists in Fieldset. First remove it before adding a new one.")
         try:
             field.validate_shape(self.simulation_shape)
         except ValueError as e:
@@ -176,9 +174,7 @@ class Fieldset:
             value: value of the constant
         """
         if name in self._constants or name in self:
-            raise KeyError(
-                f"'{name}' already exists in Fieldset. First remove it before adding a new one."
-            )
+            raise KeyError(f"'{name}' already exists in Fieldset. First remove it before adding a new one.")
         self._constants[name] = _numpyify_constant(value)
 
     def remove(self, name: str) -> None:
@@ -227,9 +223,7 @@ class Fieldset:
 
     def __repr__(self) -> str:
         constant_str = f"constants={self._constants}, "
-        field_str = ", \n\t".join(
-            f"{key} = {value}" for key, value in self._fields.items()
-        )
+        field_str = ", \n\t".join(f"{key} = {value}" for key, value in self._fields.items())
         return (
             f"Fieldset(\n\tt_size={self.t_size}, z_size={self.z_size}, y_size={self.y_size}, x_size={self.x_size},"
             + f"\n\t{constant_str}\n\t{field_str}\n)"

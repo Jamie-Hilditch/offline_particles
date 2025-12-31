@@ -138,9 +138,7 @@ class SpatialArray(abc.ABC):
         """Offsets for active dimensions only."""
         return tuple(
             offset
-            for offset, is_active in zip(
-                (self._z_offset, self._y_offset, self._x_offset), self.dmask
-            )
+            for offset, is_active in zip((self._z_offset, self._y_offset, self._x_offset), self.dmask)
             if is_active
         )
 
@@ -242,9 +240,7 @@ class ChunkedDaskArray(SpatialArray):
         self._ndim = self._data.ndim
         self._shape = self._data.shape
         self._chunks = data.chunks
-        self._bounds = tuple(
-            np.cumulative_sum(chunk, include_initial=True) for chunk in self._chunks
-        )
+        self._bounds = tuple(np.cumulative_sum(chunk, include_initial=True) for chunk in self._chunks)
         # placeholders for array and bounds of current subset
         self._subset: npt.NDArray[np.number] = np.zeros((0,) * data.ndim, data.dtype)
         self._subset_bounds: tuple[tuple[int, int], ...] = ((0, 0),) * self._ndim
@@ -281,19 +277,13 @@ class ChunkedDaskArray(SpatialArray):
         """
         # loop through active dimensions and compute new bounds
         batched_bbox = itertools.batched(bounding_box, 2)
-        active_bbox = tuple(
-            dim_bounds
-            for dim_bounds, is_active in zip(batched_bbox, self.dmask)
-            if is_active
-        )
+        active_bbox = tuple(dim_bounds for dim_bounds, is_active in zip(batched_bbox, self.dmask) if is_active)
         active_offsets = self.active_offsets
         new_bounds = tuple(
             _compute_new_bounds(db, offset, bounds)
             for db, offset, bounds in zip(active_bbox, active_offsets, self._bounds)
         )
-        new_offsets = tuple(
-            offset - lb for offset, (lb, _) in zip(active_offsets, new_bounds)
-        )
+        new_offsets = tuple(offset - lb for offset, (lb, _) in zip(active_offsets, new_bounds))
 
         # if new bounds don't match existing update and load new subset
         if self._subset_bounds != new_bounds:

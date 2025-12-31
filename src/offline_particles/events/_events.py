@@ -28,9 +28,7 @@ class Event:
     scheduler prior to the invokation of the event function.
     """
 
-    def __init__(
-        self, name: str, func: EventFunction, *kernels: ParticleKernel
-    ) -> None:
+    def __init__(self, name: str, func: EventFunction, *kernels: ParticleKernel) -> None:
         """Initialize the event."""
         self._name = name
         self._func = func

@@ -79,9 +79,7 @@ class Launcher:
                 f"Scalar data source '{name}' is already registered. Deregister it before registering a new one."
             )
         if name in self._fieldset.fields:
-            raise ValueError(
-                f"Scalar data source '{name}' conflicts with a field in the fieldset."
-            )
+            raise ValueError(f"Scalar data source '{name}' conflicts with a field in the fieldset.")
 
         self._scalar_data_sources[name] = source
 
@@ -160,19 +158,12 @@ class Launcher:
         """
         return self._fieldset[name].get_field_data(time_index, bbox)
 
-    def launch_kernel(
-        self, kernel: ParticleKernel, particles: Particles, time_index: float
-    ) -> None:
+    def launch_kernel(self, kernel: ParticleKernel, particles: Particles, time_index: float) -> None:
         """Launch a kernel."""
         # construct kernel inputs
         bbox = self.construct_bbox(particles)
-        scalars = {
-            name: self._scalar_data_sources[name](time_index) for name in kernel.scalars
-        }
-        fielddata = {
-            name: self.get_field_data(name, time_index, bbox)
-            for name in kernel.simulation_fields
-        }
+        scalars = {name: self._scalar_data_sources[name](time_index) for name in kernel.scalars}
+        fielddata = {name: self.get_field_data(name, time_index, bbox) for name in kernel.simulation_fields}
         # call the kernel
         kernel(particles, scalars, fielddata)
 

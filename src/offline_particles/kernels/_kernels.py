@@ -9,9 +9,7 @@ import numpy.typing as npt
 from ..fields import FieldData
 from ..particles import Particles
 
-type KernelFunction = Callable[
-    [Particles, dict[str, np.number], dict[str, FieldData]], None
-]
+type KernelFunction = Callable[[Particles, dict[str, np.number], dict[str, FieldData]], None]
 
 DEFAULT_PARTICLE_FIELDS: dict[str, np.dtype] = {
     "status": np.dtype(np.uint8),
@@ -41,9 +39,7 @@ class ParticleKernel:
             raise TypeError("All kernel functions must be callable")
         self._funcs: tuple[KernelFunction, ...] = funcs
 
-        self._particle_fields = {
-            field: np.dtype(dtype) for field, dtype in particle_fields.items()
-        }
+        self._particle_fields = {field: np.dtype(dtype) for field, dtype in particle_fields.items()}
         self._scalars = {scalar: np.dtype(dtype) for scalar, dtype in scalars.items()}
         self._simulation_fields = frozenset(simulation_fields)
 
@@ -84,9 +80,7 @@ class ParticleKernel:
         )
 
     def __str__(self) -> str:
-        return "Particle Kernel: " + " → ".join(
-            self.func_name(fn) for fn in self._funcs
-        )
+        return "Particle Kernel: " + " → ".join(self.func_name(fn) for fn in self._funcs)
 
     def __call__(
         self,
@@ -126,8 +120,7 @@ def merge_particle_fields(kernels: Iterable[ParticleKernel]) -> dict[str, np.dty
             if field in merged_fields:
                 if merged_fields[field] != dtype:
                     raise TypeError(
-                        f"Conflicting dtypes for particle field '{field}': "
-                        f"{merged_fields[field]} vs {dtype}"
+                        f"Conflicting dtypes for particle field '{field}': {merged_fields[field]} vs {dtype}"
                     )
             else:
                 merged_fields[field] = dtype
@@ -141,10 +134,7 @@ def merge_scalars(kernels: Iterable[ParticleKernel]) -> dict[str, np.dtype]:
         for scalar, dtype in kernel.scalars.items():
             if scalar in merged_scalars:
                 if merged_scalars[scalar] != dtype:
-                    raise TypeError(
-                        f"Conflicting dtypes for scalar '{scalar}': "
-                        f"{merged_scalars[scalar]} vs {dtype}"
-                    )
+                    raise TypeError(f"Conflicting dtypes for scalar '{scalar}': {merged_scalars[scalar]} vs {dtype}")
             else:
                 merged_scalars[scalar] = dtype
 

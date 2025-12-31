@@ -20,31 +20,22 @@ class _FrozenArrayMapping:
         """
         shapes = {arr.shape for arr in arrays.values()}
         if len(shapes) != 1:
-            raise ValueError(
-                "All arrays must have the same shape. Got shapes: "
-                + ", ".join(str(s) for s in shapes)
-            )
+            raise ValueError("All arrays must have the same shape. Got shapes: " + ", ".join(str(s) for s in shapes))
         self._shape = shapes.pop()
-        self._dtypes = types.MappingProxyType(
-            {name: arr.dtype for name, arr in arrays.items()}
-        )
+        self._dtypes = types.MappingProxyType({name: arr.dtype for name, arr in arrays.items()})
         self._arrays = types.MappingProxyType(arrays)
         self._frozen = True
 
     def __setattr__(self, name: str, value: Any) -> None:
         if getattr(self, "_frozen", False):
-            raise AttributeError(
-                f"'{self.__class__.__name__}' object is immutable; cannot set attribute '{name}'"
-            )
+            raise AttributeError(f"'{self.__class__.__name__}' object is immutable; cannot set attribute '{name}'")
         super().__setattr__(name, value)
 
     def __getattr__(self, name: str) -> npt.NDArray:
         try:
             return self._arrays[name]
         except KeyError:
-            raise AttributeError(
-                f"'{self.__class__.__name__}' object has no attribute '{name}'"
-            )
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
     def __getitem__(self, name: str) -> npt.NDArray:
         return self._arrays[name]
@@ -76,13 +67,7 @@ class _FrozenArrayMapping:
         else:
             hidden_str = ""
 
-        return (
-            f"{self.__class__.__name__} "
-            f"(shape={self.shape}, "
-            f"fields=[{public_fields}]"
-            f"{hidden_str}"
-            f")"
-        )
+        return f"{self.__class__.__name__} (shape={self.shape}, fields=[{public_fields}]{hidden_str})"
 
 
 class Particles(_FrozenArrayMapping):
@@ -96,10 +81,7 @@ class Particles(_FrozenArrayMapping):
             **fields: The particle fields and their dtypes.
         """
         self._length = nparticles
-        arrays = {
-            field: np.zeros((nparticles,), dtype=dtype)
-            for field, dtype in fields.items()
-        }
+        arrays = {field: np.zeros((nparticles,), dtype=dtype) for field, dtype in fields.items()}
 
         super().__init__(**arrays)
 
@@ -118,9 +100,7 @@ class ParticlesView(_FrozenArrayMapping):
         Args:
             parent: The parent Particles object.
         """
-        arrays = {
-            name: self.readonly_view(parent[name]) for name in parent.dtypes.keys()
-        }
+        arrays = {name: self.readonly_view(parent[name]) for name in parent.dtypes.keys()}
         self._length = len(parent)
         super().__init__(**arrays)
 
