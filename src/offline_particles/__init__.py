@@ -1,6 +1,6 @@
 """Offline line advection of particles in ROMS simulations."""
 
-from . import kernels
+from . import kernels, output
 from .events import Event, IterationSchedule, SimulationState, TimeSchedule
 from .fields import StaticField, TimeDependentField
 from .fieldset import Fieldset
@@ -21,4 +21,5 @@ __all__ = [
     "RK2Timestepper",
     "Timestepper",
     "kernels",
+    "output",
 ]
