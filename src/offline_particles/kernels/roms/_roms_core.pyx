@@ -41,7 +41,7 @@ cdef void _compute_z(particles, scalars, fielddata, particle_field):
     cdef Py_ssize_t i, nparticles
     nparticles = status.shape[0]
 
-    for i in prange(nparticles):
+    for i in prange(nparticles, schedule='static', nogil=True):
 
         if status[i] != 0:  # only compute for active particles
             continue
