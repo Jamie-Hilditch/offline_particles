@@ -36,22 +36,22 @@ class _FrozenArrayMapping:
             raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
     def __getitem__(self, name: str) -> npt.NDArray:
-        return self._arrays[name]
+        return object.__getattribute__(self, "_arrays")[name]
 
     @property
     def shape(self) -> tuple[int, ...]:
         """The shape of the arrays in the mapping."""
-        return self._shape
+        return object.__getattribute__(self, "_shape")
 
     @property
     def arrays(self) -> Mapping[str, npt.NDArray]:
         """The arrays in the mapping."""
-        return self._arrays
+        return object.__getattribute__(self, "_arrays")
 
     @property
     def dtypes(self) -> Mapping[str, np.dtype]:
         """The dtypes of the arrays in the mapping."""
-        return self._dtypes
+        return object.__getattribute__(self, "_dtypes")
 
     def __repr__(self) -> str:
         fields = ", ".join(f"{name}:{dtype}" for name, dtype in self.dtypes.items())
@@ -89,7 +89,7 @@ class Particles(_FrozenArrayMapping):
         super().__init__(**arrays)
 
     def __len__(self) -> int:
-        return self._length
+        return object.__getattribute__(self, "_length")
 
 
 class ParticlesView(_FrozenArrayMapping):
@@ -119,4 +119,4 @@ class ParticlesView(_FrozenArrayMapping):
         return view
 
     def __len__(self) -> int:
-        return self._length
+        return object.__getattribute__(self, "_length")
