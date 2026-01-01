@@ -163,6 +163,7 @@ class Simulation:
             time=self.time,
             dt=self.dt,
             tidx=self.tidx,
+            iteration=self.iteration,
             particles=self._particles_view,
         )
 

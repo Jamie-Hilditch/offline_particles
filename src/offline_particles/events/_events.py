@@ -14,6 +14,7 @@ class SimulationState:
     time: float
     dt: float
     tidx: float
+    iteration: int
     particles: ParticlesView
 
 
