@@ -22,7 +22,8 @@ class Timestepper(abc.ABC):
         self,
         time_array: npt.NDArray,
         dt: float,
-        time: float = 0.0,
+        *,
+        time: float | None = None,
         iteration: int = 0,
         index_padding: int = 0,
     ) -> None:
@@ -34,16 +35,40 @@ class Timestepper(abc.ABC):
         self._time_array = np.asarray(time_array, dtype=np.float64)
 
         # store iteration, timestep, current time and current time index
-        self._iteration = iteration
-        self._dt = np.float64(dt)
+        self.set_dt(dt)
+        if time is None:
+            time = self._time_array[0]
         self.set_time(time)
+        self.set_iteration(iteration)
 
-        self._index_padding = index_padding
+        # store index padding
+        self.set_index_padding(index_padding)
 
-    @property
-    def iteration(self) -> int:
-        """The current iteration for this timestepper."""
-        return self._iteration
+    def set_dt(self, dt: float) -> None:
+        """Set the time step for this timestepper."""
+        self._dt = np.float64(dt)
+
+    def set_time(self, time: float) -> None:
+        """Set the current time and update the time index."""
+        time = np.float64(time)
+        self._tidx = self.get_time_index(time)
+        self._time = time
+
+    def set_iteration(self, iteration: int) -> None:
+        """Set the current iteration for this timestepper."""
+        if iteration < 0:
+            raise ValueError("Iteration must be non-negative.")
+        self._iteration = iteration
+
+    def set_index_padding(self, index_padding: int, force: bool = False) -> None:
+        """Set the index padding required by this timestepper.
+
+        Unless `force` is True, only increases the index padding.
+        """
+        if index_padding < 0:
+            raise ValueError("Index padding must be non-negative.")
+        if force or index_padding > self._index_padding:
+            self._index_padding = index_padding
 
     @property
     def dt(self) -> float:
@@ -54,6 +79,11 @@ class Timestepper(abc.ABC):
     def time(self) -> float:
         """The current time for this timestepper."""
         return self._time
+
+    @property
+    def iteration(self) -> int:
+        """The current iteration for this timestepper."""
+        return self._iteration
 
     @property
     def tidx(self) -> float:
@@ -83,11 +113,7 @@ class Timestepper(abc.ABC):
         self._tidx = self.get_time_index(self._time)
         self._iteration += 1
 
-    def set_time(self, time: float) -> None:
-        """Set the current time and update the time index."""
-        self._time = np.float64(time)
-        self._tidx = self.get_time_index(self._time)
-
+    @property
     @abc.abstractmethod
     def kernels(self) -> tuple[ParticleKernel, ...]:
         """Get the kernels used by this timestepper."""
@@ -116,18 +142,19 @@ class RK2Timestepper(Timestepper):
     def __init__(
         self,
         time_array: npt.NDArray,
+        dt: float,
         rk_step_1_kernel: ParticleKernel,
         rk_step_2_kernel: ParticleKernel,
         rk_update_kernel: ParticleKernel,
-        dt: float,
-        time: float = 0.0,
         *,
         alpha: float = 2 / 3,
+        time: float | None = None,
+        iteration: int = 0,
         index_padding: int = 0,
         pre_step_kernel: ParticleKernel | None = None,
         post_step_kernel: ParticleKernel | None = None,
     ) -> None:
-        super().__init__(time_array, dt, time, index_padding)
+        super().__init__(time_array, dt, time=time, index_padding=index_padding, iteration=iteration)
         self._rk_step_1_kernel = rk_step_1_kernel
         self._rk_step_2_kernel = rk_step_2_kernel
         self._rk_update_kernel = rk_update_kernel
@@ -136,15 +163,11 @@ class RK2Timestepper(Timestepper):
         self._alpha = alpha
 
     @property
-    def dt(self) -> float:
-        """The time step used by this launcher."""
-        return self._dt
-
-    @property
     def alpha(self) -> float:
         """The RK2 alpha parameter used by this launcher."""
         return self._alpha
 
+    @property
     def kernels(self) -> tuple[ParticleKernel, ...]:
         """Get the kernels used by this timestepper."""
         if self._pre_step_kernel is not None:
@@ -180,5 +203,50 @@ class RK2Timestepper(Timestepper):
         self.advance_time()
         # Update particle positions
         launcher.launch_kernel(self._rk_update_kernel, particles, self._tidx)
+        if self._post_step_kernel is not None:
+            launcher.launch_kernel(self._post_step_kernel, particles, self._tidx)
+
+
+class ABTimestepper(Timestepper):
+    """Abstract base class for Adams-Bashforth timesteppers."""
+
+    def __init__(
+        self,
+        time_array: npt.NDArray,
+        dt: float,
+        ab_kernel: ParticleKernel,
+        *,
+        time: float | None = None,
+        iteration: int = 0,
+        index_padding: int = 0,
+        pre_step_kernel: ParticleKernel | None = None,
+        post_step_kernel: ParticleKernel | None = None,
+    ) -> None:
+        super().__init__(time_array, dt, time=time, index_padding=index_padding, iteration=iteration)
+        self._ab_kernel = ab_kernel
+        self._pre_step_kernel = pre_step_kernel
+        self._post_step_kernel = post_step_kernel
+
+    @property
+    def kernels(self) -> tuple[ParticleKernel, ...]:
+        """Get the kernels used by this timestepper."""
+        if self._pre_step_kernel is not None:
+            pre = (self._pre_step_kernel,)
+        else:
+            pre = ()
+        if self._post_step_kernel is not None:
+            post = (self._post_step_kernel,)
+        else:
+            post = ()
+        return pre + (self._ab_kernel,) + post
+
+    def timestep_particles(self, particles: Particles, launcher: Launcher) -> None:
+        """Launch the Adams-Bashforth kernel to timestep the particles."""
+        if self._pre_step_kernel is not None:
+            launcher.launch_kernel(self._pre_step_kernel, particles, self._tidx)
+        # Launch Adams-Bashforth kernel
+        launcher.launch_kernel(self._ab_kernel, particles, self._tidx)
+        # Advance time
+        self.advance_time()
         if self._post_step_kernel is not None:
             launcher.launch_kernel(self._post_step_kernel, particles, self._tidx)
