@@ -7,7 +7,7 @@ from ._kernels import (
     merge_scalars,
     merge_simulation_fields,
 )
-from .status import validation_kernel
+from .validation import validation_kernel
 
 __all__ = [
     "ParticleKernel",
