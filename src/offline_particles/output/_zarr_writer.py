@@ -206,7 +206,8 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             dtype="f8",
             chunks=(1,),
             dimension_names=(self._time_name,),
-            overwrite=self._overwrite**self._time_array_kwargs,
+            overwrite=self._overwrite,
+            **self._time_array_kwargs,
         )
         outputs = {
             name: (
