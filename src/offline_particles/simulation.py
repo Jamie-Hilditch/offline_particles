@@ -171,7 +171,7 @@ class Simulation:
         """Invoke any scheduled events at the current time or iteration."""
         for event in itertools.chain(self._iteration_scheduler(self.iteration), self._time_scheduler(self.time)):
             # launch kernels
-            for kernel in event.kernels():
+            for kernel in event.kernels:
                 self._launcher.launch_kernel(kernel, self._particles, self.tidx)
             # invoke event function
             event(self.state)
