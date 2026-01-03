@@ -17,7 +17,7 @@ import numpy as np
 
 from .._kernels import ParticleKernel
 
-cdef void _ab3_advection(particles, scalars, fielddata):
+cdef void _ab3_w_advection(particles, scalars, fielddata):
     # unpack required particle fields
     cdef unsigned char[::1] status
     cdef double[::1] zidx, yidx, xidx, z
@@ -177,7 +177,7 @@ cdef void _ab3_advection(particles, scalars, fielddata):
         dxidx1[i] = dxidx0[i]
         dyidx1[i] = dyidx0[i]
 
-cdef void _ab3_post_advection(particles, scalars, fielddata):
+cdef void _ab3_post_w_advection(particles, scalars, fielddata):
     """Post-advection step to update particle zidx from z."""
     # unpack required particle fields
     cdef unsigned char[::1] status
@@ -230,13 +230,13 @@ cdef void _ab3_post_advection(particles, scalars, fielddata):
 
 
 # python wrapper
-cpdef ab3_advection(particles, scalars, fielddata):
+cpdef ab3_w_advection(particles, scalars, fielddata):
     """Advect particles using 3rd-order Adams-Bashforth scheme using wy."""
-    _ab3_advection(particles, scalars, fielddata)
+    _ab3_w_advection(particles, scalars, fielddata)
 
-cpdef ab3_post_advection(particles, scalars, fielddata):
+cpdef ab3_post_w_advection(particles, scalars, fielddata):
     """Post-advection step to update particle zidx from z."""
-    _ab3_post_advection(particles, scalars, fielddata)
+    _ab3_post_w_advection(particles, scalars, fielddata)
 
 # kernel
 ab3_w_advection_kernel = ParticleKernel(
@@ -273,7 +273,7 @@ ab3_w_advection_kernel = ParticleKernel(
     ],
 )
 
-ab3_post_advection_kernel = ParticleKernel(
+ab3_post_w_advection_kernel = ParticleKernel(
     ab3_post_advection,
     particle_fields={
         "status": np.uint8,

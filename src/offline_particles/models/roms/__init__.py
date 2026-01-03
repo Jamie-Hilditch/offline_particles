@@ -4,8 +4,8 @@ import numpy.typing as npt
 
 # import ROMS kernels
 from ...kernels.roms import (
-    ab3_advection_kernel,
-    ab3_post_advection_kernel,
+    ab3_post_w_advection_kernel,
+    ab3_w_advection_kernel,
     compute_z_kernel,
     rk2_w_advection_step_1_kernel,
     rk2_w_advection_step_2_kernel,
@@ -16,8 +16,8 @@ from ...timesteppers import ABTimestepper, RK2Timestepper
 
 __all__ = [
     "compute_z_kernel",
-    "ab3_advection_kernel",
-    "ab3_post_advection_kernel",
+    "ab3_w_advection_kernel",
+    "ab3_post_w_advection_kernel",
     "ab3_w_advection_timestepper",
     "rk2_w_advection_step_1_kernel",
     "rk2_w_advection_step_2_kernel",
@@ -87,10 +87,10 @@ def ab3_w_advection_timestepper(
     return ABTimestepper(
         time_array,
         dt,
-        ab_kernel=ab3_advection_kernel,
+        ab_kernel=ab3_w_advection_kernel,
         time=time,
         iteration=iteration,
         index_padding=index_padding,
         pre_step_kernel=validation_kernel,
-        post_step_kernel=ab3_post_advection_kernel,
+        post_step_kernel=ab3_post_w_advection_kernel,
     )
