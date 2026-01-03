@@ -240,7 +240,7 @@ cpdef ab3_post_w_advection(particles, scalars, fielddata):
 
 # kernel
 ab3_w_advection_kernel = ParticleKernel(
-    ab3_advection,
+    ab3_w_advection,
     particle_fields={
         "status": np.uint8,
         "zidx": np.float64,
@@ -274,7 +274,7 @@ ab3_w_advection_kernel = ParticleKernel(
 )
 
 ab3_post_w_advection_kernel = ParticleKernel(
-    ab3_post_advection,
+    ab3_post_w_advection,
     particle_fields={
         "status": np.uint8,
         "zidx": np.float64,
