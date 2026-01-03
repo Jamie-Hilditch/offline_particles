@@ -10,7 +10,7 @@ from cython.parallel cimport prange
 
 from .._core cimport unpack_fielddata_1d, unpack_fielddata_2d, unpack_fielddata_3d
 from .._interpolation.linear cimport trilinear_interpolation, bilinear_interpolation, linear_interpolation
-from ..status cimport STATUS_INACTIVE, STATUS_NORMAL, STATUS_MULTISTEP_1, STATUS_MULTISTEP_2
+from ..status cimport STATUS
 from ._vertical_coordinate cimport compute_z, compute_zidx
 
 import numpy as np
@@ -78,7 +78,7 @@ cdef void _ab3_advection(particles, scalars, fielddata):
     nparticles = status.shape[0]
 
     for i in prange(nparticles, schedule='static', nogil=True):
-        if status[i] & STATUS_INACTIVE:
+        if status[i] & STATUS.INACTIVE:
             continue
 
         # first compute the derivative values for the current particle positions
@@ -119,7 +119,7 @@ cdef void _ab3_advection(particles, scalars, fielddata):
         )
 
         # handle initialization steps
-        if status[i] == STATUS_MULTISTEP_1:
+        if status[i] == STATUS.MULTISTEP_1:
             # if on first step we must fill in both prior steps
             # use forward Euler, i.e. set prior step derivatives equal to current
             dxidx1[i] = dxidx0[i]
@@ -128,14 +128,14 @@ cdef void _ab3_advection(particles, scalars, fielddata):
             dxidx2[i] = dxidx0[i]
             dyidx2[i] = dyidx0[i]
             dz2[i] = dz0[i]
-            status[i] = STATUS_MULTISTEP_2
-        elif status[i] == STATUS_MULTISTEP_2:
+            status[i] = STATUS.MULTISTEP_2
+        elif status[i] == STATUS.MULTISTEP_2:
             # if on second step fill in derivatives from n-2
             # use dy2 = -dy0 + 2*dy1 to give AB2 consistency
             dxidx2[i] = -dxidx0[i] + 2.0 * dxidx1[i]
             dyidx2[i] = -dyidx0[i] + 2.0 * dyidx1[i]
             dz2[i] = -dz0[i] + 2.0 * dz1[i]
-            status[i] = STATUS_NORMAL
+            status[i] = STATUS.NORMAL
 
         # compute physical depth at current position
         # In practice this is already set from prior step, but we
@@ -212,7 +212,7 @@ cdef void _ab3_post_advection(particles, scalars, fielddata):
     nparticles = status.shape[0]
 
     for i in prange(nparticles, schedule='static', nogil=True):
-        if status[i] & STATUS_INACTIVE:
+        if status[i] & STATUS.INACTIVE:
             continue
 
         # compute new zidx from updated physical depth

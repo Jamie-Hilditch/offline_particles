@@ -1,6 +1,6 @@
 from enum import IntEnum
 
-class STATUS(IntEnum):
+class ParticleStatus(IntEnum):
     # inactive flag
     INACTIVE: int
 

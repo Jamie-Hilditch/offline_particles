@@ -7,12 +7,12 @@ from ._kernels import (
     merge_scalars,
     merge_simulation_fields,
 )
-from .status import STATUS
+from .status import ParticleStatus
 
 __all__ = [
     "ParticleKernel",
     "KernelFunction",
-    "STATUS",
+    "ParticleStatus",
     "merge_particle_fields",
     "merge_scalars",
     "merge_simulation_fields",

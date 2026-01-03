@@ -4,7 +4,9 @@ from cython.parallel cimport prange
 
 from .._core cimport unpack_fielddata_1d, unpack_fielddata_2d
 from .._interpolation.linear cimport bilinear_interpolation, linear_interpolation
+from ..status cimport STATUS
 from ._vertical_coordinate cimport compute_z
+
 
 import functools
 
@@ -44,7 +46,7 @@ cdef void _compute_z(particles, scalars, fielddata, particle_field):
 
     for i in prange(nparticles, schedule='static', nogil=True):
 
-        if status[i] != 0:  # only compute for active particles
+        if status[i] & STATUS.INACTIVE:  # only compute for active particles
             continue
 
         h_value = bilinear_interpolation(

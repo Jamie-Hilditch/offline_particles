@@ -1,14 +1,14 @@
-cdef enum ParticleStatus:
+cdef enum STATUS:
     # bit flag for active/ inactive particles
-    STATUS_INACTIVE
+    INACTIVE = 1 << 7  # reserve final bit for inactive flag
 
     # normal state
-    STATUS_NORMAL
+    NORMAL = 0
 
     # error states
-    STATUS_NONFINITE
-    STATUS_OUT_OF_DOMAIN
+    NONFINITE = 1 | INACTIVE
+    OUT_OF_DOMAIN = 2 | INACTIVE
 
     # Reserved for multistep initialization
-    STATUS_MULTISTEP_1
-    STATUS_MULTISTEP_2
+    MULTISTEP_1 = 10
+    MULTISTEP_2 = 11

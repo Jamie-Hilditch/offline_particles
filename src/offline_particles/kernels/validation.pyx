@@ -3,7 +3,7 @@
 from cython.parallel cimport prange
 from libc.math cimport isfinite
 
-from .status cimport STATUS_INACTIVE, STATUS_NONFINITE, STATUS_OUT_OF_DOMAIN
+from .status cimport STATUS
 
 import numpy as np
 
@@ -35,12 +35,12 @@ cdef void _finite_indices(particles):
 
     for i in prange(n, schedule="static", nogil=True):
         # Skip inactive particles
-        if status[i] & STATUS_INACTIVE:
+        if status[i] & STATUS.INACTIVE:
             continue
 
         # if any index is non-finite mark as invalid
         if not isfinite(zidx[i]) or not isfinite(yidx[i]) or not isfinite(xidx[i]):
-            status[i] = STATUS_NONFINITE
+            status[i] = STATUS.NONFINITE
 
 cdef _domain_bounds(particles, scalars, fielddata):
     """
@@ -65,7 +65,7 @@ cdef _domain_bounds(particles, scalars, fielddata):
 
     for i in prange(n, schedule="static", nogil=True):
         # Skip inactive particles
-        if status[i] & STATUS_INACTIVE:
+        if status[i] & STATUS.INACTIVE:
             continue
 
         # if any index is out of bounds mark as invalid
@@ -74,7 +74,7 @@ cdef _domain_bounds(particles, scalars, fielddata):
             ymin <= yidx[i] <= ymax and
             xmin <= xidx[i] <= xmax
         ):
-            status[i] = STATUS_OUT_OF_DOMAIN
+            status[i] = STATUS.OUT_OF_DOMAIN
 
 
 # Python wrapper functions
