@@ -9,33 +9,49 @@ from .kernels import ParticleKernel
 from .launcher import Launcher, ScalarSource
 from .particles import Particles
 
+type T = np.float64 | np.datetime64
+type D = np.float64 | np.timedelta64
+
 
 class Timestepper(abc.ABC):
     """Class that handles particle advection timestepping."""
 
     # scalar data sources
-    _dt_scalar = ScalarSource("_dt", lambda self, tidx: self._dt)
-    _time_scalar = ScalarSource("_time", lambda self, tidx: self._time)
+    _dt_scalar = ScalarSource("_dt", lambda self, tidx: self._normalised_dt)
+    _time_scalar = ScalarSource("_time", lambda self, tidx: self.time)
     _tidx_scalar = ScalarSource("_tidx", lambda self, tidx: self._tidx)
 
     def __init__(
         self,
-        time_array: npt.NDArray,
-        dt: float,
+        time_array: npt.NDArray[T],
+        dt: D,
         *,
-        time: float | None = None,
+        time_unit: D | None = None,
+        time: T | None = None,
         iteration: int = 0,
         index_padding: int = 0,
     ) -> None:
         super().__init__()
 
-        # check time array is strictly increasing
-        if not np.all(np.diff(time_array) > 0):
-            raise ValueError("Time array must be strictly increasing.")
-        self._time_array = np.asarray(time_array, dtype=np.float64)
+        # check time_array is strictly increasing
+        if np.any(time_array[1:] <= time_array[:-1]):  # type: ignore[operator]
+            raise ValueError("time_array must be strictly increasing.")
+        self._time_array = time_array
+
+        # first set the time unit
+        # this fixes the time types
+        if time_unit is None:
+            # use a default value of 1 if times are dimensionless else error
+            if isinstance(dt, np.floating):
+                time_unit = np.float64(1.0)
+            else:
+                raise ValueError("time_unit must be specified for dimensional time.")
+        self._time_unit = time_unit
+
+        # now set the timestep which has the same type as time_unit
+        self.set_dt(dt)
 
         # store iteration, timestep, current time and current time index
-        self.set_dt(dt)
         if time is None:
             time = self._time_array[0]
         self.set_time(time)
@@ -45,13 +61,45 @@ class Timestepper(abc.ABC):
         self._index_padding = 0
         self.set_index_padding(index_padding)
 
-    def set_dt(self, dt: float) -> None:
-        """Set the time step for this timestepper."""
-        self._dt = np.float64(dt)
+    def get_time_index(self, time: T) -> np.float64:
+        """Get the time index corresponding to the given time.
 
-    def set_time(self, time: float) -> None:
+        Args:
+            time: The time to get the index for.
+
+        Returns:
+            float64: The time index corresponding to the given time.
+
+        Raises:
+            ValueError: If time is out of bounds of the time array.
+            TypeError (from numpy): If time is not compatible with the time array.
+        """
+        time_array = self._time_array
+        if time < time_array[0] or time > time_array[-1]:
+            raise ValueError("Time is out of bounds of the time array.")
+
+        idx = np.searchsorted(time_array, time, side="right") - 1
+        t0 = time_array[idx]
+        t1 = time_array[idx + 1]
+        fraction = (time - t0) / (t1 - t0)
+        return idx + fraction
+
+    def set_dt(self, dt: D) -> None:
+        """Set the time step for this timestepper."""
+        # convert dt to timestep_type
+        try:
+            self._normalised_dt = np.float64(dt / self._time_unit)  # type: ignore[operator]
+        except Exception as e:
+            raise TypeError(f"dt must be of the same type as time_unit={self._time_unit!r}") from e
+
+    def set_time(self, time: T) -> None:
         """Set the current time and update the time index."""
-        time = np.float64(time)
+        # check time + dt is valid
+        try:
+            _ = time + self.dt  # type: ignore[operator]
+        except Exception as e:
+            raise TypeError(f"time must be compatible with dt={self.dt!r}") from e
+
         self._tidx = self.get_time_index(time)
         self._time = time
 
@@ -72,14 +120,24 @@ class Timestepper(abc.ABC):
             self._index_padding = index_padding
 
     @property
-    def dt(self) -> float:
-        """The time step for this timestepper."""
-        return self._dt
+    def time_unit(self) -> D:
+        """The time unit for this timestepper."""
+        return self._time_unit
 
     @property
-    def time(self) -> float:
+    def dt(self) -> D:
+        """The time step for this timestepper."""
+        return self._normalised_dt * self._time_unit
+
+    @property
+    def time(self) -> T:
         """The current time for this timestepper."""
         return self._time
+
+    @property
+    def time_array(self) -> npt.NDArray[T]:
+        """The time array for this timestepper."""
+        return self._time_array
 
     @property
     def iteration(self) -> int:
@@ -87,7 +145,7 @@ class Timestepper(abc.ABC):
         return self._iteration
 
     @property
-    def tidx(self) -> float:
+    def tidx(self) -> np.float64:
         """The current time index for this timestepper."""
         return self._tidx
 
@@ -96,21 +154,9 @@ class Timestepper(abc.ABC):
         """The index padding required by this timestepper."""
         return self._index_padding
 
-    def get_time_index(self, time: np.float64) -> np.float64:
-        """Get the time index corresponding to the given time."""
-        time_array = self._time_array
-        if time < time_array[0] or time > time_array[-1]:
-            raise ValueError("Time is out of bounds of the time array.")
-
-        idx = np.searchsorted(time_array, time, side="right") - 1
-        t0 = time_array[idx]
-        t1 = time_array[idx + 1]
-        fraction = (time - t0) / (t1 - t0)
-        return idx + fraction
-
     def advance_time(self) -> None:
         """Advance the current time by dt and update the time index."""
-        self._time += self._dt
+        self._time += self.dt  # type: ignore[operator]
         self._tidx = self.get_time_index(self._time)
         self._iteration += 1
 
@@ -142,20 +188,23 @@ class RK2Timestepper(Timestepper):
 
     def __init__(
         self,
-        time_array: npt.NDArray,
-        dt: float,
+        time_array: npt.NDArray[T],
+        dt: D,
         rk_step_1_kernel: ParticleKernel,
         rk_step_2_kernel: ParticleKernel,
         rk_update_kernel: ParticleKernel,
         *,
         alpha: float = 2 / 3,
-        time: float | None = None,
+        time_unit: D | None = None,
+        time: T | None = None,
         iteration: int = 0,
         index_padding: int = 0,
         pre_step_kernel: ParticleKernel | None = None,
         post_step_kernel: ParticleKernel | None = None,
     ) -> None:
-        super().__init__(time_array, dt, time=time, index_padding=index_padding, iteration=iteration)
+        super().__init__(
+            time_array, dt, time_unit=time_unit, time=time, index_padding=index_padding, iteration=iteration
+        )
         self._rk_step_1_kernel = rk_step_1_kernel
         self._rk_step_2_kernel = rk_step_2_kernel
         self._rk_update_kernel = rk_update_kernel
@@ -196,7 +245,7 @@ class RK2Timestepper(Timestepper):
         # Stage 1
         launcher.launch_kernel(self._rk_step_1_kernel, particles, self._tidx)
         # Compute intermediate time and time index
-        intermediate_time = self._time + self._alpha * self._dt
+        intermediate_time = self.time + self._alpha * self.dt  # type: ignore[operator]
         intermediate_tidx = self.get_time_index(intermediate_time)
         # Stage 2
         launcher.launch_kernel(self._rk_step_2_kernel, particles, intermediate_tidx)
@@ -213,17 +262,20 @@ class ABTimestepper(Timestepper):
 
     def __init__(
         self,
-        time_array: npt.NDArray,
-        dt: float,
+        time_array: npt.NDArray[T],
+        dt: D,
         ab_kernel: ParticleKernel,
         *,
-        time: float | None = None,
+        time_unit: D | None = None,
+        time: T | None = None,
         iteration: int = 0,
         index_padding: int = 0,
         pre_step_kernel: ParticleKernel | None = None,
         post_step_kernel: ParticleKernel | None = None,
     ) -> None:
-        super().__init__(time_array, dt, time=time, index_padding=index_padding, iteration=iteration)
+        super().__init__(
+            time_array, dt, time_unit=time_unit, time=time, index_padding=index_padding, iteration=iteration
+        )
         self._ab_kernel = ab_kernel
         self._pre_step_kernel = pre_step_kernel
         self._post_step_kernel = post_step_kernel

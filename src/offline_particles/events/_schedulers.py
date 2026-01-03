@@ -1,42 +1,13 @@
-"""Submodules for event schedulers."""
+"""Submodule for event schedulers."""
 
-import dataclasses
 from typing import Iterable
+
+import numpy as np
 
 from ._events import Event
 
-
-@dataclasses.dataclass(frozen=True)
-class IterationSchedule:
-    """Dataclass representing an iteration-based schedule."""
-
-    N: int
-    first: int = 0
-
-    def __post_init__(self) -> None:
-        if self.N <= 0:
-            raise ValueError("N must be a positive integer")
-        if self.first < 0:
-            raise ValueError("first must be a non-negative integer")
-
-
-@dataclasses.dataclass(frozen=True)
-class TimeSchedule:
-    """Dataclass representing a time-based schedule."""
-
-    dt: float
-    first: float
-
-    def validate(self, forward: bool, resolution: float) -> None:
-        if forward and self.dt <= 0:
-            raise ValueError("dt must be a positive number for forward time")
-        if not forward and self.dt >= 0:
-            raise ValueError("dt must be a negative number for backward time")
-        if abs(self.dt) < resolution:
-            raise ValueError(f"dt must be at least {resolution} in magnitude to avoid floating point issues")
-
-
-type AbstractSchedule = IterationSchedule | TimeSchedule
+type T = np.float64 | np.datetime64
+type D = np.float64 | np.timedelta64
 
 
 class IterationScheduler:
@@ -63,14 +34,15 @@ class IterationScheduler:
             for _, event in event_list:
                 yield event
 
-    def register_event(self, schedule: IterationSchedule, event: Event) -> None:
+    def register_event(self, first: int, n: int, event: Event) -> None:
         """Register an event to be triggered every N iterations.
 
         Args:
+            first (int): The first iteration the event is triggered.
+            n (int): The number of iterations between events.
             event (Event): The event to be triggered.
-            schedule (IterationSchedule): The iteration schedule.
         """
-        self._schedule_event(schedule.first, schedule.N, event)
+        self._schedule_event(first, n, event)
         self.set_next()
 
     def set_next(self) -> None:
@@ -102,30 +74,21 @@ class IterationScheduler:
 class TimeScheduler:
     """A scheduler that triggers events every dt."""
 
-    def __init__(self, *, forward: bool = True, resolution: float = 1e-12) -> None:
+    def __init__(self, *, forward: bool = True) -> None:
         self._forward = forward
-        self._next_tick = None
-        self._resolution = resolution
-        self._events: dict[int, list[tuple[float, Event]]] = dict()
 
-    def _discretise_time(self, time: float) -> int:
-        """Round time and use integer ticks to avoid floating point issues."""
-        return round(time / self._resolution)
+        self._next_time = None
+        self._events: dict[T, list[tuple[D, Event]]] = dict()
 
-    def _time_from_tick(self, tick: int) -> float:
-        return tick * self._resolution
-
-    def _schedule_event(self, tick: int, dt: float, event: Event) -> None:
-        if tick not in self._events:
-            self._events[tick] = []
-        self._events[tick].append((dt, event))
+    def _schedule_event(self, time: T, dt: D, event: Event) -> None:
+        if time not in self._events:
+            self._events[time] = []
+        self._events[time].append((dt, event))
 
     @property
-    def next_time(self) -> float | None:
+    def next_time(self) -> T | None:
         """The next time at which an event is scheduled."""
-        if self._next_tick is None:
-            return None
-        return self._time_from_tick(self._next_tick)
+        return self._next_time
 
     @property
     def events(self) -> Iterable[Event]:
@@ -134,29 +97,28 @@ class TimeScheduler:
             for _, event in event_list:
                 yield event
 
-    def register_event(self, schedule: TimeSchedule, event: Event) -> None:
+    def register_event(self, first: T, dt: D, event: Event) -> None:
         """Register an event to be triggered every dt.
 
         Args:
+            first (T): The first time the event is triggered.
+            dt (D): The time interval between events.
             event (Event): The event to be triggered.
-            schedule (TimeSchedule): The time schedule.
         """
-        schedule.validate(self._forward, self._resolution)
-        first_tick = self._discretise_time(schedule.first)
-        self._schedule_event(first_tick, schedule.dt, event)
+        self._schedule_event(first, dt, event)
         self.set_next()
 
     def set_next(self) -> None:
         """Set the next time to check for events."""
         if not self._events:
-            self._next_tick = None
+            self._next_time = None
             return
         if self._forward:
-            self._next_tick = min(self._events.keys())
+            self._next_time = min(self._events.keys())
         else:
-            self._next_tick = max(self._events.keys())
+            self._next_time = max(self._events.keys())
 
-    def __call__(self, time: float) -> list[Event]:
+    def __call__(self, time: T) -> list[Event]:
         """Get the events to trigger at the given time.
 
         Args:
@@ -165,14 +127,13 @@ class TimeScheduler:
         Returns:
             list[Event]: The list of events to trigger.
         """
-        tick = self._discretise_time(time)
         triggered_events: list[Event] = []
 
-        while (nt := self._next_tick) is not None and (nt <= tick if self._forward else nt >= tick):
+        while (nt := self._next_time) is not None and (nt <= time if self._forward else nt >= time):
             for dt, event in self._events.pop(nt, []):
                 triggered_events.append(event)
                 # Reschedule the event for its next occurrence
-                next_occurrence = self._discretise_time(self._time_from_tick(nt) + dt)
+                next_occurrence = nt + dt  # type: ignore[operator]
                 self._schedule_event(next_occurrence, dt, event)
 
             self.set_next()

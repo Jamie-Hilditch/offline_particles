@@ -7,7 +7,7 @@ from typing import Mapping
 
 import numpy as np
 
-from ..events import AbstractSchedule, Event, SimulationState
+from ..events import Event, SimulationState
 from ..kernels import ParticleKernel, merge_particle_fields
 
 
@@ -48,12 +48,6 @@ class AbstractOutputWriter(abc.ABC):
     @abc.abstractmethod
     def name(self) -> str:
         """The name of the output writer."""
-        pass
-
-    @property
-    @abc.abstractmethod
-    def schedule(self) -> AbstractSchedule:
-        """The output schedule."""
         pass
 
     @property
@@ -127,12 +121,6 @@ class AbstractOutputWriterBuilder(abc.ABC):
     @abc.abstractmethod
     def name(self) -> str:
         """The name of the output writer."""
-        pass
-
-    @property
-    @abc.abstractmethod
-    def schedule(self) -> AbstractSchedule:
-        """The output schedule."""
         pass
 
     @property

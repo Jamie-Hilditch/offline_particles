@@ -3,6 +3,8 @@
 import dataclasses
 from typing import Callable
 
+import numpy as np
+
 from ..kernels import ParticleKernel
 from ..particles import ParticlesView
 
@@ -11,9 +13,9 @@ from ..particles import ParticlesView
 class SimulationState:
     """Dataclass representing the current state of the simulation."""
 
-    time: float
-    dt: float
-    tidx: float
+    time: np.float64 | np.datetime64
+    dt: np.float64 | np.timedelta64
+    tidx: np.float64
     iteration: int
     particles: ParticlesView
 

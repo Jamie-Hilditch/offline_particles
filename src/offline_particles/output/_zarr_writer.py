@@ -7,7 +7,7 @@ import numpy as np
 import zarr
 import zarr.storage
 
-from ..events import AbstractSchedule, SimulationState
+from ..events import SimulationState
 from ._output import AbstractOutputWriter, AbstractOutputWriterBuilder, Output
 
 DEFAULT_CHUNKSIZE = 10_000
@@ -19,7 +19,6 @@ class ZarrOutputWriter(AbstractOutputWriter):
     def __init__(
         self,
         name: str,
-        schedule: AbstractSchedule,
         store: zarr.storage.StoreLike,
         time_array: zarr.Array,
         outputs: dict[str, tuple[Output, zarr.Array]],
@@ -33,7 +32,6 @@ class ZarrOutputWriter(AbstractOutputWriter):
         """
         self._name = name
         self._store = store
-        self._schedule = schedule
         self._time_array = time_array
         self._outputs = types.MappingProxyType(outputs)
         self._output_count: int = 0
@@ -47,11 +45,6 @@ class ZarrOutputWriter(AbstractOutputWriter):
     def store(self) -> zarr.storage.StoreLike:
         """The Zarr store."""
         return self._store
-
-    @property
-    def schedule(self) -> AbstractSchedule:
-        """The output schedule."""
-        return self._schedule
 
     @property
     def outputs(self) -> Mapping[str, Output]:
@@ -111,7 +104,6 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
     def __init__(
         self,
         name: str,
-        schedule: AbstractSchedule,
         store: zarr.storage.StoreLike,
         *,
         chunksize: int = DEFAULT_CHUNKSIZE,
@@ -125,7 +117,6 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
 
         Args:
             store: The Zarr store to write to.
-            schedule: The output schedule.
 
         Keywords:
             chunksize: The chunk size for the particle dimension.
@@ -136,7 +127,6 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             time_array_kwargs: Keyword arguments passed, in addition to array_kwargs, to Zarr.create_array for the time array.
         """
         self._name = name
-        self._schedule = schedule
         self._store = store
         self._outputs: dict[str, tuple[Output, dict[str, Any]]] = {}
 
@@ -155,11 +145,6 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
     def name(self) -> str:
         """The name of the output writer."""
         return self._name
-
-    @property
-    def schedule(self) -> AbstractSchedule:
-        """The output schedule."""
-        return self._schedule
 
     @property
     def outputs(self) -> Mapping[str, Output]:
@@ -218,7 +203,6 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         }
         return ZarrOutputWriter(
             name=self._name,
-            schedule=self._schedule,
             store=self._store,
             time_array=time_output,
             outputs=outputs,

@@ -1,20 +1,16 @@
 """Submodule defining the top-level particle simulation class."""
 
-import functools
 import itertools
 import types
-from typing import Mapping
+from typing import Mapping, overload
 
 import numpy as np
 import numpy.typing as npt
 
 from .events import (
-    AbstractSchedule,
     Event,
-    IterationSchedule,
     IterationScheduler,
     SimulationState,
-    TimeSchedule,
     TimeScheduler,
 )
 from .fieldset import Fieldset
@@ -23,6 +19,9 @@ from .launcher import Launcher
 from .output import AbstractOutputWriter, AbstractOutputWriterBuilder
 from .particles import Particles, ParticlesView
 from .timesteppers import Timestepper
+
+type T = np.float64 | np.datetime64
+type D = np.float64 | np.timedelta64
 
 
 class Simulation:
@@ -90,7 +89,7 @@ class Simulation:
         return self._fieldset
 
     @property
-    def time(self) -> float:
+    def time(self) -> np.float64 | np.datetime64:
         """Get the current simulation time.
 
         Returns:
@@ -108,7 +107,7 @@ class Simulation:
         return self._timestepper.iteration
 
     @property
-    def dt(self) -> float:
+    def dt(self) -> np.float64 | np.timedelta64:
         """Get the timestep size.
 
         Returns:
@@ -117,7 +116,7 @@ class Simulation:
         return self._timestepper.dt
 
     @property
-    def tidx(self) -> float:
+    def tidx(self) -> np.float64:
         """Get the current timestep index.
 
         Returns:
@@ -233,37 +232,83 @@ class SimulationBuilder:
         self._time_scheduler = TimeScheduler()
 
         # output writers
-        self._output_writers: dict[str, AbstractOutputWriterBuilder] = dict()
+        self._output_writers: dict[str, tuple[AbstractOutputWriterBuilder, dict[str, ...]]] = dict()
 
-    @functools.singledispatchmethod
-    def add_event(self, schedule: AbstractSchedule, event: Event) -> None:
+    def every_n(self, n: int, event: Event, *, first: int | None = None) -> None:
+        """Add an event that triggers every n iterations.
+
+        Args:
+            n (int): The interval in iterations between event triggers.
+            event (Event): The event to be added.
+            first (int, optional): The first iteration to trigger the event. Defaults to 0.
+        """
+        if n <= 0:
+            raise ValueError("n must be a positive integer.")
+        if first is None:
+            first = 0
+        self._iteration_scheduler.register_event(first, n, event)
+
+    def every_dt(self, dt: D, event: Event, *, first: T | None = None) -> None:
+        """Add an event that triggers every dt time units.
+
+        Args:
+            dt (D): The interval in time between event triggers.
+            event (Event): The event to be added.
+            first (T): The first time to trigger the event (defaults to timestepper.time).
+        """
+        # set default first time
+        timestepper_time = self._timestepper.time
+        if first is None:
+            first = timestepper_time
+
+        # check times are compatible
+        try:
+            _ = timestepper_time + dt  # type: ignore
+        except TypeError as e:
+            raise TypeError(
+                f"Incompatible dt type {type(dt)} for timestepper time type {type(timestepper_time)}"
+            ) from e
+        try:
+            _ = first + dt  # type: ignore
+        except TypeError as e:
+            raise TypeError(
+                f"Incompatible first type {type(first)} for timestepper time type {type(timestepper_time)}"
+            ) from e
+
+        self._time_scheduler.register_event(first, dt, event)
+
+    @overload
+    def add_event(self, event: Event, *, n: int, first: int | None) -> None: ...
+
+    @overload
+    def add_event(self, event: Event, *, dt: D, first: T | None) -> None: ...
+
+    def add_event(self, event: Event, *, n=None, dt=None, first=None) -> None:
         """Add an event to the simulation.
 
         Args:
-            schedule: The schedule for the event.
-            event: The event to be added to the launcher.
+            event: The event to add.
+            n: The number of iterations between event triggers.
+            dt: The time interval between event triggers.
+            first: The first iteration or time to trigger the event.
         """
-        raise NotImplementedError("add_event only supports IterationSchedule or TimeSchedule")
+        if n is not None and dt is not None:
+            raise ValueError("Cannot specify both n and dt.")
+        elif n is not None and dt is None:
+            self.every_n(n, event, first=first)
+        elif n is None and dt is not None:
+            self.every_dt(dt, event, first=first)
+        else:
+            raise ValueError("Either n or dt must be specified.")
 
-    @add_event.register
-    def _(
+    def add_output_writer(
         self,
-        schedule: IterationSchedule,
-        event: Event,
+        builder: AbstractOutputWriterBuilder,
+        *,
+        n: int | None = None,
+        dt: D | None = None,
+        first: int | T | None = None,
     ) -> None:
-        """Add an iteration-based event to the simulation."""
-        self._iteration_scheduler.register_event(schedule, event)
-
-    @add_event.register
-    def _(
-        self,
-        schedule: TimeSchedule,
-        event: Event,
-    ) -> None:
-        """Add a time-based event to the simulation."""
-        self._time_scheduler.register_event(schedule, event)
-
-    def add_output_writer(self, builder: AbstractOutputWriterBuilder) -> None:
         """Add an output writer to the simulation.
 
         Args:
@@ -272,7 +317,13 @@ class SimulationBuilder:
         name = builder.name
         if name in self._output_writers:
             raise ValueError(f"Output writer '{name}' already exists.")
-        self._output_writers[name] = builder
+
+        kwargs = {
+            "n": n,
+            "dt": dt,
+            "first": first,
+        }
+        self._output_writers[name] = (builder, kwargs)
 
     def build_simulation(self, nparticles: int) -> Simulation:
         """Build and return the Simulation.
@@ -280,16 +331,14 @@ class SimulationBuilder:
         Args:
             nparticles: The number of particles in the simulation.
         """
-        # build output writers and make mapping immutable
-        output_writers = {name: builder.build(nparticles) for name, builder in self._output_writers.items()}
-        output_writers = types.MappingProxyType(output_writers)
-
-        # add output events to the simulation
-        for writer in output_writers.values():
-            events = writer.create_events()
-            schedule = writer.schedule
+        # build output writers, construct events and make mapping immutable
+        output_writers = {}
+        for name, (builder, kwargs) in self._output_writers.items():
+            output_writers[name] = builder.build(nparticles)
+            events = output_writers[name].create_events()
             for event in events:
-                self.add_event(schedule, event)
+                self.add_event(event, **kwargs)
+        output_writers = types.MappingProxyType(output_writers)
 
         return Simulation(
             nparticles=nparticles,

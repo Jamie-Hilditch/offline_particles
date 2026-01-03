@@ -1,5 +1,6 @@
 """Offline particles simulations using ROMS output."""
 
+import numpy as np
 import numpy.typing as npt
 
 # import ROMS kernels
@@ -25,14 +26,18 @@ __all__ = [
     "rk2_w_advection_timestepper",
 ]
 
+type D = np.float64 | np.timedelta64
+type T = np.float64 | np.datetime64
+
 # create timesteppers for ROMS simulations with preset kernels
 
 
 def rk2_w_advection_timestepper(
     time_array: npt.NDArray,
-    dt: float,
+    dt: D,
     *,
-    time: float | None = None,
+    time: T | None = None,
+    time_unit: D | None = None,
     iteration: int = 0,
     index_padding: int = 5,
     alpha: float = 2 / 3,
@@ -57,6 +62,7 @@ def rk2_w_advection_timestepper(
         rk_step_2_kernel=rk2_w_advection_step_2_kernel,
         rk_update_kernel=rk2_w_advection_update_kernel,
         time=time,
+        time_unit=time_unit,
         iteration=iteration,
         index_padding=index_padding,
         alpha=alpha,
@@ -66,9 +72,10 @@ def rk2_w_advection_timestepper(
 
 def ab3_w_advection_timestepper(
     time_array: npt.NDArray,
-    dt: float,
+    dt: D,
     *,
-    time: float | None = None,
+    time: T | None = None,
+    time_unit: D | None = None,
     iteration: int = 0,
     index_padding: int = 5,
 ) -> ABTimestepper:
@@ -89,6 +96,7 @@ def ab3_w_advection_timestepper(
         dt,
         ab_kernel=ab3_w_advection_kernel,
         time=time,
+        time_unit=time_unit,
         iteration=iteration,
         index_padding=index_padding,
         pre_step_kernel=validation_kernel,
