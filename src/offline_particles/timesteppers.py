@@ -42,6 +42,7 @@ class Timestepper(abc.ABC):
         self.set_iteration(iteration)
 
         # store index padding
+        self._index_padding = 0
         self.set_index_padding(index_padding)
 
     def set_dt(self, dt: float) -> None:
