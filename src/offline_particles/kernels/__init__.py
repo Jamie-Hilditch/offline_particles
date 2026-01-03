@@ -8,7 +8,6 @@ from ._kernels import (
     merge_simulation_fields,
 )
 from .status import STATUS
-from .validation import validation_kernel
 
 __all__ = [
     "ParticleKernel",
@@ -17,5 +16,4 @@ __all__ = [
     "merge_particle_fields",
     "merge_scalars",
     "merge_simulation_fields",
-    "validation_kernel",
 ]

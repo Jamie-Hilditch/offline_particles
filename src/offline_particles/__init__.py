@@ -4,6 +4,7 @@ from . import kernels, output
 from .events import Event, IterationSchedule, SimulationState, TimeSchedule
 from .fields import StaticField, TimeDependentField
 from .fieldset import Fieldset
+from .models import roms
 from .simulation import Simulation, SimulationBuilder
 from .timesteppers import RK2Timestepper, Timestepper
 
@@ -22,4 +23,5 @@ __all__ = [
     "Timestepper",
     "kernels",
     "output",
+    "roms",
 ]

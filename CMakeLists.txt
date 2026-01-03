@@ -14,8 +14,10 @@ find_package(OpenMP REQUIRED)
 set(EXTENSION_MODULES
     kernels._core
     kernels.status
+    kernels.validation
     kernels.output.linear_interpolation
     kernels.roms._roms_core
+    kernels.roms.ab3_w_advection
     kernels.roms.rk2_w_advection
 )
 
