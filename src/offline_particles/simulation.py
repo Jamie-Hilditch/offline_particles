@@ -206,6 +206,22 @@ class Simulation:
         if xidx is not None:
             self._particles.xidx[:] = xidx
 
+    def set_particle_field(
+        self,
+        field_name: str,
+        values: npt.ArrayLike,
+    ) -> None:
+        """Set a particle field to the given values.
+
+        Args:
+            field_name: The name of the particle field to set.
+            values: The values to set the particle field to.
+        """
+        particle_field = self._particles[field_name]
+        values_array = np.asarray(values, dtype=particle_field.dtype)
+        values_array = np.broadcast_to(values_array, particle_field.shape)
+        particle_field[:] = values_array
+
     def step(self) -> None:
         """Advance the particle simulation by one timestep."""
         self._timestepper.timestep_particles(self._particles, self._launcher)
