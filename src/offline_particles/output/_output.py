@@ -152,6 +152,7 @@ class AbstractOutputWriterBuilder(abc.ABC):
     def build(
         self,
         nparticles: int,
+        time_type: np.dtype,
     ) -> AbstractOutputWriter:
         """Build the output writer."""
         pass

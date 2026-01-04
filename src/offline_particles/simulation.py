@@ -349,8 +349,9 @@ class SimulationBuilder:
         """
         # build output writers, construct events and make mapping immutable
         output_writers = {}
+        time_type = self._timestepper.time_array.dtype
         for name, (builder, kwargs) in self._output_writers.items():
-            output_writers[name] = builder.build(nparticles)
+            output_writers[name] = builder.build(nparticles, time_type)
             events = output_writers[name].create_events()
             for event in events:
                 self.add_event(event, **kwargs)

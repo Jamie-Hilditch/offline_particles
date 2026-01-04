@@ -179,16 +179,13 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
 
         del self._outputs[name]
 
-    def build(
-        self,
-        nparticles: int,
-    ) -> ZarrOutputWriter:
+    def build(self, nparticles: int, time_type: np.dtype = np.dtype(np.float64)) -> ZarrOutputWriter:
         # initialise outputs
         time_output = zarr.create_array(
             self._store,
             name=self._time_name,
             shape=(0,),
-            dtype="f8",
+            dtype=time_type,
             chunks=(1,),
             dimension_names=(self._time_name,),
             overwrite=self._overwrite,
