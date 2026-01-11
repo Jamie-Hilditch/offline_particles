@@ -33,22 +33,22 @@ class Output:
         if particle_field is None:
             particle_field = name
 
-        # validate that the particle_field exists in the provided kernels
-        if kernels:
-            kernel_fields = merge_particle_fields(kernels)
-            if particle_field not in kernel_fields:
-                raise ValueError(f"Particle field '{particle_field}' not found in provided kernels.")
-            inferred_dtype = kernel_fields[particle_field]
-            # validate dtype if provided
-            if dtype is not None and inferred_dtype != dtype:
-                raise ValueError(
-                    f"Dtype mismatch for particle field '{particle_field}': "
-                    f"kernels declare {inferred_dtype}, provided {dtype}."
-                )
-            dtype = inferred_dtype
+        # infer dtype from kernels
+        kernel_fields = merge_particle_fields(kernels)
+        kernel_dtype = kernel_fields.get(particle_field, None)
+
+        # if dtype and kernel_dtype are both None, raise error
+        if dtype is None and kernel_dtype is None:
+            raise ValueError(
+                f"Cannot infer dtype of '{particle_field}. '{particle_field}' was not found in kernels and dtype was not given."
+            )
+        elif dtype is None and kernel_dtype is not None:
+            dtype = kernel_dtype
         else:
-            if dtype is None:
-                raise ValueError("dtype must be provided if no kernels are given.")
+            # dtype is not None
+            dtype = np.dtype(dtype)
+            if kernel_dtype is not None and dtype != kernel_dtype:
+                raise ValueError(f"Given dtype '{dtype}' does not match dtype required by kernels '{kernel_dtype}'.")
 
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "particle_field", particle_field)
