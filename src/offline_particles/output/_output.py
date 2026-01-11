@@ -26,7 +26,7 @@ class Output:
         name: str,
         *kernels: ParticleKernel,
         particle_field: str | None = None,
-        dtype: npt.Dtype | None = None,
+        dtype: npt.DTypeLike | None = None,
     ) -> None:
         """Initialize the Output."""
         # default value for particle_field
