@@ -124,7 +124,7 @@ def roms_ab3_timestepper(
     if vertical_velocity:
         tendency_kernels.append(z_tendency_linearly_interpolate_w_kernel("_dz0"))
     if buoyant_particles:
-        tendency_kernels.append(z_tendency_buoyancy_driven_kernel("_dz0", "dwb0"))
+        tendency_kernels.append(z_tendency_buoyancy_driven_kernel("_dz0", "_dwb0"))
 
     # AB3 steps
     ab_kernels = []
