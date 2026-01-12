@@ -4,7 +4,7 @@ from . import kernels, output
 from .events import Event, SimulationState
 from .fields import StaticField, TimeDependentField
 from .fieldset import Fieldset
-from .kernels import ParticleKernel
+from .kernels import ParticleKernel, ParticleStatus
 from .models import roms
 from .output import Output, ZarrOutputBuilder
 from .simulation import Simulation, SimulationBuilder
@@ -19,6 +19,7 @@ __all__ = [
     "TimeDependentField",
     "Fieldset",
     "ParticleKernel",
+    "ParticleStatus",
     "roms",
     "Output",
     "ZarrOutputBuilder",

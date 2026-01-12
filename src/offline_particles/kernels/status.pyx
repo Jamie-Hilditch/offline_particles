@@ -15,6 +15,8 @@ class ParticleStatus(IntEnum):
     # error states
     NONFINITE = STATUS.NONFINITE
     OUT_OF_DOMAIN = STATUS.OUT_OF_DOMAIN
+    BELOW_BOTTOM = STATUS.BELOW_BOTTOM
+    ABOVE_SURFACE = STATUS.ABOVE_SURFACE
 
     # Reserved for multistep initialization
     MULTISTEP_1 = STATUS.MULTISTEP_1

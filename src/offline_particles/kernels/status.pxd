@@ -8,6 +8,8 @@ cdef enum STATUS:
     # error states
     NONFINITE = 1 | INACTIVE
     OUT_OF_DOMAIN = 2 | INACTIVE
+    BELOW_BOTTOM = 3 | INACTIVE
+    ABOVE_SURFACE = 4 | INACTIVE
 
     # Reserved for multistep initialization
     MULTISTEP_1 = 10

@@ -44,7 +44,9 @@ cdef void _finite_indices(particles):
 
 cdef _domain_bounds(particles, scalars, fielddata):
     """
-    Sets particles.status[i] = 2 if any indices are out of bounds.
+    Sets particles.status[i] = ParticleStatus.OUT_OF_DOMAIN if either horizontal index is out of bounds.
+    Sets particles.status[i] = ParticleStatus.BELOW_BOTTOM if vertical index is less than min.
+    Sets particles.status[i] = ParticleStatus.ABOVE_SURFACE if vertical index is graeter than max.
     """
     cdef unsigned char[::1] status
     cdef double[::1] zidx, yidx, xidx
@@ -68,9 +70,15 @@ cdef _domain_bounds(particles, scalars, fielddata):
         if status[i] & STATUS.INACTIVE:
             continue
 
+        # check vertical index
+        if zidx[i] < zmin:
+            status[i] = STATUS.BELOW_BOTTOM
+        elif zidx[i] > zmax:
+            status[i] = STATUS.ABOVE_SURFACE
+
         # if any index is out of bounds mark as invalid
+        # note this takes precedence over vertical checks
         if not (
-            zmin <= zidx[i] <= zmax and
             ymin <= yidx[i] <= ymax and
             xmin <= xidx[i] <= xmax
         ):
