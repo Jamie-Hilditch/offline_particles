@@ -2,6 +2,7 @@
 
 import abc
 import collections
+from typing import Any
 
 import dask.array as da
 import numpy as np
@@ -20,6 +21,8 @@ class Field(abc.ABC):
         z_stagger: Stagger,
         y_stagger: Stagger,
         x_stagger: Stagger,
+        *,
+        attrs: dict[str, Any] | None = None,
     ) -> None:
         self._z_stagger = z_stagger
         self._y_stagger = y_stagger
@@ -27,6 +30,9 @@ class Field(abc.ABC):
         self._z_offset = z_stagger.offset
         self._y_offset = y_stagger.offset
         self._x_offset = x_stagger.offset
+        if attrs is None:
+            attrs = {}
+        self._attrs = attrs
 
     @property
     def z_stagger(self) -> Stagger:
@@ -47,6 +53,11 @@ class Field(abc.ABC):
     def stagger(self) -> tuple[Stagger, Stagger, Stagger]:
         """Staggering of the (z, y, x) dimensions."""
         return (self._z_stagger, self._y_stagger, self._x_stagger)
+
+    @property
+    def attrs(self) -> dict[str, Any]:
+        """Attributes associated with the field."""
+        return self._attrs
 
     @property
     def z_offset(self) -> float | None:
@@ -125,11 +136,14 @@ class StaticField(Field):
     def __init__(
         self,
         data: SpatialArray,
+        *,
+        attrs: dict[str, Any] | None = None,
     ):
         super().__init__(
             z_stagger=data.z_stagger,
             y_stagger=data.y_stagger,
             x_stagger=data.x_stagger,
+            attrs=attrs,
         )
         self._data = data
 
@@ -203,6 +217,8 @@ class StaticField(Field):
         z_stagger: Stagger | str,
         y_stagger: Stagger | str,
         x_stagger: Stagger | str,
+        *,
+        attrs: dict[str, Any] | None = None,
     ) -> "StaticField":
         """Create a StaticField from a NumPy array."""
         spatial_array = NumpyArray(
@@ -211,7 +227,7 @@ class StaticField(Field):
             y_stagger=Stagger(y_stagger),
             x_stagger=Stagger(x_stagger),
         )
-        return cls(data=spatial_array)
+        return cls(data=spatial_array, attrs=attrs)
 
     @classmethod
     def from_dask(
@@ -220,6 +236,8 @@ class StaticField(Field):
         z_stagger: Stagger | str,
         y_stagger: Stagger | str,
         x_stagger: Stagger | str,
+        *,
+        attrs: dict[str, Any] | None = None,
     ) -> "StaticField":
         """Create a StaticField from a chunked Dask array."""
         spatial_array = ChunkedDaskArray(
@@ -228,7 +246,7 @@ class StaticField(Field):
             y_stagger=Stagger(y_stagger),
             x_stagger=Stagger(x_stagger),
         )
-        return cls(data=spatial_array)
+        return cls(data=spatial_array, attrs=attrs)
 
 
 type SpatialArrayFactory = type[NumpyArray] | type[ChunkedDaskArray]
@@ -245,11 +263,14 @@ class TimeDependentField(Field):
         x_stagger: Stagger | str,
         spatial_array_factory: SpatialArrayFactory = NumpyArray,
         output_dtype: npt.DTypeLike = np.float64,
+        *,
+        attrs: dict[str, Any] | None = None,
     ):
         super().__init__(
             z_stagger=Stagger(z_stagger),
             y_stagger=Stagger(y_stagger),
             x_stagger=Stagger(x_stagger),
+            attrs=attrs,
         )
 
         if data.ndim < 2:
@@ -436,9 +457,11 @@ class TimeDependentField(Field):
         z_stagger: Stagger | str,
         y_stagger: Stagger | str,
         x_stagger: Stagger | str,
+        *,
+        attrs: dict[str, Any] | None = None,
     ) -> "TimeDependentField":
         """Create a TimeDependentField from a NumPy array."""
-        return cls(data, z_stagger, y_stagger, x_stagger, NumpyArray)
+        return cls(data, z_stagger, y_stagger, x_stagger, NumpyArray, attrs=attrs)
 
     @classmethod
     def from_dask(
@@ -449,10 +472,11 @@ class TimeDependentField(Field):
         x_stagger: Stagger | str,
         *,
         preload_space: bool = False,
+        attrs: dict[str, Any] | None = None,
     ) -> "TimeDependentField":
         """Create a TimeDependentField from a chunked Dask array."""
         if preload_space:
             factory = NumpyArray
         else:
             factory = ChunkedDaskArray
-        return cls(data, z_stagger, y_stagger, x_stagger, factory)
+        return cls(data, z_stagger, y_stagger, x_stagger, factory, attrs=attrs)
