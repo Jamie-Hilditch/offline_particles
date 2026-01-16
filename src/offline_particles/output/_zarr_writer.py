@@ -217,7 +217,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         """Initialize Zarr array for output."""
         shape = (0, nparticles)
         chunks = (1, min(self._chunksize, nparticles))
-        return zarr.create_array(
+        array = zarr.create_array(
             self._store,
             name=name,
             shape=shape,
@@ -227,3 +227,12 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             overwrite=self._overwrite,
             **array_kwargs,
         )
+        if output.units is not None:
+            array.attrs["units"] = output.units
+        if output.long_name is not None:
+            array.attrs["long_name"] = output.long_name
+        if output.standard_name is not None:
+            array.attrs["standard_name"] = output.standard_name
+        if output.description is not None:
+            array.attrs["description"] = output.description
+        return array

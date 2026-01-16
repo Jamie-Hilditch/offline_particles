@@ -22,6 +22,7 @@ class Output:
     units: str | None = None
     long_name: str | None = None
     standard_name: str | None = None
+    description: str | None = None
     kernels: tuple[ParticleKernel, ...]
 
     def __init__(
@@ -33,6 +34,7 @@ class Output:
         units: str | None = None,
         long_name: str | None = None,
         standard_name: str | None = None,
+        description: str | None = None,
     ) -> None:
         """Initialize the Output."""
         # default value for particle_field
@@ -62,6 +64,7 @@ class Output:
         object.__setattr__(self, "units", units)
         object.__setattr__(self, "long_name", long_name)
         object.__setattr__(self, "standard_name", standard_name)
+        object.__setattr__(self, "description", description)
         object.__setattr__(self, "kernels", kernels)
 
 
