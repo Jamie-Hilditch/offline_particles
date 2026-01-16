@@ -198,6 +198,8 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             )
             for name, (output, array_kwargs) in self._outputs.items()
         }
+        # consolidate metadata
+        zarr.consolidate_metadata(self._store)
         return ZarrOutputWriter(
             name=self._name,
             store=self._store,
