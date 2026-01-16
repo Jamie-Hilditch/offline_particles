@@ -107,6 +107,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         store: zarr.storage.StoreLike,
         *,
         chunksize: int = DEFAULT_CHUNKSIZE,
+        consolidate_metadata: bool = True,
         particle_dimension_name: str = "particle",
         time_name: str = "time",
         overwrite: bool = False,
@@ -120,6 +121,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
 
         Keywords:
             chunksize: The chunk size for the particle dimension.
+            consolidate_metadata: Whether to consolidate metadata after building.
             particle_dimension_name: The name of the particle dimension.
             time_name: The name of the time output array.
             overwrite: Whether to overwrite existing data in the store.
@@ -131,6 +133,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         self._outputs: dict[str, tuple[Output, dict[str, Any]]] = {}
 
         self._chunksize = chunksize
+        self._consolidate_metadata = consolidate_metadata
         self._particle_dimension_name = particle_dimension_name
         self._time_name = time_name
         self._overwrite = overwrite
@@ -199,7 +202,8 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             for name, (output, array_kwargs) in self._outputs.items()
         }
         # consolidate metadata
-        zarr.consolidate_metadata(self._store)
+        if self._consolidate_metadata:
+            zarr.consolidate_metadata(self._store)
         return ZarrOutputWriter(
             name=self._name,
             store=self._store,
