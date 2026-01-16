@@ -19,6 +19,9 @@ class Output:
     name: str
     particle_field: str
     dtype: np.dtype = dataclasses.field(init=False)
+    units: str | None = None
+    long_name: str | None = None
+    standard_name: str | None = None
     kernels: tuple[ParticleKernel, ...]
 
     def __init__(
@@ -27,6 +30,9 @@ class Output:
         *kernels: ParticleKernel,
         particle_field: str | None = None,
         dtype: npt.DTypeLike | None = None,
+        units: str | None = None,
+        long_name: str | None = None,
+        standard_name: str | None = None,
     ) -> None:
         """Initialize the Output."""
         # default value for particle_field
@@ -53,6 +59,9 @@ class Output:
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "particle_field", particle_field)
         object.__setattr__(self, "dtype", dtype)
+        object.__setattr__(self, "units", units)
+        object.__setattr__(self, "long_name", long_name)
+        object.__setattr__(self, "standard_name", standard_name)
         object.__setattr__(self, "kernels", kernels)
 
 
