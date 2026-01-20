@@ -154,9 +154,7 @@ class Clock:
 class Timestepper(abc.ABC):
     """Class that handles particle timestepping."""
 
-    def __init__(self, clock: Clock) -> None:
-        self._clock = clock
-
+    def __init__(self) -> None:
         # default value for index padding
         self._index_padding = 0
 
@@ -206,25 +204,25 @@ class Timestepper(abc.ABC):
             self._post_step_kernels,
         )
 
-    def run_initialisation(self, particles: Particles, launcher: Launcher) -> None:
+    def run_initialisation(self, particles: Particles, launcher: Launcher, clock: Clock) -> None:
         """Initialize the particles by launching the initialisation kernels."""
         for kernel in self._initialisation_kernels:
-            launcher.launch_kernel(kernel, particles, self._clock.tinfo)
+            launcher.launch_kernel(kernel, particles, clock.tinfo)
 
-    def run_pre_step(self, particles: Particles, launcher: Launcher) -> None:
+    def run_pre_step(self, particles: Particles, launcher: Launcher, clock: Clock) -> None:
         """Launch the pre-step kernels."""
         for kernel in self._pre_step_kernels:
-            launcher.launch_kernel(kernel, particles, self._clock.tinfo)
+            launcher.launch_kernel(kernel, particles, clock.tinfo)
 
     @abc.abstractmethod
-    def run_step(self, particles: Particles, launcher: Launcher) -> None:
+    def run_step(self, particles: Particles, launcher: Launcher, clock: Clock) -> None:
         """Timestep the particles."""
         pass
 
-    def run_post_step(self, particles: Particles, launcher: Launcher) -> None:
+    def run_post_step(self, particles: Particles, launcher: Launcher, clock: Clock) -> None:
         """Launch the post-step kernels."""
         for kernel in self._post_step_kernels:
-            launcher.launch_kernel(kernel, particles, self._clock.tinfo)
+            launcher.launch_kernel(kernel, particles, clock.tinfo)
 
 
 class RK2Timestepper(Timestepper):
@@ -240,12 +238,11 @@ class RK2Timestepper(Timestepper):
 
     def __init__(
         self,
-        clock: Clock,
         *,
         alpha: float = 2 / 3,
         index_padding: int = 0,
     ) -> None:
-        super().__init__(clock)
+        super().__init__()
         self._rk_step_1_kernels = []
         self._rk_step_2_kernels = []
         self._rk_update_kernels = []
@@ -279,22 +276,22 @@ class RK2Timestepper(Timestepper):
             self._rk_update_kernels,
         )
 
-    def run_step(self, particles: Particles, launcher: Launcher) -> None:
+    def run_step(self, particles: Particles, launcher: Launcher, clock: Clock) -> None:
         """Launch the RK2 kernels to timestep the particles."""
         # Stage 1 - runs at current time
         for kernel in self._rk_step_1_kernels:
-            launcher.launch_kernel(kernel, particles, self._clock.tinfo)
+            launcher.launch_kernel(kernel, particles, clock.tinfo)
         # Compute intermediate time info
-        intermediate_time = self._clock.time + self._alpha * self._clock.dt  # type: ignore[operator]
-        intermediate_tidx = self._clock.get_time_index(intermediate_time)
-        intermediate_tinfo = Time_info(intermediate_time, intermediate_tidx, self._clock.iteration)
+        intermediate_time = clock.time + self._alpha * clock.dt  # type: ignore[operator]
+        intermediate_tidx = clock.get_time_index(intermediate_time)
+        intermediate_tinfo = Time_info(intermediate_time, intermediate_tidx, clock.iteration)
         # Stage 2 - runs at intermediate time
         for kernel in self._rk_step_2_kernels:
             launcher.launch_kernel(kernel, particles, intermediate_tinfo)
         # Compute end time info
-        end_time = self._clock.time + self._clock.dt  # type: ignore[operator]
-        end_tidx = self._clock.get_time_index(end_time)
-        end_tinfo = Time_info(end_time, end_tidx, self._clock.iteration)
+        end_time = clock.time + clock.dt  # type: ignore[operator]
+        end_tidx = clock.get_time_index(end_time)
+        end_tinfo = Time_info(end_time, end_tidx, clock.iteration)
         # Update kernel - runs at end time
         for kernel in self._rk_update_kernels:
             launcher.launch_kernel(kernel, particles, end_tinfo)
@@ -305,11 +302,10 @@ class ABTimestepper(Timestepper):
 
     def __init__(
         self,
-        clock: Clock,
         *,
         index_padding: int = 0,
     ) -> None:
-        super().__init__(clock)
+        super().__init__()
         self._ab_kernels = []
         self._index_padding = index_padding
 
@@ -325,10 +321,10 @@ class ABTimestepper(Timestepper):
         """Get the kernels used by this timestepper."""
         return itertools.chain(super().kernels, self._ab_kernels)
 
-    def run_step(self, particles: Particles, launcher: Launcher) -> None:
+    def run_step(self, particles: Particles, launcher: Launcher, tinfo: Tinfo) -> None:
         """Launch the Adams-Bashforth kernel to timestep the particles."""
         # Launch Adams-Bashforth kernel
-        launcher.launch_kernel(self._ab_kernel, particles, self._clock.tinfo)
+        launcher.launch_kernel(self._ab_kernel, particles, tinfo)
 
 
 # Kernel for AB3 initialisation
