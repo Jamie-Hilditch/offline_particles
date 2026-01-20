@@ -1,4 +1,12 @@
 cmake_minimum_required(VERSION 3.21)
+# fallback for project name and version
+if(NOT DEFINED SKBUILD_PROJECT_NAME)
+    set(SKBUILD_PROJECT_NAME "offline_particles")
+endif()
+if(NOT DEFINED SKBUILD_PROJECT_VERSION)
+    set(SKBUILD_PROJECT_VERSION "0.1.0")
+endif()
+# set up project
 project(${SKBUILD_PROJECT_NAME} LANGUAGES C VERSION ${SKBUILD_PROJECT_VERSION})
 
 # required packages
