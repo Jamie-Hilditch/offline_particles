@@ -1,7 +1,8 @@
 """Submodule for working with simulation events."""
 
 import dataclasses
-from typing import Callable
+import types
+from typing import Callable, Iterable, Mapping
 
 import numpy as np
 
@@ -30,13 +31,16 @@ class Event:
     An event consists of a single function that acts on the simulation state,
     along with any number of associated particle kernels that are launched by the
     scheduler prior to the invokation of the event function.
+
+    Particle kernels are used to prepare or modify particle data before the event
+    function is called. They are stored as a mapping from ParticleSet name to the kernel.
     """
 
-    def __init__(self, name: str, func: EventFunction, *kernels: ParticleKernel) -> None:
+    def __init__(self, name: str, func: EventFunction, **kernels: Iterable[ParticleKernel]) -> None:
         """Initialize the event."""
         self._name = name
         self._func = func
-        self._kernels = kernels
+        self._kernels: dict[str, ParticleKernel] = {name: tuple(kernels) for name, kernels in kernels.items()}
 
     def __call__(self, state: SimulationState) -> None:
         """Invoke the event function."""
@@ -48,6 +52,6 @@ class Event:
         return self._name
 
     @property
-    def kernels(self) -> tuple[ParticleKernel, ...]:
+    def kernels(self) -> Mapping[str, tuple[ParticleKernel, ...]]:
         """The kernels associated with this event."""
-        return self._kernels
+        return types.MappingProxyType(self._kernels)
