@@ -1,5 +1,6 @@
 """Submodule for particle kernel launchers."""
 
+import collections
 from typing import Callable, TypeVar
 
 import numpy as np
@@ -10,20 +11,24 @@ from .kernels import ParticleKernel
 from .particles import Particles
 from .spatial_arrays import BBox
 
-T = TypeVar("T", bound=np.number)
+T = TypeVar("T", bound=np.generic)
+
+# Named tuple for time information
+Time_info = collections.namedtuple("Time_info", ["time", "tidx", "iteration"])
+type Tinfo = Time_info[np.float64 | np.timedelta64, np.float64, int]
 
 
 class ScalarSource[T]:
     """Descriptor declaring a scalar data source.
 
     The getter must have signature:
-        (self, tidx: float) -> np.generic
+        (self, tinfo: Tinfo) -> np.generic
     """
 
     def __init__(
         self,
         name: str,
-        getter: Callable[[object, float], T],
+        getter: Callable[[object, Tinfo], T],
     ) -> None:
         self.name = name
         self._getter = getter
@@ -34,13 +39,13 @@ class ScalarSource[T]:
             return self
 
         # Accessed on an instance → return bound callable
-        def scalar_func(tidx: float) -> T:
-            return self._getter(obj, tidx)
+        def scalar_func(tinfo: Tinfo) -> T:
+            return self._getter(obj, tinfo)
 
         return scalar_func
 
 
-type ScalarProvider = Callable[[float], np.number]
+type ScalarProvider = Callable[[Tinfo], np.generic]
 
 # -------------------------------
 # Kernel Launcher
@@ -70,10 +75,10 @@ class Launcher:
             self.register_scalar_data_source(name, value_func)
 
     @staticmethod
-    def create_value_scalar_source(value: np.number) -> ScalarProvider:
+    def create_value_scalar_source(value: np.generic) -> ScalarProvider:
         """Create a scalar data source that always returns the given value."""
 
-        def value_func(tidx: float) -> np.number:
+        def value_func(tinfo: Tinfo) -> np.generic:
             return value
 
         return value_func
@@ -163,31 +168,11 @@ class Launcher:
         """
         return self._fieldset[name].get_field_data(time_index, bbox)
 
-    def launch_kernel(self, kernel: ParticleKernel, particles: Particles, time_index: float) -> None:
+    def launch_kernel(self, kernel: ParticleKernel, particles: Particles, tinfo: Tinfo) -> None:
         """Launch a kernel."""
         # construct kernel inputs
         bbox = self.construct_bbox(particles)
-        scalars = {name: self._scalar_data_sources[name](time_index) for name in kernel.scalars}
-        fielddata = {name: self.get_field_data(name, time_index, bbox) for name in kernel.simulation_fields}
+        scalars = {name: self._scalar_data_sources[name](tinfo) for name in kernel.scalars}
+        fielddata = {name: self.get_field_data(name, tinfo.tidx, bbox) for name in kernel.simulation_fields}
         # call the kernel
         kernel(particles, scalars, fielddata)
-
-
-# def register_scalar_data_source(
-#     name: str,
-# ) -> Callable[[ScalarDataSource], ScalarDataSource]:
-#     """A decorator to register a scalar data source.
-
-#     Parameters
-#     ----------
-#     name : str
-#         Name to register the function under.
-#     """
-
-#     def decorator(func: ScalarDataSource) -> ScalarDataSource:
-#         if hasattr(func, "__scalar_data_name__"):
-#             raise RuntimeError(f"{func} already defines __scalar_data_name__")
-#         func.__scalar_data_name__ = name
-#         return func
-
-#     return decorator

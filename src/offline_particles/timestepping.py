@@ -9,20 +9,21 @@ import numpy.typing as npt
 
 from .fields import FieldData
 from .kernels import ParticleKernel, ParticleStatus, is_active
-from .launcher import Launcher, ScalarSource
+from .launcher import Launcher, ScalarSource, Time_info, Tinfo
 from .particles import Particles
 
 type T = np.float64 | np.datetime64
 type D = np.float64 | np.timedelta64
 
 
-class Timestepper(abc.ABC):
-    """Class that handles particle advection timestepping."""
+class Clock:
+    """Class keeping time for a simulation."""
 
     # scalar data sources
-    _dt_scalar = ScalarSource("_dt", lambda self, tidx: self._normalised_dt)
-    _time_scalar = ScalarSource("_time", lambda self, tidx: self.time)
-    _tidx_scalar = ScalarSource("_tidx", lambda self, tidx: self._tidx)
+    _dt_scalar = ScalarSource("_dt", lambda self, tinfo: self._normalised_dt)
+    _time_scalar = ScalarSource("_time", lambda self, tinfo: self.time)
+    _tidx_scalar = ScalarSource("_tidx", lambda self, tinfo: self._tidx)
+    _iteration_scalar = ScalarSource("_iteration", lambda self, tinfo: self._iteration)
 
     def __init__(
         self,
@@ -55,14 +56,6 @@ class Timestepper(abc.ABC):
         self.set_time(self._time_array[0])
         self.set_iteration(0)
 
-        # default value for index padding
-        self._index_padding = 0
-
-        # initialise empty lists for kernels
-        self._initialisation_kernels: list[ParticleKernel] = []
-        self._pre_step_kernels: list[ParticleKernel] = []
-        self._post_step_kernels: list[ParticleKernel] = []
-
     def get_time_index(self, time: T) -> np.float64:
         """Get the time index corresponding to the given time.
 
@@ -87,7 +80,7 @@ class Timestepper(abc.ABC):
         return idx + fraction
 
     def set_dt(self, dt: D) -> None:
-        """Set the time step for this timestepper."""
+        """Set the time step."""
         # convert dt to timestep_type
         try:
             self._normalised_dt = np.float64(dt / self._time_unit)  # type: ignore[operator]
@@ -106,10 +99,71 @@ class Timestepper(abc.ABC):
         self._time = time
 
     def set_iteration(self, iteration: int) -> None:
-        """Set the current iteration for this timestepper."""
+        """Set the current iteration."""
         if iteration < 0:
             raise ValueError("Iteration must be non-negative.")
         self._iteration = iteration
+
+    @property
+    def time_unit(self) -> D:
+        """The time unit for this clock."""
+        return self._time_unit
+
+    @property
+    def dt(self) -> D:
+        """The time step for this clock."""
+        return self._normalised_dt * self._time_unit
+
+    @property
+    def time(self) -> T:
+        """The current time for this clock."""
+        return self._time
+
+    @property
+    def time_array(self) -> npt.NDArray[T]:
+        """The time array for this clock."""
+        return self._time_array
+
+    @property
+    def iteration(self) -> int:
+        """The current iteration for this clock."""
+        return self._iteration
+
+    @property
+    def tidx(self) -> np.float64:
+        """The current time index for this clock."""
+        return self._tidx
+
+    @property
+    def tinfo(self) -> Tinfo:
+        """The current time information for this clock."""
+        return Time_info(self._time, self._tidx, self._iteration)
+
+    @property
+    def forward_in_time(self) -> np.bool:
+        """Whether the clock is advancing time forwards."""
+        return self._normalised_dt > 0
+
+    def advance_time(self) -> None:
+        """Advance the current time by dt and update the time index."""
+        self._time += self.dt  # type: ignore[operator]
+        self._tidx = self.get_time_index(self._time)
+        self._iteration += 1
+
+
+class Timestepper(abc.ABC):
+    """Class that handles particle timestepping."""
+
+    def __init__(self, clock: Clock) -> None:
+        self._clock = clock
+
+        # default value for index padding
+        self._index_padding = 0
+
+        # initialise empty lists for kernels
+        self._initialisation_kernels = []
+        self._pre_step_kernels = []
+        self._post_step_kernels = []
 
     def add_initialisation_kernel(self, *kernels: ParticleKernel) -> None:
         """Add kernels to be launched during initialisation."""
@@ -124,88 +178,53 @@ class Timestepper(abc.ABC):
         self._post_step_kernels.extend(kernels)
 
     @property
-    def time_unit(self) -> D:
-        """The time unit for this timestepper."""
-        return self._time_unit
-
-    @property
-    def dt(self) -> D:
-        """The time step for this timestepper."""
-        return self._normalised_dt * self._time_unit
-
-    @property
-    def time(self) -> T:
-        """The current time for this timestepper."""
-        return self._time
-
-    @property
-    def time_array(self) -> npt.NDArray[T]:
-        """The time array for this timestepper."""
-        return self._time_array
-
-    @property
-    def iteration(self) -> int:
-        """The current iteration for this timestepper."""
-        return self._iteration
-
-    @property
-    def tidx(self) -> np.float64:
-        """The current time index for this timestepper."""
-        return self._tidx
-
-    @property
     def index_padding(self) -> int:
         """The index padding required by this timestepper."""
         return self._index_padding
 
     @property
-    def forward_in_time(self) -> np.bool:
-        """Whether the timestepper is advancing time forwards."""
-        return self._normalised_dt > 0
-
-    @property
     def initialisation_kernels(self) -> list[ParticleKernel]:
-        """The list of initialisation kernels used by this timestepper."""
+        """The initialisation kernels used by this timestepper."""
         return self._initialisation_kernels
 
     @property
     def pre_step_kernels(self) -> list[ParticleKernel]:
-        """The list of pre-step kernels used by this timestepper."""
+        """The pre-step kernels used by this timestepper."""
         return self._pre_step_kernels
 
     @property
     def post_step_kernels(self) -> list[ParticleKernel]:
-        """The list of post-step kernels used by this timestepper."""
+        """The post-step kernels used by this timestepper."""
         return self._post_step_kernels
 
     @property
     def kernels(self) -> Iterator[ParticleKernel]:
         """Get the kernels used by this timestepper."""
-        return itertools.chain(self._initialisation_kernels, self._pre_step_kernels, self._post_step_kernels)
+        return itertools.chain(
+            self._initialisation_kernels,
+            self._pre_step_kernels,
+            self._post_step_kernels,
+        )
 
-    def advance_time(self) -> None:
-        """Advance the current time by dt and update the time index."""
-        self._time += self.dt  # type: ignore[operator]
-        self._tidx = self.get_time_index(self._time)
-        self._iteration += 1
+    def run_initialisation(self, particles: Particles, launcher: Launcher) -> None:
+        """Initialize the particles by launching the initialisation kernels."""
+        for kernel in self._initialisation_kernels:
+            launcher.launch_kernel(kernel, particles, self._clock.tinfo)
+
+    def run_pre_step(self, particles: Particles, launcher: Launcher) -> None:
+        """Launch the pre-step kernels."""
+        for kernel in self._pre_step_kernels:
+            launcher.launch_kernel(kernel, particles, self._clock.tinfo)
 
     @abc.abstractmethod
-    def step_particles(self, particles: Particles, launcher: Launcher) -> None:
+    def run_step(self, particles: Particles, launcher: Launcher) -> None:
         """Timestep the particles."""
         pass
 
-    def step(self, particles: Particles, launcher: Launcher) -> None:
-        """Timestep the particles by one time step."""
-        # Launch pre-step kernels
-        for kernel in self._pre_step_kernels:
-            launcher.launch_kernel(kernel, particles, self._tidx)
-        # Launch main step kernels
-        self.step_particles(particles, launcher)
-        # Advance time
-        self.advance_time()
-        # Launch post-step kernels
+    def run_post_step(self, particles: Particles, launcher: Launcher) -> None:
+        """Launch the post-step kernels."""
         for kernel in self._post_step_kernels:
-            launcher.launch_kernel(kernel, particles, self._tidx)
+            launcher.launch_kernel(kernel, particles, self._clock.tinfo)
 
 
 class RK2Timestepper(Timestepper):
@@ -219,27 +238,31 @@ class RK2Timestepper(Timestepper):
             |  1 - 1 / 2 alpha    1 / 2 alpha
     """
 
-    # scalar source
-    _alpha_scalar = ScalarSource("_RK2_alpha", lambda self, tidx: self._alpha)
-
     def __init__(
         self,
-        time_array: npt.NDArray[T],
-        dt: D,
-        rk_step_1_kernel: ParticleKernel,
-        rk_step_2_kernel: ParticleKernel,
-        rk_update_kernel: ParticleKernel,
+        clock: Clock,
         *,
         alpha: float = 2 / 3,
-        time_unit: D | None = None,
         index_padding: int = 0,
     ) -> None:
-        super().__init__(time_array, dt, time_unit=time_unit)
-        self._rk_step_1_kernel = rk_step_1_kernel
-        self._rk_step_2_kernel = rk_step_2_kernel
-        self._rk_update_kernel = rk_update_kernel
+        super().__init__(clock)
+        self._rk_step_1_kernels = []
+        self._rk_step_2_kernels = []
+        self._rk_update_kernels = []
         self._alpha = alpha
         self._index_padding = index_padding
+
+    def add_rk_step_1_kernels(self, *kernels: ParticleKernel) -> None:
+        """Add kernel to be launched during first rk step."""
+        self._rk_step_1_kernels.extend(kernels)
+
+    def add_rk_step_2_kernels(self, *kernels: ParticleKernel) -> None:
+        """Add kernel to be launched during second rk step."""
+        self._rk_step_2_kernels.extend(kernels)
+
+    def add_rk_update_kernels(self, *kernels: ParticleKernel) -> None:
+        """Add kernel to be launched during rk update step."""
+        self._rk_update_kernels.extend(kernels)
 
     @property
     def alpha(self) -> float:
@@ -251,24 +274,30 @@ class RK2Timestepper(Timestepper):
         """Get the kernels used by this timestepper."""
         return itertools.chain(
             super().kernels,
-            [
-                self._rk_step_1_kernel,
-                self._rk_step_2_kernel,
-                self._rk_update_kernel,
-            ],
+            self._rk_step_1_kernels,
+            self._rk_step_2_kernels,
+            self._rk_update_kernels,
         )
 
-    def step_particles(self, particles: Particles, launcher: Launcher) -> None:
+    def run_step(self, particles: Particles, launcher: Launcher) -> None:
         """Launch the RK2 kernels to timestep the particles."""
-        # Stage 1
-        launcher.launch_kernel(self._rk_step_1_kernel, particles, self._tidx)
-        # Compute intermediate time and time index
-        intermediate_time = self.time + self._alpha * self.dt  # type: ignore[operator]
-        intermediate_tidx = self.get_time_index(intermediate_time)
-        # Stage 2
-        launcher.launch_kernel(self._rk_step_2_kernel, particles, intermediate_tidx)
-        # Update kernel
-        launcher.launch_kernel(self._rk_update_kernel, particles, self._tidx)
+        # Stage 1 - runs at current time
+        for kernel in self._rk_step_1_kernels:
+            launcher.launch_kernel(kernel, particles, self._clock.tinfo)
+        # Compute intermediate time info
+        intermediate_time = self._clock.time + self._alpha * self._clock.dt  # type: ignore[operator]
+        intermediate_tidx = self._clock.get_time_index(intermediate_time)
+        intermediate_tinfo = Time_info(intermediate_time, intermediate_tidx, self._clock.iteration)
+        # Stage 2 - runs at intermediate time
+        for kernel in self._rk_step_2_kernels:
+            launcher.launch_kernel(kernel, particles, intermediate_tinfo)
+        # Compute end time info
+        end_time = self._clock.time + self._clock.dt  # type: ignore[operator]
+        end_tidx = self._clock.get_time_index(end_time)
+        end_tinfo = Time_info(end_time, end_tidx, self._clock.iteration)
+        # Update kernel - runs at end time
+        for kernel in self._rk_update_kernels:
+            launcher.launch_kernel(kernel, particles, end_tinfo)
 
 
 class ABTimestepper(Timestepper):
@@ -276,29 +305,30 @@ class ABTimestepper(Timestepper):
 
     def __init__(
         self,
-        time_array: npt.NDArray[T],
-        dt: D,
-        ab_kernel: ParticleKernel,
+        clock: Clock,
         *,
-        time_unit: D | None = None,
         index_padding: int = 0,
     ) -> None:
-        super().__init__(time_array, dt, time_unit=time_unit)
-        self._ab_kernel = ab_kernel
+        super().__init__(clock)
+        self._ab_kernels = []
         self._index_padding = index_padding
 
         # Add AB3 initialisation kernel
         self.add_initialisation_kernel(ab_initialisation_kernel)
 
+    def add_ab_kernels(self, *kernels: ParticleKernel) -> None:
+        """Add kernels to be launched during Adams-Bashforth step."""
+        self._ab_kernels.extend(kernels)
+
     @property
     def kernels(self) -> Iterator[ParticleKernel]:
         """Get the kernels used by this timestepper."""
-        return itertools.chain(super().kernels, [self._ab_kernel])
+        return itertools.chain(super().kernels, self._ab_kernels)
 
-    def step_particles(self, particles: Particles, launcher: Launcher) -> None:
+    def run_step(self, particles: Particles, launcher: Launcher) -> None:
         """Launch the Adams-Bashforth kernel to timestep the particles."""
         # Launch Adams-Bashforth kernel
-        launcher.launch_kernel(self._ab_kernel, particles, self._tidx)
+        launcher.launch_kernel(self._ab_kernel, particles, self._clock.tinfo)
 
 
 # Kernel for AB3 initialisation
