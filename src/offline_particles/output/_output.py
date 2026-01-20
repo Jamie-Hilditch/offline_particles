@@ -3,69 +3,47 @@
 import abc
 import dataclasses
 import functools
-from typing import Mapping
+from typing import Any, Iterable, Mapping
 
 import numpy as np
-import numpy.typing as npt
 
 from ..events import Event, SimulationState
-from ..kernels import ParticleKernel, merge_particle_fields
+from ..kernels import ParticleKernel
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, slots=True, init=False)
 class Output:
     """Class defining a single output."""
 
     name: str
     particle_field: str
-    dtype: np.dtype = dataclasses.field(init=False)
-    units: str | None = None
-    long_name: str | None = None
-    standard_name: str | None = None
-    description: str | None = None
     kernels: tuple[ParticleKernel, ...]
+    attrs: dict[str, Any]
 
     def __init__(
         self,
         name: str,
         *kernels: ParticleKernel,
         particle_field: str | None = None,
-        dtype: npt.DTypeLike | None = None,
-        units: str | None = None,
-        long_name: str | None = None,
-        standard_name: str | None = None,
-        description: str | None = None,
+        **attrs: Any,
     ) -> None:
         """Initialize the Output."""
         # default value for particle_field
         if particle_field is None:
             particle_field = name
 
-        # infer dtype from kernels
-        kernel_fields = merge_particle_fields(kernels)
-        kernel_dtype = kernel_fields.get(particle_field, None)
-
-        # if dtype and kernel_dtype are both None, raise error
-        if dtype is None and kernel_dtype is None:
-            raise ValueError(
-                f"Cannot infer dtype of '{particle_field}. '{particle_field}' was not found in kernels and dtype was not given."
-            )
-        elif dtype is None and kernel_dtype is not None:
-            dtype = kernel_dtype
-        else:
-            # dtype is not None
-            dtype = np.dtype(dtype)
-            if kernel_dtype is not None and dtype != kernel_dtype:
-                raise ValueError(f"Given dtype '{dtype}' does not match dtype required by kernels '{kernel_dtype}'.")
-
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "particle_field", particle_field)
-        object.__setattr__(self, "dtype", dtype)
-        object.__setattr__(self, "units", units)
-        object.__setattr__(self, "long_name", long_name)
-        object.__setattr__(self, "standard_name", standard_name)
-        object.__setattr__(self, "description", description)
         object.__setattr__(self, "kernels", kernels)
+        object.__setattr__(self, "attrs", dict(attrs))
+
+    @property
+    def required_fields(self) -> set[str]:
+        """Get the particle fields required by the output."""
+        fields = set(self.particle_field)
+        for kernel in self.kernels:
+            fields.update(kernel.particle_fields)
+        return fields
 
 
 class AbstractOutputWriter(abc.ABC):
@@ -79,7 +57,7 @@ class AbstractOutputWriter(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def outputs(self) -> Mapping[str, Output]:
+    def outputs(self) -> Mapping[str, Iterable[Output]]:
         """The outputs declared for this writer."""
         pass
 
@@ -93,12 +71,12 @@ class AbstractOutputWriter(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def write_output(self, name: str, state: SimulationState) -> None:
+    def write_output(self, output: Output, state: SimulationState) -> None:
         """Write output for a given variable at the current time step.
 
         Args:
-            name: The name of the output variable to write.
-            particles: The current view of the particles.
+            output: The Output to write.
+            state: The current simulation state.
         """
         pass
 
@@ -107,13 +85,14 @@ class AbstractOutputWriter(abc.ABC):
         """Confirm that all outputs have been written for the current round."""
         pass
 
-    def event_name(self, output_name: str) -> str:
+    def event_name(self, particle_set_name: str, output_name: str) -> str:
         """Generate a name for an output event.
 
         Args:
+            particle_set_name: The name of the particle set.
             output_name: The name of the output variable.
         """
-        return f"{self.name}:{output_name}"
+        return f"{self.name}:{particle_set_name}:{output_name}"
 
     def create_events(self) -> list[Event]:
         """Create events for writing output.
@@ -125,14 +104,16 @@ class AbstractOutputWriter(abc.ABC):
         events = []
 
         # write time
-        time_event = Event(self.event_name("time"), self.write_time)
+        time_event = Event(f"{self.name}:time", self.write_time)
         events.append(time_event)
 
         # write outputs
-        for name, output in self.outputs.items():
-            event_func = functools.partial(self.write_output, name)
-            event = Event(self.event_name(name), event_func, *output.kernels)
-            events.append(event)
+        for particle_set_name, outputs in self.outputs.items():
+            for output in outputs:
+                name = self.event_name(particle_set_name, output.name)
+                event_func = functools.partial(self.write_output, output)
+                event = Event(name, event_func, **{particle_set_name: output.kernels})
+                events.append(event)
 
         # finalise write round
         finalise_write_round_event = Event(self.event_name("finalise"), self.finalise_write_round)
@@ -152,34 +133,41 @@ class AbstractOutputWriterBuilder(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def outputs(self) -> Mapping[str, Output]:
+    def outputs(self) -> Mapping[str, Iterable[Output]]:
         """The outputs declared for this writer."""
         pass
 
     @abc.abstractmethod
-    def add_output(self, *outputs: Output, **kwargs) -> None:
+    def add_output(self, particle_set_name: str, *outputs: Output, **kwargs) -> None:
         """Add an output to the writer.
 
         Args:
+            particle_set_name: The name of the particle set.
             *outputs: The outputs to add.
             **kwargs: Additional keyword arguments.
         """
         pass
 
     @abc.abstractmethod
-    def remove_output(self, name: str) -> None:
+    def remove_output(self, particle_set_name: str, output_name: str) -> None:
         """Remove an output from the writer.
 
         Args:
-            name: The name of the output to remove.
+            particle_set_name: The name of the particle set.
+            output_name: The name of the output to remove.
         """
         pass
 
     @abc.abstractmethod
     def build(
         self,
-        nparticles: int,
+        nparticles: dict[str, int],
         time_type: np.dtype,
     ) -> AbstractOutputWriter:
-        """Build the output writer."""
+        """Build the output writer.
+
+        Args:
+            nparticles: A mapping of particle set names to number of particles.
+            time_type: The numpy dtype for the time variable.
+        """
         pass
