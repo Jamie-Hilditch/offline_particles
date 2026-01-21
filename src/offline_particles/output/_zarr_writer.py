@@ -1,5 +1,6 @@
 """Write output to Zarr stores."""
 
+import dataclasses
 import types
 from typing import Any, Mapping
 
@@ -8,9 +9,26 @@ import zarr
 import zarr.storage
 
 from ..events import SimulationState
+from ..particles import ParticlesView
 from ._output import AbstractOutputWriter, AbstractOutputWriterBuilder, Output
 
-DEFAULT_CHUNKSIZE = 10_000
+DEFAULT_CHUNKSIZE = 250_000
+
+
+@dataclasses.dataclass(slots=True)
+class ZarrOutputArray:
+    """Class representing a Zarr output array."""
+
+    output: Output
+    array: zarr.Array
+
+
+@dataclasses.dataclass(slots=True)
+class ZarrOutputDefinition:
+    """Class representing a Zarr output definition."""
+
+    output: Output
+    kwargs: dict[str, Any]
 
 
 class ZarrOutputWriter(AbstractOutputWriter):
@@ -21,14 +39,14 @@ class ZarrOutputWriter(AbstractOutputWriter):
         name: str,
         store: zarr.storage.StoreLike,
         time_array: zarr.Array,
-        outputs: dict[str, tuple[Output, zarr.Array]],
+        outputs: dict[str, ZarrOutputArray],
     ) -> None:
         """Initialize the Zarr output writer.
 
         Args:
             store: The Zarr store to write to.
             time_array: The Zarr array for time output.
-            outputs: A dictionary mapping output names to Output.
+            outputs: A dictionary mapping particle set names to lists of ZarrOutputArrays.
         """
         self._name = name
         self._store = store
@@ -49,7 +67,7 @@ class ZarrOutputWriter(AbstractOutputWriter):
     @property
     def outputs(self) -> Mapping[str, Output]:
         """The outputs declared for this writer."""
-        return types.MappingProxyType({key: output for key, (output, _) in self._outputs.items()})
+        return types.MappingProxyType({key: zoa.output for key, zoa in self._outputs.items()})
 
     def write_time(self, state: SimulationState) -> None:
         """Write the current simulation time.
@@ -64,19 +82,20 @@ class ZarrOutputWriter(AbstractOutputWriter):
 
         Args:
             name: The name of the output variable to write.
-            particles: The current view of the particles.
-            time: The current simulation time.
+            state: The current simulation state.
         """
         if name not in self._outputs:
             raise KeyError(f"Output variable '{name}' not found.")
 
-        output, output_array = self._outputs[name]
+        zarr_output_array = self._outputs[name]
+        output = zarr_output_array.output
+        array = zarr_output_array.array
         field = output.particle_field
 
         # write output
-        time_size, particle_size = output_array.shape
-        output_array.resize((time_size + 1, particle_size))
-        output_array[-1, :] = state.particles[field]
+        time_size, particle_size = array.shape
+        array.resize((time_size + 1, particle_size))
+        array[-1, :] = state.particles[field]
 
     def finalise_write_round(self, state: SimulationState) -> None:
         """Confirm that all outputs have been written for the current round and then increments the count."""
@@ -88,11 +107,9 @@ class ZarrOutputWriter(AbstractOutputWriter):
             raise RuntimeError(f"Time output has {time_count} entries, expected {expected_count}.")
 
         # check all other outputs
-        for name, (_, output_array) in self._outputs.items():
-            if output_array.shape[0] != expected_count:
-                raise RuntimeError(
-                    f"Output '{name}' has {output_array.shape[0]} time entries, expected {expected_count}."
-                )
+        for name, zoa in self._outputs.items():
+            if zoa.array.shape[0] != expected_count:
+                raise RuntimeError(f"Output '{name}' has {zoa.array.shape[0]} time entries, expected {expected_count}.")
 
         # increment count
         self._output_count += 1
@@ -108,7 +125,6 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         *,
         chunksize: int = DEFAULT_CHUNKSIZE,
         consolidate_metadata: bool = True,
-        particle_dimension_name: str = "particle",
         time_name: str = "time",
         overwrite: bool = False,
         array_kwargs: dict[str, Any] | None = None,
@@ -122,7 +138,6 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         Keywords:
             chunksize: The chunk size for the particle dimension.
             consolidate_metadata: Whether to consolidate metadata after building.
-            particle_dimension_name: The name of the particle dimension.
             time_name: The name of the time output array.
             overwrite: Whether to overwrite existing data in the store.
             array_kwargs: Default keyword arguments passed to Zarr.create_array for all outputs.
@@ -130,11 +145,10 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         """
         self._name = name
         self._store = store
-        self._outputs: dict[str, tuple[Output, dict[str, Any]]] = {}
+        self._outputs: dict[str, ZarrOutputDefinition] = {}
 
         self._chunksize = chunksize
         self._consolidate_metadata = consolidate_metadata
-        self._particle_dimension_name = particle_dimension_name
         self._time_name = time_name
         self._overwrite = overwrite
         if array_kwargs is None:
@@ -152,7 +166,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
     @property
     def outputs(self) -> Mapping[str, Output]:
         """The outputs declared for this writer."""
-        return types.MappingProxyType({key: output for key, (output, _) in self._outputs.items()})
+        return types.MappingProxyType({key: zod.output for key, zod in self._outputs.items()})
 
     def add_output(self, *outputs: Output, **kwargs) -> None:
         """Add outputs to the writer.
@@ -169,7 +183,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             if name in self._outputs:
                 raise KeyError(f"Output variable with name '{name}' already exists.")
 
-            self._outputs[name] = (output, array_kwargs)
+            self._outputs[name] = ZarrOutputDefinition(output, array_kwargs)
 
     def remove_output(self, name: str) -> None:
         """Remove an output from the writer.
@@ -182,7 +196,9 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
 
         del self._outputs[name]
 
-    def build(self, nparticles: int, time_type: np.dtype = np.dtype(np.float64)) -> ZarrOutputWriter:
+    def build(
+        self, particles: dict[str, ParticlesView], time_type: np.dtype = np.dtype(np.float64)
+    ) -> ZarrOutputWriter:
         # initialise outputs
         time_output = zarr.create_array(
             self._store,
@@ -195,11 +211,11 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             **self._time_array_kwargs,
         )
         outputs = {
-            name: (
-                output,
-                self._initialize_output_array(name, output, nparticles, array_kwargs),
+            name: ZarrOutputArray(
+                zod.output,
+                self._initialize_output_array(name, zod.output, ParticlesView, zod.kwargs),
             )
-            for name, (output, array_kwargs) in self._outputs.items()
+            for name, zod in self._outputs.items()
         }
         # consolidate metadata
         if self._consolidate_metadata:
@@ -212,27 +228,33 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         )
 
     def _initialize_output_array(
-        self, name: str, output: Output, nparticles: int, array_kwargs: dict[str, Any]
+        self, name: str, output: Output, particles: ParticlesView, array_kwargs: dict[str, Any]
     ) -> zarr.Array:
         """Initialize Zarr array for output."""
+        # extract particle set and particles
+        particle_set = output.particle_set
+        if particle_set not in particles:
+            raise KeyError(f"Particle set '{particle_set}' not found in particles.")
+        particles = particles[particle_set]
+
+        # set shape, dtype and chunks
+        nparticles = len(particles)
         shape = (0, nparticles)
+        if output.particle_field not in particles.dtypes:
+            raise KeyError(f"Particle field '{output.particle_field}' not found in particle set '{particle_set}'.")
+        dtype = particles.dtypes[output.particle_field]
         chunks = (1, min(self._chunksize, nparticles))
+
+        # create array
         array = zarr.create_array(
             self._store,
             name=name,
             shape=shape,
-            dtype=output.dtype,
+            dtype=dtype,
             chunks=chunks,
-            dimension_names=(self._time_name, self._particle_dimension_name),
+            attributes=output.attrs,
+            dimension_names=(self._time_name, particle_set),
             overwrite=self._overwrite,
             **array_kwargs,
         )
-        if output.units is not None:
-            array.attrs["units"] = output.units
-        if output.long_name is not None:
-            array.attrs["long_name"] = output.long_name
-        if output.standard_name is not None:
-            array.attrs["standard_name"] = output.standard_name
-        if output.description is not None:
-            array.attrs["description"] = output.description
         return array

@@ -9,6 +9,7 @@ import numpy as np
 
 from ..events import Event, SimulationState
 from ..kernels import ParticleKernel
+from ..particles import ParticlesView
 
 
 @dataclasses.dataclass(frozen=True, slots=True, init=False)
@@ -159,7 +160,7 @@ class AbstractOutputWriterBuilder(abc.ABC):
     @abc.abstractmethod
     def build(
         self,
-        nparticles: dict[str, int],
+        particles: dict[str, ParticlesView],
         time_type: np.dtype,
     ) -> AbstractOutputWriter:
         """Build the output writer.
