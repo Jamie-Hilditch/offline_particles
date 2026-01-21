@@ -217,12 +217,12 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             # get nparticles for this particle set
             if output.particle_set not in nparticles:
                 raise KeyError(f"Number of particles for particle set '{output.particle_set}' not provided.")
-            nparticles = nparticles[output.particle_set]
+            num_particles = nparticles[output.particle_set]
 
             # create output array
             outputs[name] = ZarrOutputArray(
                 output,
-                self._initialize_output_array(name, output, nparticles, kwargs),
+                self._initialize_output_array(name, output, num_particles, kwargs),
             )
 
         # consolidate metadata

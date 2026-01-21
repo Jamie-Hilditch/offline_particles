@@ -93,7 +93,7 @@ class Simulation:
             # then merge required particle fields from all kernels
             particle_fields = merge_particle_fields(kernels)
             self._particles[name] = Particles(nparticles, **particle_fields)
-            self._particles_view[name] = ParticlesView(self._particles)
+            self._particles_view[name] = ParticlesView(self._particles[name])
 
         # store the current wall time
         self._wall_time_start = time.perf_counter_ns()
@@ -411,47 +411,58 @@ class Simulation:
 
     def set_indices(
         self,
+        particle_set: str,
+        *,
         zidx: npt.ArrayLike | None = None,
         yidx: npt.ArrayLike | None = None,
         xidx: npt.ArrayLike | None = None,
     ) -> None:
         """Set the particles indices."""
 
+        if particle_set not in self._particles:
+            raise ValueError(f"Particle set '{particle_set}' not found in simulation.")
+        particles = self._particles[particle_set]
+
         # first make the inputs compatible with the particle arrays
         # allow this to error if the shapes / types are incompatible
         # before modifying any particle data
         if zidx is not None:
             zidx = np.asarray(zidx, dtype=np.float64)
-            zidx = np.broadcast_to(zidx, self._particles.zidx.shape)
+            zidx = np.broadcast_to(zidx, particles.zidx.shape)
 
         if yidx is not None:
             yidx = np.asarray(yidx, dtype=np.float64)
-            yidx = np.broadcast_to(yidx, self._particles.yidx.shape)
+            yidx = np.broadcast_to(yidx, particles.yidx.shape)
 
         if xidx is not None:
             xidx = np.asarray(xidx, dtype=np.float64)
-            xidx = np.broadcast_to(xidx, self._particles.xidx.shape)
+            xidx = np.broadcast_to(xidx, particles.xidx.shape)
 
         # now set the indices
         if zidx is not None:
-            self._particles.zidx[:] = zidx
+            particles.zidx[:] = zidx
         if yidx is not None:
-            self._particles.yidx[:] = yidx
+            particles.yidx[:] = yidx
         if xidx is not None:
-            self._particles.xidx[:] = xidx
+            particles.xidx[:] = xidx
 
     def set_particle_field(
         self,
+        particle_set: str,
         field_name: str,
         values: npt.ArrayLike,
     ) -> None:
         """Set a particle field to the given values.
 
         Args:
+            particle_set: The name of the particle set to modify.
             field_name: The name of the particle field to set.
             values: The values to set the particle field to.
         """
-        particle_field = self._particles[field_name]
+        if particle_set not in self._particles:
+            raise ValueError(f"Particle set '{particle_set}' not found in simulation.")
+
+        particle_field = self._particles[particle_set][field_name]
         values_array = np.asarray(values, dtype=particle_field.dtype)
         values_array = np.broadcast_to(values_array, particle_field.shape)
         particle_field[:] = values_array

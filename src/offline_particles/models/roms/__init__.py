@@ -1,13 +1,11 @@
 """Offline particles simulations using ROMS output."""
 
 import numpy as np
-import numpy.typing as npt
 
 # import ROMS kernels
 from ...kernels import ParticleKernel
 from ...kernels.adams_bashforth import ab3_bump_status_kernel, ab3_update_kernel
 from ...kernels.roms import (
-    ab3_isopycnal_following_kernel,
     ab3_w_advection_kernel,
     compute_z_kernel,
     compute_zidx_kernel,
@@ -38,55 +36,36 @@ type D = np.float64 | np.timedelta64
 
 
 def rk2_w_advection_timestepper(
-    time_array: npt.NDArray,
-    dt: D,
     *,
-    time_unit: D | None = None,
     index_padding: int = 5,
     alpha: float = 2 / 3,
 ) -> RK2Timestepper:
     """Create an RK2 timestepper with ROMS w advection kernels.
 
-    Args:
-        time_array: Array of simulation times.
-        dt: Timestep size.
-
     Keyword Args:
-        time: Initial simulation time.
-        iteration: Initial iteration number.
         index_padding: Index padding, i.e. the minimum amount by which the field indices
             exceed the particle indices (default 5).
         alpha: The RK2 alpha parameter (default 2/3 - the Ralston method).
     """
     timestepper = RK2Timestepper(
-        time_array,
-        dt,
-        rk_step_1_kernel=rk2_w_advection_step_1_kernel,
-        rk_step_2_kernel=rk2_w_advection_step_2_kernel,
-        rk_update_kernel=rk2_w_advection_update_kernel,
-        time_unit=time_unit,
         alpha=alpha,
         index_padding=index_padding,
     )
-    timestepper.add_pre_step_kernel(validation_kernel)
-    timestepper.add_post_step_kernel(compute_zidx_kernel())
+    timestepper.add_pre_step_kernels(validation_kernel)
+    timestepper.add_rk_step_1_kernels(rk2_w_advection_step_1_kernel)
+    timestepper.add_rk_step_2_kernels(rk2_w_advection_step_2_kernel)
+    timestepper.add_rk_update_kernels(rk2_w_advection_update_kernel)
+    timestepper.add_post_step_kernels(compute_zidx_kernel())
     return timestepper
 
 
 def roms_ab3_timestepper(
-    time_array: npt.NDArray,
-    dt: D,
     *,
     vertical_velocity: bool = True,
     buoyant_particles: bool = False,
-    time_unit: D | None = None,
     index_padding: int = 5,
 ) -> ABTimestepper:
     """Create an AB3 timestepper with ROMS advection kernels.
-
-    Args:
-        time_array: Array of simulation times.
-        dt: Timestep size.
 
     Keyword Args:
         vertical_velocity: Whether to include vertical velocity advection (default True).
@@ -149,43 +128,9 @@ def roms_ab3_timestepper(
     pre_step_kernels = [validation_kernel]
 
     timestepper = ABTimestepper(
-        time_array,
-        dt,
-        ab_kernel=ab_kernel,
-        time_unit=time_unit,
         index_padding=index_padding,
     )
-    timestepper.add_pre_step_kernel(*pre_step_kernels)
-    timestepper.add_post_step_kernel(*post_step_kernels)
-    return timestepper
-
-
-def ab3_isopycnal_following_timestepper(
-    time_array: npt.NDArray,
-    dt: D,
-    *,
-    time_unit: D | None = None,
-    index_padding: int = 5,
-) -> ABTimestepper:
-    """Create an AB3 timestepper with ROMS isopycnal following kernels.
-
-    Args:
-        time_array: Array of simulation times.
-        dt: Timestep size.
-
-    Keyword Args:
-        time: Initial simulation time.
-        iteration: Initial iteration number.
-        index_padding: Index padding, i.e. the minimum amount by which the field indices
-            exceed the particle indices (default 5).
-    """
-    timestepper = ABTimestepper(
-        time_array,
-        dt,
-        ab_kernel=ab3_isopycnal_following_kernel,
-        time_unit=time_unit,
-        index_padding=index_padding,
-    )
-    timestepper.add_pre_step_kernel(validation_kernel)
-    timestepper.add_post_step_kernel(compute_zidx_kernel())
+    timestepper.add_pre_step_kernels(*pre_step_kernels)
+    timestepper.add_ab_kernels(ab_kernel)
+    timestepper.add_post_step_kernels(*post_step_kernels)
     return timestepper

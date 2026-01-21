@@ -17,6 +17,7 @@ DMASK_DIM_MAPPING_2D = {
 
 def linearly_interpolate_fields(
     fieldset: Fieldset,
+    particle_set: str,
     *variables: str,
     particle_field_prefix: str = "_output",
 ) -> list[Output]:
@@ -51,6 +52,6 @@ def linearly_interpolate_fields(
         else:
             raise ValueError(f"Field '{var}' has unsupported number of dimensions: {ndim}")
 
-        outputs.append(Output(var, kernel, particle_field=particle_field))
+        outputs.append(Output(var, particle_set, kernel, particle_field=particle_field))
 
     return outputs

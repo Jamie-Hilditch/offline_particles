@@ -160,7 +160,7 @@ class AbstractOutputWriterBuilder(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def remove_output(self, output_name: str) -> None:
+    def remove_output(self, name: str) -> None:
         """Remove an output from the writer.
 
         Args:

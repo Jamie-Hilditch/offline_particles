@@ -163,15 +163,15 @@ class Timestepper(abc.ABC):
         self._pre_step_kernels = []
         self._post_step_kernels = []
 
-    def add_initialisation_kernel(self, *kernels: ParticleKernel) -> None:
+    def add_initialisation_kernels(self, *kernels: ParticleKernel) -> None:
         """Add kernels to be launched during initialisation."""
         self._initialisation_kernels.extend(kernels)
 
-    def add_pre_step_kernel(self, *kernels: ParticleKernel) -> None:
+    def add_pre_step_kernels(self, *kernels: ParticleKernel) -> None:
         """Add kernels to be launched before each timestep."""
         self._pre_step_kernels.extend(kernels)
 
-    def add_post_step_kernel(self, *kernels: ParticleKernel) -> None:
+    def add_post_step_kernels(self, *kernels: ParticleKernel) -> None:
         """Add kernels to be launched after each timestep."""
         self._post_step_kernels.extend(kernels)
 
@@ -310,7 +310,7 @@ class ABTimestepper(Timestepper):
         self._index_padding = index_padding
 
         # Add AB3 initialisation kernel
-        self.add_initialisation_kernel(ab_initialisation_kernel)
+        self.add_initialisation_kernels(ab_initialisation_kernel)
 
     def add_ab_kernels(self, *kernels: ParticleKernel) -> None:
         """Add kernels to be launched during Adams-Bashforth step."""
@@ -321,10 +321,11 @@ class ABTimestepper(Timestepper):
         """Get the kernels used by this timestepper."""
         return itertools.chain(super().kernels, self._ab_kernels)
 
-    def run_step(self, particles: Particles, launcher: Launcher, tinfo: Tinfo) -> None:
+    def run_step(self, particles: Particles, launcher: Launcher, clock: Clock) -> None:
         """Launch the Adams-Bashforth kernel to timestep the particles."""
         # Launch Adams-Bashforth kernel
-        launcher.launch_kernel(self._ab_kernel, particles, tinfo)
+        for kernel in self._ab_kernels:
+            launcher.launch_kernel(kernel, particles, clock.tinfo)
 
 
 # Kernel for AB3 initialisation
