@@ -9,7 +9,6 @@ import zarr
 import zarr.storage
 
 from ..events import SimulationState
-from ..particles import ParticlesView
 from ._output import AbstractOutputWriter, AbstractOutputWriterBuilder, Output
 
 DEFAULT_CHUNKSIZE = 250_000
@@ -196,9 +195,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
 
         del self._outputs[name]
 
-    def build(
-        self, particles: dict[str, ParticlesView], time_type: np.dtype = np.dtype(np.float64)
-    ) -> ZarrOutputWriter:
+    def build(self, nparticles: dict[str, int], time_type: np.dtype = np.dtype(np.float64)) -> ZarrOutputWriter:
         # initialise outputs
         time_output = zarr.create_array(
             self._store,
@@ -210,13 +207,24 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             overwrite=self._overwrite,
             **self._time_array_kwargs,
         )
-        outputs = {
-            name: ZarrOutputArray(
-                zod.output,
-                self._initialize_output_array(name, zod.output, ParticlesView, zod.kwargs),
+
+        # create output arrays
+        outputs = {}
+        for name, zod in self._outputs.items():
+            output = zod.output
+            kwargs = zod.kwargs
+
+            # get nparticles for this particle set
+            if output.particle_set not in nparticles:
+                raise KeyError(f"Number of particles for particle set '{output.particle_set}' not provided.")
+            nparticles = nparticles[output.particle_set]
+
+            # create output array
+            outputs[name] = ZarrOutputArray(
+                output,
+                self._initialize_output_array(name, output, nparticles, kwargs),
             )
-            for name, zod in self._outputs.items()
-        }
+
         # consolidate metadata
         if self._consolidate_metadata:
             zarr.consolidate_metadata(self._store)
@@ -228,21 +236,12 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         )
 
     def _initialize_output_array(
-        self, name: str, output: Output, particles: ParticlesView, array_kwargs: dict[str, Any]
+        self, name: str, output: Output, nparticles: int, array_kwargs: dict[str, Any]
     ) -> zarr.Array:
         """Initialize Zarr array for output."""
-        # extract particle set and particles
-        particle_set = output.particle_set
-        if particle_set not in particles:
-            raise KeyError(f"Particle set '{particle_set}' not found in particles.")
-        particles = particles[particle_set]
 
-        # set shape, dtype and chunks
-        nparticles = len(particles)
+        # set shape and chunks
         shape = (0, nparticles)
-        if output.particle_field not in particles.dtypes:
-            raise KeyError(f"Particle field '{output.particle_field}' not found in particle set '{particle_set}'.")
-        dtype = particles.dtypes[output.particle_field]
         chunks = (1, min(self._chunksize, nparticles))
 
         # create array
@@ -250,10 +249,10 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             self._store,
             name=name,
             shape=shape,
-            dtype=dtype,
+            dtype=output.dtype,
             chunks=chunks,
             attributes=output.attrs,
-            dimension_names=(self._time_name, particle_set),
+            dimension_names=(self._time_name, output.particle_set),
             overwrite=self._overwrite,
             **array_kwargs,
         )

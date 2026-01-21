@@ -6,10 +6,10 @@ import functools
 from typing import Any, Mapping
 
 import numpy as np
+import numpy.typing as npt
 
 from ..events import Event, SimulationState
-from ..kernels import ParticleKernel
-from ..particles import ParticlesView
+from ..kernels import ParticleKernel, merge_particle_fields
 
 
 @dataclasses.dataclass(frozen=True, slots=True, init=False)
@@ -20,6 +20,7 @@ class Output:
     particle_set: str
     particle_field: str
     kernels: tuple[ParticleKernel, ...]
+    dtype: npt.DTypeLike | None = None
     attrs: dict[str, Any]
 
     def __init__(
@@ -28,6 +29,7 @@ class Output:
         particle_set: str,
         *kernels: ParticleKernel,
         particle_field: str | None = None,
+        dtype: npt.DTypeLike | None = None,
         **attrs: Any,
     ) -> None:
         """Initialize the Output."""
@@ -35,10 +37,19 @@ class Output:
         if particle_field is None:
             particle_field = name
 
+        if dtype is None:
+            fields = merge_particle_fields(kernels)
+            if particle_field not in fields:
+                raise ValueError(
+                    f"Output '{name}' requires dtype to be specified as it is not provided by any of the kernels."
+                )
+            dtype = fields[particle_field]
+
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "particle_set", particle_set)
         object.__setattr__(self, "particle_field", particle_field)
         object.__setattr__(self, "kernels", kernels)
+        object.__setattr__(self, "dtype", dtype)
         object.__setattr__(self, "attrs", dict(attrs))
 
     @property
@@ -160,7 +171,7 @@ class AbstractOutputWriterBuilder(abc.ABC):
     @abc.abstractmethod
     def build(
         self,
-        particles: dict[str, ParticlesView],
+        nparticles: dict[str, int],
         time_type: np.dtype,
     ) -> AbstractOutputWriter:
         """Build the output writer.

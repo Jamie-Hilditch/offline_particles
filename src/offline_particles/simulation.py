@@ -1,5 +1,6 @@
 """Submodule defining the top-level particle simulation class."""
 
+import dataclasses
 import itertools
 import time
 import types
@@ -15,14 +16,23 @@ from .events import (
     TimeScheduler,
 )
 from .fieldset import Fieldset
-from .kernels import merge_particle_fields
-from .launcher import Launcher
+from .kernels import ParticleKernel, merge_particle_fields
+from .launcher import Launcher, Tinfo
 from .output import AbstractOutputWriter, AbstractOutputWriterBuilder
 from .particles import Particles, ParticlesView
-from .timesteppers import Timestepper
+from .timestepping import Clock, Timestepper
 
 type T = np.float64 | np.datetime64
 type D = np.float64 | np.timedelta64
+
+
+@dataclasses.dataclass
+class ParticleSet:
+    """Class representing a set of particles."""
+
+    name: str
+    nparticles: int
+    timestepper: Timestepper
 
 
 class Simulation:
@@ -30,9 +40,9 @@ class Simulation:
 
     def __init__(
         self,
-        nparticles: int,
-        timestepper: Timestepper,
+        clock: Clock,
         fieldset: Fieldset,
+        particle_sets: list[ParticleSet],
         iteration_scheduler: IterationScheduler,
         time_scheduler: TimeScheduler,
         output_writers: Mapping[str, AbstractOutputWriter],
@@ -42,31 +52,48 @@ class Simulation:
         Args:
             builder: The SimulationBuilder used to configure the simulation.
         """
-        self._timestepper = timestepper
+        self._clock = clock
         self._fieldset = fieldset
         self._iteration_scheduler = iteration_scheduler
         self._time_scheduler = time_scheduler
+        self._output_writers = output_writers
 
         # create launcher and register kernel data functions
         self._launcher = Launcher(fieldset)
-        self._launcher.set_index_padding(timestepper.index_padding)
-        self._launcher.register_scalar_data_sources_from_object(self._timestepper)
+        self._launcher.register_scalar_data_sources_from_object(clock)
         for event in self._iteration_scheduler.events:
             self._launcher.register_scalar_data_sources_from_object(event)
         for event in self._time_scheduler.events:
             self._launcher.register_scalar_data_sources_from_object(event)
 
-        # construct the particles
-        # first gather all kernels
-        kernels = list(self._timestepper.kernels)
-        for event in self._iteration_scheduler.events:
-            kernels.extend(event.kernels)
-        for event in self._time_scheduler.events:
-            kernels.extend(event.kernels)
-        # then merge required particle fields from all kernels
-        particle_fields = merge_particle_fields(kernels)
-        self._particles = Particles(nparticles, **particle_fields)
-        self._particles_view = ParticlesView(self._particles)
+        # check particle set names are unique
+        particle_set_names = [pset.name for pset in particle_sets]
+        if len(particle_set_names) != len(set(particle_set_names)):
+            raise ValueError("Particle set names must be unique.")
+
+        # store timesteppers by name
+        self._timesteppers = {pset.name: pset.timestepper for pset in particle_sets}
+        for timestepper in self._timesteppers.values():
+            self._launcher.set_index_padding(timestepper.index_padding)
+
+        # now build particles
+        self._particles = {}
+        self._particles_view = {}
+
+        for pset in particle_sets:
+            name = pset.name
+            nparticles = pset.nparticles
+            # gather kernels
+            kernels = list(pset.timestepper.kernels)
+            for event in self._iteration_scheduler.events:
+                kernels.extend(event.kernels.get(name, ()))
+            for event in self._time_scheduler.events:
+                kernels.extend(event.kernels.get(name, ()))
+
+            # then merge required particle fields from all kernels
+            particle_fields = merge_particle_fields(kernels)
+            self._particles[name] = Particles(nparticles, **particle_fields)
+            self._particles_view[name] = ParticlesView(self._particles)
 
         # store the current wall time
         self._wall_time_start = time.perf_counter_ns()
@@ -77,15 +104,6 @@ class Simulation:
         self._wall_time_stop = None
 
     # getters
-
-    @property
-    def timestepper(self) -> Timestepper:
-        """Get the timestepper used in the simulation.
-
-        Returns:
-            Timestepper: The timestepper instance.
-        """
-        return self._timestepper
 
     @property
     def fieldset(self) -> Fieldset:
@@ -103,7 +121,7 @@ class Simulation:
         Returns:
             float: The current time of the simulation.
         """
-        return self._timestepper.time
+        return self._clock.time
 
     @property
     def iteration(self) -> int:
@@ -112,7 +130,7 @@ class Simulation:
         Returns:
             int: The current iteration of the simulation.
         """
-        return self._timestepper.iteration
+        return self._clock.iteration
 
     @property
     def dt(self) -> np.float64 | np.timedelta64:
@@ -121,7 +139,7 @@ class Simulation:
         Returns:
             float: The size of each timestep in the simulation.
         """
-        return self._timestepper.dt
+        return self._clock.dt
 
     @property
     def tidx(self) -> np.float64:
@@ -130,7 +148,7 @@ class Simulation:
         Returns:
             float: The index of the current timestep.
         """
-        return self._timestepper.tidx
+        return self._clock.tidx
 
     @property
     def time_unit(self) -> np.float64 | np.timedelta64:
@@ -139,7 +157,16 @@ class Simulation:
         Returns:
             The time unit.
         """
-        return self._timestepper.time_unit
+        return self._clock.time_unit
+
+    @property
+    def tinfo(self) -> Tinfo:
+        """Get the current time information.
+
+        Returns:
+            Tinfo: The current time information named tuple.
+        """
+        return self._clock.tinfo
 
     @property
     def wall_time(self) -> np.timedelta64:
@@ -167,7 +194,7 @@ class Simulation:
         Returns:
             bool: True if the simulation is running forward in time, False otherwise.
         """
-        return self._timestepper.forward_in_time
+        return self._clock.forward_in_time
 
     @property
     def iteration_stop(self) -> int | None:
@@ -204,7 +231,7 @@ class Simulation:
         Args:
             time: The new simulation time.
         """
-        self._timestepper.set_time(time)
+        self._clock.set_time(time)
 
     def set_iteration(self, iteration: int) -> None:
         """Set the current simulation iteration.
@@ -212,7 +239,7 @@ class Simulation:
         Args:
             iteration: The new simulation iteration.
         """
-        self._timestepper.set_iteration(iteration)
+        self._clock.set_iteration(iteration)
 
     def set_dt(self, dt: D) -> None:
         """Set the timestep size.
@@ -220,7 +247,7 @@ class Simulation:
         Args:
             dt: The new timestep size.
         """
-        self._timestepper.set_dt(dt)
+        self._clock.set_dt(dt)
 
     def set_index_padding(self, index_padding: int, force: bool = False) -> None:
         """Set the index padding used by the launcher.
@@ -277,13 +304,13 @@ class Simulation:
         self.set_wall_time_stop(wall_time)
 
     @property
-    def particles(self):
+    def particles(self) -> Mapping[str, ParticlesView]:
         """A view into the current particle data.
 
         Returns:
             The current state of the particles in the simulation.
         """
-        return self._particles_view
+        return types.MappingProxyType(self._particles_view)
 
     @property
     def iteration_scheduler(self) -> IterationScheduler:
@@ -323,16 +350,26 @@ class Simulation:
 
     def step(self) -> None:
         """Advance the particle simulation by one timestep."""
-        self._timestepper.step(self._particles, self._launcher)
-        # run any scheduled events
-        self._invoke_events()
+        # run all pre step kernels
+        for name, particles in self._particles:
+            self._timesteppers[name].run_pre_step(particles, self._launcher, self._clock)
+        # run main step
+        for name, particles in self._particles:
+            self._timesteppers[name].run_step(particles, self._launcher, self._clock)
+        # advance time
+        self._clock.advance_time()
+        # run all post step kernels
+        for name, particles in self._particles:
+            self._timesteppers[name].run_post_step(particles, self._launcher, self._clock)
 
     def _invoke_events(self) -> None:
         """Invoke any scheduled events at the current time or iteration."""
         for event in itertools.chain(self._iteration_scheduler(self.iteration), self._time_scheduler(self.time)):
             # launch kernels
-            for kernel in event.kernels:
-                self._launcher.launch_kernel(kernel, self._particles, self.tidx)
+            for name, particles in self._particles.items():
+                kernels = event.kernels.get(name, ())
+                for kernel in kernels:
+                    self._launcher.launch_kernel(kernel, particles, self.tinfo)
             # invoke event function
             event(self.state)
 
@@ -347,6 +384,9 @@ class Simulation:
         if not (valid_iteration_stop or valid_time_stop or valid_wall_time_stop):
             raise ValueError("No valid stopping condition set for simulation.")
 
+        # run initialisation kernels
+        for name, particles in self._particles.items():
+            self._timesteppers[name].run_initialisation(particles, self._launcher, self._clock)
         # invoke events at initial time / iteration
         self._invoke_events()
 
@@ -416,38 +456,47 @@ class Simulation:
         values_array = np.broadcast_to(values_array, particle_field.shape)
         particle_field[:] = values_array
 
-    def run_kernel(self, kernel) -> None:
+    def run_kernel(self, name: str, kernel: ParticleKernel) -> None:
         """Execute a kernel on the particles.
 
         Args:
+            name: The name of the particle set to run the kernel on.
             kernel: The kernel to execute.
-            tidx: The timestep index to use for the kernel execution.
         """
+        # get particles
+        if name not in self._particles:
+            raise ValueError(f"Particle set '{name}' not found in simulation.")
+        particles = self._particles[name]
+
         # check kernel fields are available
         for field, dtype in kernel.particle_fields.items():
-            if field not in self._particles.arrays:
+            if field not in particles.arrays:
                 raise ValueError(f"Particle field '{field}' required by kernel is not available in the simulation.")
-            if self._particles.arrays[field].dtype != dtype:
+            if particles.arrays[field].dtype != dtype:
                 raise TypeError(
-                    f"Particle field '{field}' has dtype {self._particles.arrays[field].dtype}, "
+                    f"Particle field '{field}' has dtype {particles.arrays[field].dtype}, "
                     f"but kernel requires dtype {dtype}."
                 )
-        self._launcher.launch_kernel(kernel, self._particles, self.tidx)
+        self._launcher.launch_kernel(kernel, particles, self.tinfo)
 
 
 class SimulationBuilder:
     def __init__(
         self,
-        timestepper: Timestepper,
+        clock: Clock,
         fieldset: Fieldset,
+        *particle_sets: ParticleSet,
     ) -> None:
         """Class for building a Simulation.
 
         Args:
-            timestepper: The launcher responsible for executing kernels.
+            clock: The clock to use in the simulation.
+            fieldset: The fieldset to use in the simulation.
+            particle_sets: The particle sets to include in the simulation.
         """
-        self._timestepper = timestepper
+        self._clock = clock
         self._fieldset = fieldset
+        self._particle_sets = list(particle_sets)
 
         # events
         self._iteration_scheduler = IterationScheduler()
@@ -476,25 +525,23 @@ class SimulationBuilder:
         Args:
             dt (D): The interval in time between event triggers.
             event (Event): The event to be added.
-            first (T): The first time to trigger the event (defaults to timestepper.time).
+            first (T): The first time to trigger the event (defaults to clock.time).
         """
         # set default first time
-        timestepper_time = self._timestepper.time
+        clock_time = self._clock.time
         if first is None:
-            first = timestepper_time
+            first = clock_time
 
         # check times are compatible
         try:
-            _ = timestepper_time + dt  # type: ignore
+            _ = clock_time + dt  # type: ignore
         except TypeError as e:
-            raise TypeError(
-                f"Incompatible dt type {type(dt)} for timestepper time type {type(timestepper_time)}"
-            ) from e
+            raise TypeError(f"Incompatible dt type {type(dt)} for timestepper time type {type(clock_time)}") from e
         try:
             _ = first + dt  # type: ignore
         except TypeError as e:
             raise TypeError(
-                f"Incompatible first type {type(first)} for timestepper time type {type(timestepper_time)}"
+                f"Incompatible first type {type(first)} for timestepper time type {type(clock_time)}"
             ) from e
 
         self._time_scheduler.register_event(first, dt, event)
@@ -547,15 +594,12 @@ class SimulationBuilder:
         }
         self._output_writers[name] = (builder, kwargs)
 
-    def build_simulation(self, nparticles: int) -> Simulation:
-        """Build and return the Simulation.
-
-        Args:
-            nparticles: The number of particles in the simulation.
-        """
+    def build_simulation(self) -> Simulation:
+        """Build and return the Simulation."""
         # build output writers, construct events and make mapping immutable
         output_writers = {}
-        time_type = self._timestepper.time_array.dtype
+        time_type = self._clock.time_array.dtype
+        nparticles = {pset.name: pset.nparticles for pset in self._particle_sets}
         for name, (builder, kwargs) in self._output_writers.items():
             output_writers[name] = builder.build(nparticles, time_type)
             events = output_writers[name].create_events()
@@ -564,9 +608,9 @@ class SimulationBuilder:
         output_writers = types.MappingProxyType(output_writers)
 
         return Simulation(
-            nparticles=nparticles,
-            timestepper=self._timestepper,
+            clock=self._clock,
             fieldset=self._fieldset,
+            particle_sets=self._particle_sets,
             iteration_scheduler=self._iteration_scheduler,
             time_scheduler=self._time_scheduler,
             output_writers=output_writers,
