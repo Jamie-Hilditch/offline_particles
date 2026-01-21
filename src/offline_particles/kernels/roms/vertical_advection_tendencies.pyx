@@ -120,7 +120,7 @@ cpdef z_tendency_linearly_interpolate_w(particles, scalars, fielddata, dz_dt):
         - [dz_dt] (double): z tendency to be updated
 
 
-    scalars : dict[str, np.number]
+    scalars : dict[str, np.generic]
         A dictionary of scalar parameters required for the computation:
         - hc (double): critical depth parameter from ROMS.
         - NZ (int): number of vertical levels in the ROMS grid.
@@ -151,7 +151,7 @@ cpdef z_tendency_buoyancy_driven(particles, scalars, fielddata, dz_dt, dwb_dt):
         - [dz_dt] (double): z tendency to be updated
         - [dwb_dt] (double): buoyancy velocity tendency to be updated
 
-    scalars : dict[str, np.number]
+    scalars : dict[str, np.generic]
         A dictionary of scalar parameters required for the computation:
         - rho0 (double): reference density of the fluid.
         - g (double): acceleration due to gravity.

@@ -8,7 +8,7 @@ from .kernels import ParticleKernel, ParticleStatus
 from .models import roms
 from .output import Output, ZarrOutputBuilder
 from .simulation import Simulation, SimulationBuilder
-from .timesteppers import ABTimestepper, RK2Timestepper, Timestepper
+from .timestepping import ABTimestepper, RK2Timestepper, Timestepper
 
 __all__ = [
     "kernels",

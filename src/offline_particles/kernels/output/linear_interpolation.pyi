@@ -8,7 +8,7 @@ from .._kernels import ParticleKernel
 
 def linear_interpolation_kernel_function(
     particles: Particles,
-    scalars: dict[str, np.number],
+    scalars: dict[str, np.generic],
     fielddata: dict[str, FieldData],
     dimension_idx: str,
     field_name: str,
@@ -16,7 +16,7 @@ def linear_interpolation_kernel_function(
 ) -> None: ...
 def bilinear_interpolation_kernel_function(
     particles: Particles,
-    scalars: dict[str, np.number],
+    scalars: dict[str, np.generic],
     fielddata: dict[str, FieldData],
     dimension_idx0: str,
     dimension_idx1: str,
@@ -25,7 +25,7 @@ def bilinear_interpolation_kernel_function(
 ) -> None: ...
 def trilinear_interpolation_kernel_function(
     particles: Particles,
-    scalars: dict[str, np.number],
+    scalars: dict[str, np.generic],
     fielddata: dict[str, FieldData],
     field_name: str,
     particle_name: str,

@@ -98,7 +98,7 @@ cpdef xyidx_tendency_linear_interpolation(particles, scalars, fielddata, dxidx_d
         - xidx (double): xi index position
         - [dxidx_dt] (double): tendency in xi index space (to be updated)
         - [dyidx_dt] (double): tendency in eta index space (to be updated)
-    scalars : dict[str, np.number]
+    scalars : dict[str, np.generic]
         None required by this kernel.
     fielddata : dict[str, FieldData]
         The field data containing:

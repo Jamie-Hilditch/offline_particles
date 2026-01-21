@@ -54,7 +54,7 @@ class Fieldset:
         self._xidx_bounds = (np.float64(xidx_bounds[0]), np.float64(xidx_bounds[1]))
 
         self._fields: dict[str, Field] = {}
-        self._constants: dict[str, np.number] = {}
+        self._constants: dict[str, np.generic] = {}
 
         # add constants
         if constants is not None:
@@ -149,7 +149,7 @@ class Fieldset:
         return types.MappingProxyType(self._fields)
 
     @property
-    def constants(self) -> Mapping[str, np.number]:
+    def constants(self) -> Mapping[str, np.generic]:
         """Dictionary of constants in the fieldset."""
         return types.MappingProxyType(self._constants)
 
@@ -230,7 +230,7 @@ class Fieldset:
         )
 
 
-def _numpyify_constant(value: Any) -> np.number:
+def _numpyify_constant(value: Any) -> np.generic:
     """Convert a value to a numpy scalar."""
     try:
         arr = np.asarray(value)

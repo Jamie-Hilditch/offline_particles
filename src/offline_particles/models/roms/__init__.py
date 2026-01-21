@@ -19,7 +19,7 @@ from ...kernels.roms import (
     z_tendency_linearly_interpolate_w_kernel,
 )
 from ...kernels.validation import validation_kernel
-from ...timesteppers import ABTimestepper, RK2Timestepper
+from ...timestepping import ABTimestepper, RK2Timestepper
 
 __all__ = [
     "compute_z_kernel",

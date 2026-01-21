@@ -9,7 +9,7 @@ import numpy.typing as npt
 from ..fields import FieldData
 from ..particles import Particles
 
-type KernelFunction = Callable[[Particles, dict[str, np.number], dict[str, FieldData]], None]
+type KernelFunction = Callable[[Particles, dict[str, np.generic], dict[str, FieldData]], None]
 
 DEFAULT_PARTICLE_FIELDS: dict[str, np.dtype] = {
     "status": np.dtype(np.uint8),
@@ -85,7 +85,7 @@ class ParticleKernel:
     def __call__(
         self,
         particles: Particles,
-        scalars: dict[str, np.number],
+        scalars: dict[str, np.generic],
         fielddata: dict[str, FieldData],
     ) -> None:
         """Execute the kernel on the given particles."""

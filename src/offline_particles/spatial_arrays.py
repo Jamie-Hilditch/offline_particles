@@ -242,7 +242,7 @@ class ChunkedDaskArray(SpatialArray):
         self._chunks = data.chunks
         self._bounds = tuple(np.cumulative_sum(chunk, include_initial=True) for chunk in self._chunks)
         # placeholders for array and bounds of current subset
-        self._subset: npt.NDArray[np.number] = np.zeros((0,) * data.ndim, data.dtype)
+        self._subset: npt.NDArray[np.generic] = np.zeros((0,) * data.ndim, data.dtype)
         self._subset_bounds: tuple[tuple[int, int], ...] = ((0, 0),) * self._ndim
 
     @property

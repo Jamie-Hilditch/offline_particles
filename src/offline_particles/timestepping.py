@@ -329,7 +329,7 @@ class ABTimestepper(Timestepper):
 
 # Kernel for AB3 initialisation
 def _ab_initialisation_kernel_function(
-    particles: Particles, scalars: dict[str, np.number], fields: dict[str, FieldData]
+    particles: Particles, scalars: dict[str, np.generic], fields: dict[str, FieldData]
 ) -> None:
     """Kernel function to set status for AB3 initialisation."""
     status = particles.status
