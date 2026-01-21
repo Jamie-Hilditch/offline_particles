@@ -3,7 +3,7 @@
 import abc
 import dataclasses
 import functools
-from typing import Any, Iterable, Mapping
+from typing import Any, Mapping
 
 import numpy as np
 
@@ -16,6 +16,7 @@ class Output:
     """Class defining a single output."""
 
     name: str
+    particle_set: str
     particle_field: str
     kernels: tuple[ParticleKernel, ...]
     attrs: dict[str, Any]
@@ -23,6 +24,7 @@ class Output:
     def __init__(
         self,
         name: str,
+        particle_set: str,
         *kernels: ParticleKernel,
         particle_field: str | None = None,
         **attrs: Any,
@@ -33,6 +35,7 @@ class Output:
             particle_field = name
 
         object.__setattr__(self, "name", name)
+        object.__setattr__(self, "particle_set", particle_set)
         object.__setattr__(self, "particle_field", particle_field)
         object.__setattr__(self, "kernels", kernels)
         object.__setattr__(self, "attrs", dict(attrs))
@@ -57,7 +60,7 @@ class AbstractOutputWriter(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def outputs(self) -> Mapping[str, Iterable[Output]]:
+    def outputs(self) -> Mapping[str, Output]:
         """The outputs declared for this writer."""
         pass
 
@@ -71,11 +74,11 @@ class AbstractOutputWriter(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def write_output(self, output: Output, state: SimulationState) -> None:
+    def write_output(self, name: str, state: SimulationState) -> None:
         """Write output for a given variable at the current time step.
 
         Args:
-            output: The Output to write.
+            name: The complete name of the output variable to write.
             state: The current simulation state.
         """
         pass
@@ -85,14 +88,13 @@ class AbstractOutputWriter(abc.ABC):
         """Confirm that all outputs have been written for the current round."""
         pass
 
-    def event_name(self, particle_set_name: str, output_name: str) -> str:
-        """Generate a name for an output event.
+    def event_name(self, output_name: str) -> str:
+        """Generate an event name for an output.
 
         Args:
-            particle_set_name: The name of the particle set.
             output_name: The name of the output variable.
         """
-        return f"{self.name}:{particle_set_name}:{output_name}"
+        return f"{self.name}:{output_name}"
 
     def create_events(self) -> list[Event]:
         """Create events for writing output.
@@ -104,16 +106,14 @@ class AbstractOutputWriter(abc.ABC):
         events = []
 
         # write time
-        time_event = Event(f"{self.name}:time", self.write_time)
+        time_event = Event(self.event_name("time"), self.write_time)
         events.append(time_event)
 
         # write outputs
-        for particle_set_name, outputs in self.outputs.items():
-            for output in outputs:
-                name = self.event_name(particle_set_name, output.name)
-                event_func = functools.partial(self.write_output, output)
-                event = Event(name, event_func, **{particle_set_name: output.kernels})
-                events.append(event)
+        for name, output in self.outputs.items():
+            event_func = functools.partial(self.write_output, name)
+            event = Event(self.event_name(name), event_func, **{output.particle_set: output.kernels})
+            events.append(event)
 
         # finalise write round
         finalise_write_round_event = Event(self.event_name("finalise"), self.finalise_write_round)
@@ -133,27 +133,25 @@ class AbstractOutputWriterBuilder(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def outputs(self) -> Mapping[str, Iterable[Output]]:
+    def outputs(self) -> Mapping[str, Output]:
         """The outputs declared for this writer."""
         pass
 
     @abc.abstractmethod
-    def add_output(self, particle_set_name: str, *outputs: Output, **kwargs) -> None:
+    def add_output(self, *outputs: Output, **kwargs) -> None:
         """Add an output to the writer.
 
         Args:
-            particle_set_name: The name of the particle set.
             *outputs: The outputs to add.
             **kwargs: Additional keyword arguments.
         """
         pass
 
     @abc.abstractmethod
-    def remove_output(self, particle_set_name: str, output_name: str) -> None:
+    def remove_output(self, output_name: str) -> None:
         """Remove an output from the writer.
 
         Args:
-            particle_set_name: The name of the particle set.
             output_name: The name of the output to remove.
         """
         pass
