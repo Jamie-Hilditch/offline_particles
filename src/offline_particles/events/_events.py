@@ -40,7 +40,7 @@ class Event:
         """Initialize the event."""
         self._name = name
         self._func = func
-        self._kernels: dict[str, ParticleKernel] = {name: tuple(kernels) for name, kernels in kernels.items()}
+        self._kernels: dict[str, tuple[ParticleKernel]] = {name: tuple(kernels) for name, kernels in kernels.items()}
 
     def __call__(self, state: SimulationState) -> None:
         """Invoke the event function."""
@@ -55,3 +55,6 @@ class Event:
     def kernels(self) -> Mapping[str, tuple[ParticleKernel, ...]]:
         """The kernels associated with this event."""
         return types.MappingProxyType(self._kernels)
+
+    def __str__(self) -> str:
+        return f"Event(name={self.name}, kernels={self.kernels})"
