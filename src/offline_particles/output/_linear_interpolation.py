@@ -52,7 +52,7 @@ def linearly_interpolate_fields(
         else:
             raise ValueError(f"Field '{var}' has unsupported number of dimensions: {ndim}")
 
-        name = f"{particle_field_prefix}:{var}"
+        name = f"{particle_set}:{var}"
         outputs.append(Output(name, particle_set, kernel, particle_field=particle_field))
 
     return outputs
