@@ -351,15 +351,15 @@ class Simulation:
     def step(self) -> None:
         """Advance the particle simulation by one timestep."""
         # run all pre step kernels
-        for name, particles in self._particles:
+        for name, particles in self._particles.items():
             self._timesteppers[name].run_pre_step(particles, self._launcher, self._clock)
         # run main step
-        for name, particles in self._particles:
+        for name, particles in self._particles.items():
             self._timesteppers[name].run_step(particles, self._launcher, self._clock)
         # advance time
         self._clock.advance_time()
         # run all post step kernels
-        for name, particles in self._particles:
+        for name, particles in self._particles.items():
             self._timesteppers[name].run_post_step(particles, self._launcher, self._clock)
 
     def _invoke_events(self) -> None:
