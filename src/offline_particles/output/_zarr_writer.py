@@ -136,7 +136,6 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
 
         Keywords:
             chunksize: The chunk size for the particle dimension.
-            consolidate_metadata: Whether to consolidate metadata after building.
             time_name: The name of the time output array.
             overwrite: Whether to overwrite existing data in the store.
             array_kwargs: Default keyword arguments passed to Zarr.create_array for all outputs.
@@ -147,7 +146,6 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         self._outputs: dict[str, ZarrOutputDefinition] = {}
 
         self._chunksize = chunksize
-        self._consolidate_metadata = consolidate_metadata
         self._time_name = time_name
         self._overwrite = overwrite
         if array_kwargs is None:
@@ -225,9 +223,6 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
                 self._initialize_output_array(name, output, num_particles, kwargs),
             )
 
-        # consolidate metadata
-        if self._consolidate_metadata:
-            zarr.consolidate_metadata(self._store)
         return ZarrOutputWriter(
             name=self._name,
             store=self._store,
