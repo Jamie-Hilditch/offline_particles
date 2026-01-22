@@ -76,17 +76,17 @@ class ZarrOutputWriter(AbstractOutputWriter):
         """
         self._time_array.append(np.array([state.time]), axis=0)
 
-    def write_output(self, name: str, state: SimulationState) -> None:
+    def write_output(self, key: str, state: SimulationState) -> None:
         """Write output for a given variable at the current time step.
 
         Args:
-            name: The name of the output variable to write.
+            key: The identifier of the output variable to write.
             state: The current simulation state.
         """
-        if name not in self._outputs:
-            raise KeyError(f"Output variable '{name}' not found.")
+        if key not in self._outputs:
+            raise KeyError(f"Output variable '{key}' not found.")
 
-        zarr_output_array = self._outputs[name]
+        zarr_output_array = self._outputs[key]
         output = zarr_output_array.output
         array = zarr_output_array.array
         field = output.particle_field
@@ -165,33 +165,32 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         """The outputs declared for this writer."""
         return types.MappingProxyType({key: zod.output for key, zod in self._outputs.items()})
 
-    def add_output(self, *outputs: Output, **kwargs) -> None:
-        """Add outputs to the writer.
+    def add_output(self, key: str, output: Output, **kwargs) -> None:
+        """Add output to the writer.
 
         Args:
-            *outputs: The outputs to add.
-            **kwargs: Additional keyword arguments passed to Zarr.create_array for these outputs.
+            key: The identifier for the output. Also used as the Zarr array name unless 'name' is given in kwargs.
+            output: The output to add.
+            **kwargs: Additional keyword arguments passed to Zarr.create_array for this output.
         """
         array_kwargs = self._array_kwargs.copy()
         array_kwargs.update(kwargs)
 
-        for output in outputs:
-            name = output.name
-            if name in self._outputs:
-                raise KeyError(f"Output variable with name '{name}' already exists.")
+        if key in self._outputs:
+            raise KeyError(f"Output variable with key '{key}' already exists.")
 
-            self._outputs[name] = ZarrOutputDefinition(output, array_kwargs)
+            self._outputs[key] = ZarrOutputDefinition(output, array_kwargs)
 
-    def remove_output(self, name: str) -> None:
+    def remove_output(self, key: str) -> None:
         """Remove an output from the writer.
 
         Args:
-            name: The name of the output to remove.
+            key: The identifier of the output to remove.
         """
-        if name not in self._outputs:
-            raise KeyError(f"Output variable '{name}' does not exist.")
+        if key not in self._outputs:
+            raise KeyError(f"Output variable '{key}' does not exist.")
 
-        del self._outputs[name]
+        del self._outputs[key]
 
     def build(self, nparticles: dict[str, int], time_type: np.dtype = np.dtype(np.float64)) -> ZarrOutputWriter:
         # initialise outputs
@@ -208,7 +207,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
 
         # create output arrays
         outputs = {}
-        for name, zod in self._outputs.items():
+        for key, zod in self._outputs.items():
             output = zod.output
             kwargs = zod.kwargs
 
@@ -218,9 +217,10 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             num_particles = nparticles[output.particle_set]
 
             # create output array
-            outputs[name] = ZarrOutputArray(
+            array_name = kwargs.pop("name", key)
+            outputs[key] = ZarrOutputArray(
                 output,
-                self._initialize_output_array(name, output, num_particles, kwargs),
+                self._initialize_output_array(array_name, output, num_particles, kwargs),
             )
 
         return ZarrOutputWriter(

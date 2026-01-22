@@ -16,36 +16,27 @@ from ..kernels import ParticleKernel, merge_particle_fields
 class Output:
     """Class defining a single output."""
 
-    name: str
     particle_set: str
     particle_field: str
     kernels: tuple[ParticleKernel, ...]
-    dtype: npt.DTypeLike | None = None
+    dtype: npt.DTypeLike
     attrs: dict[str, Any]
 
     def __init__(
         self,
-        name: str,
         particle_set: str,
+        particle_field: str,
         *kernels: ParticleKernel,
-        particle_field: str | None = None,
         dtype: npt.DTypeLike | None = None,
         **attrs: Any,
     ) -> None:
         """Initialize the Output."""
-        # default value for particle_field
-        if particle_field is None:
-            particle_field = name
 
         if dtype is None:
+            # infer dtype from kernels or default to float64
             fields = merge_particle_fields(kernels)
-            if particle_field not in fields:
-                raise ValueError(
-                    f"Output '{name}' requires dtype to be specified as it is not provided by any of the kernels."
-                )
-            dtype = fields[particle_field]
+            dtype = fields.get(particle_field, np.float64)
 
-        object.__setattr__(self, "name", name)
         object.__setattr__(self, "particle_set", particle_set)
         object.__setattr__(self, "particle_field", particle_field)
         object.__setattr__(self, "kernels", kernels)
@@ -86,11 +77,11 @@ class AbstractOutputWriter(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def write_output(self, name: str, state: SimulationState) -> None:
+    def write_output(self, key: str, state: SimulationState) -> None:
         """Write output for a given variable at the current time step.
 
         Args:
-            name: The complete name of the output variable to write.
+            key: The identifier of the output variable to write.
             state: The current simulation state.
         """
         pass
@@ -122,9 +113,9 @@ class AbstractOutputWriter(abc.ABC):
         events.append(time_event)
 
         # write outputs
-        for name, output in self.outputs.items():
-            event_func = functools.partial(self.write_output, name)
-            event = Event(self.event_name(name), event_func, **{output.particle_set: output.kernels})
+        for key, output in self.outputs.items():
+            event_func = functools.partial(self.write_output, key)
+            event = Event(self.event_name(key), event_func, **{output.particle_set: output.kernels})
             events.append(event)
 
         # finalise write round
@@ -150,21 +141,22 @@ class AbstractOutputWriterBuilder(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def add_output(self, *outputs: Output, **kwargs) -> None:
+    def add_output(self, key, output: Output, **kwargs: Any) -> None:
         """Add an output to the writer.
 
         Args:
-            *outputs: The outputs to add.
+            key: The identifier for the output.
+            outputs: The output to add.
             **kwargs: Additional keyword arguments.
         """
         pass
 
     @abc.abstractmethod
-    def remove_output(self, name: str) -> None:
+    def remove_output(self, key: str) -> None:
         """Remove an output from the writer.
 
         Args:
-            output_name: The name of the output to remove.
+            key: The identifier of the output to remove.
         """
         pass
 

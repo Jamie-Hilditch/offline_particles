@@ -20,7 +20,7 @@ def linearly_interpolate_fields(
     particle_set: str,
     *variables: str,
     particle_field_prefix: str = "_output",
-) -> list[Output]:
+) -> dict[str, Output]:
     """Output variables that linearly interpolate field data.
 
     Args:
@@ -29,7 +29,7 @@ def linearly_interpolate_fields(
         particle_field_prefix: The prefix for the particle array to store the output data.
     """
     dims = ("z", "y", "x")
-    outputs = []
+    outputs = {}
 
     for var in variables:
         if var not in fieldset:
@@ -53,6 +53,6 @@ def linearly_interpolate_fields(
             raise ValueError(f"Field '{var}' has unsupported number of dimensions: {ndim}")
 
         name = f"{particle_set}:{var}"
-        outputs.append(Output(name, particle_set, kernel, particle_field=particle_field))
+        outputs[name] = Output(particle_set, particle_field, kernel)
 
     return outputs
