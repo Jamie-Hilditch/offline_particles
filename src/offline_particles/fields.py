@@ -5,6 +5,7 @@ import collections
 from typing import Any
 
 import dask.array as da
+import numba
 import numpy as np
 import numpy.typing as npt
 
@@ -285,6 +286,10 @@ class TimeDependentField(Field):
         # temporary arrays for interpolation
         self._allocate_interpolation_arrays((0,) * (data.ndim - 1))
 
+        # delta cache
+        self._cached_delta_valid = False
+        self._cached_offsets = (np.nan,) * self.nspatial_dims
+
         # time index
         if self._data.shape[0] < 2:
             raise ValueError("TimeDependentField requires at least 2 time steps.")
@@ -300,8 +305,8 @@ class TimeDependentField(Field):
     def _allocate_interpolation_arrays(self, shape: tuple[int, ...]) -> None:
         """Allocate temporary arrays for interpolation."""
         self._array_shape = shape
-        self._gt_previous = np.empty(shape=shape, dtype=self._data.dtype)
-        self._ft_next = np.empty(shape=shape, dtype=self._data.dtype)
+        self._delta = np.empty(shape=shape, dtype=self._data.dtype)
+        self._cached_delta_valid = False
         self._output = np.empty(shape=shape, dtype=self._output_dtype)
 
     @property
@@ -371,6 +376,7 @@ class TimeDependentField(Field):
             self.y_stagger,
             self.x_stagger,
         )
+        self._cached_delta_valid = False
 
     def decrement_time(self) -> None:
         """Decrement the time index, creating the previous spatial arrays."""
@@ -385,6 +391,7 @@ class TimeDependentField(Field):
             self.y_stagger,
             self.x_stagger,
         )
+        self._cached_delta_valid = False
 
     def set_time_index(self, It: int) -> None:
         """Set the time index, adjusting the spatial arrays."""
@@ -411,6 +418,7 @@ class TimeDependentField(Field):
             self.y_stagger,
             self.x_stagger,
         )
+        self._cached_delta_valid = False
 
     def get_field_data(self, time_index: float, bbox: BBox) -> FieldData:
         """Get the field data at a given time index.
@@ -433,20 +441,30 @@ class TimeDependentField(Field):
         # first make sure we're at the right time index
         self.set_time_index(It)
 
-        # load the two time subsets
+        # load the previous time subset
         previous_data, offsets = self._previous_time_slice.get_data_subset(bbox)
-        next_data, _ = self._next_time_slice.get_data_subset(bbox)
 
-        # linear interpolation in time
+        # check offsets match
+        if offsets != self._cached_offsets:
+            self._cached_offsets = offsets
+            self._cached_delta_valid = False
+
+        # check array shapes match
         if self._array_shape != previous_data.shape:
             self._allocate_interpolation_arrays(previous_data.shape)
 
-        ft = self._data_dtype.type(ft)
-        gt = self._data_dtype.type(1 - ft)
+        # load delta
+        if not self._cached_delta_valid:
+            next_data, _ = self._next_time_slice.get_data_subset(bbox)
+            np.subtract(next_data, previous_data, out=self._delta)
+            self._cached_delta_valid = True
 
-        np.multiply(previous_data, gt, out=self._gt_previous)
-        np.multiply(next_data, ft, out=self._ft_next)
-        np.add(self._gt_previous, self._ft_next, out=self._output, casting="unsafe")
+        # interpolate in time
+        ft = self._data_dtype.type(ft)
+
+        # perform interpolation - note we ravel arrays for numba
+        # all these arrays are contiguous so ravel generates 1D views
+        _perform_interpolation(previous_data.ravel(), self._delta.ravel(), ft, self._output.ravel())
 
         return FieldData(self._output, offsets)
 
@@ -480,3 +498,16 @@ class TimeDependentField(Field):
         else:
             factory = ChunkedDaskArray
         return cls(data, z_stagger, y_stagger, x_stagger, factory, attrs=attrs)
+
+
+type T = np.floating
+
+
+@numba.njit(parallel=True, fastmath=True, nogil=True)
+def _perform_interpolation(
+    previous: npt.NDArray[T], delta: npt.NDArray[T], ft: T, output: npt.NDArray[np.float64]
+) -> None:
+    """Perform linear interpolation in time."""
+    n = previous.size
+    for i in numba.prange(n):
+        output[i] = previous[i] + ft * delta[i]
