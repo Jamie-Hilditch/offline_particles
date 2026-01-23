@@ -179,7 +179,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         if key in self._outputs:
             raise KeyError(f"Output variable with key '{key}' already exists.")
 
-            self._outputs[key] = ZarrOutputDefinition(output, array_kwargs)
+        self._outputs[key] = ZarrOutputDefinition(output, array_kwargs)
 
     def remove_output(self, key: str) -> None:
         """Remove an output from the writer.
