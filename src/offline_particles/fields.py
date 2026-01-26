@@ -1,4 +1,4 @@
-"""Submodule for handling fields in ROMS particle tracking simulations."""
+"""Submodule for handling fields in offline particle simulations."""
 
 import abc
 import collections
@@ -15,7 +15,7 @@ FieldData = collections.namedtuple("FieldData", ["array", "offsets"])
 
 
 class Field(abc.ABC):
-    """Abstract base class for fields used in particle tracking."""
+    """Abstract base class for fields used in particle simulations."""
 
     def __init__(
         self,
@@ -260,7 +260,7 @@ type SpatialArrayFactory = type[NumpyArray] | type[ChunkedDaskArray]
 
 
 class TimeDependentField(Field):
-    """Class representing a time-dependent field with an least 1 spatial dimension."""
+    """Class representing a time-dependent field."""
 
     def __init__(
         self,
@@ -282,7 +282,7 @@ class TimeDependentField(Field):
 
         if data.ndim < 2:
             raise ValueError(
-                "TimeDependentField requires at least 2 dimensions (time + spatial). For spatially invariant fields, use ConstantField or TemporalField."
+                "TimeDependentField requires at least 2 dimensions (time + spatial). For spatially invariant fields use a scalar."
             )
         self._data = data
         self._spatial_array_factory = spatial_array_factory
