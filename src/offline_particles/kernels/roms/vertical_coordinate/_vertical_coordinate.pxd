@@ -1,4 +1,4 @@
-"""Submodule for handling vertical coordinate transformations in ROMS.
+"""Cython functions for working with ROMS' sigma coordinate scheme.
 
 We follow the same variable naming conventions as ROMS:
 - zidx: vertical index
