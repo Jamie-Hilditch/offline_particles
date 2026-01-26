@@ -2,7 +2,7 @@
 
 from cython.parallel cimport prange
 
-from .._core cimport unpack_fielddata_1d, unpack_fielddata_2d
+from .._core cimport unpack_FieldData_1d, unpack_FieldData_2d
 from .._interpolation.linear cimport bilinear_interpolation, linear_interpolation
 from ..status cimport STATUS
 from ._vertical_coordinate cimport compute_z, compute_zidx
@@ -14,7 +14,7 @@ import numpy as np
 
 from .._kernels import ParticleKernel
 
-cdef void _compute_z(particles, scalars, fielddata, particle_field):
+cdef void _compute_z(particles, scalars, FieldData, particle_field):
     # unpack required particle fields
     cdef unsigned char[::1] status
     cdef double[::1] zidx, yidx, xidx, z
@@ -32,13 +32,13 @@ cdef void _compute_z(particles, scalars, fielddata, particle_field):
     cdef double[:, ::1] h_array, zeta_array
     cdef double h_offy, h_offx
     cdef double zeta_offy, zeta_offx
-    h_array, h_offy, h_offx = unpack_fielddata_2d(fielddata["h"])
-    zeta_array, zeta_offy, zeta_offx = unpack_fielddata_2d(fielddata["zeta"])
+    h_array, h_offy, h_offx = unpack_FieldData_2d(FieldData["h"])
+    zeta_array, zeta_offy, zeta_offx = unpack_FieldData_2d(FieldData["zeta"])
 
     # unpack 1D field data
     cdef double[::1] C_array
     cdef double C_offz
-    C_array, C_offz = unpack_fielddata_1d(fielddata["C"])
+    C_array, C_offz = unpack_FieldData_1d(FieldData["C"])
 
     # loop over particles
     cdef Py_ssize_t i, nparticles
@@ -72,7 +72,7 @@ cdef void _compute_z(particles, scalars, fielddata, particle_field):
             zeta_value
         )
 
-cdef _compute_zidx(particles, scalars, fielddata, particle_field):
+cdef _compute_zidx(particles, scalars, FieldData, particle_field):
     # unpack required particle fields
     cdef unsigned char[::1] status
     cdef double[::1] zidx, yidx, xidx, z
@@ -90,13 +90,13 @@ cdef _compute_zidx(particles, scalars, fielddata, particle_field):
     cdef double[:, ::1] h_array, zeta_array
     cdef double h_offy, h_offx
     cdef double zeta_offy, zeta_offx
-    h_array, h_offy, h_offx = unpack_fielddata_2d(fielddata["h"])
-    zeta_array, zeta_offy, zeta_offx = unpack_fielddata_2d(fielddata["zeta"])
+    h_array, h_offy, h_offx = unpack_FieldData_2d(FieldData["h"])
+    zeta_array, zeta_offy, zeta_offx = unpack_FieldData_2d(FieldData["zeta"])
 
     # unpack 1D field data
     cdef double[::1] C_array
     cdef double C_offz
-    C_array, C_offz = unpack_fielddata_1d(fielddata["C"])
+    C_array, C_offz = unpack_FieldData_1d(FieldData["C"])
 
     # loop over particles
     cdef Py_ssize_t i, nparticles
@@ -123,13 +123,13 @@ cdef _compute_zidx(particles, scalars, fielddata, particle_field):
         )
         zidx[i] = compute_zidx(z[i], h_value, zeta_value, hc, NZ, C_array, C_offz)
 
-cpdef compute_z_kernel_function(particles, scalars, fielddata, particle_field):
+cpdef compute_z_kernel_function(particles, scalars, FieldData, particle_field):
     """Compute the physical vertical coordinate for particles."""
-    return _compute_z(particles, scalars, fielddata, particle_field)
+    return _compute_z(particles, scalars, FieldData, particle_field)
 
-cpdef compute_zidx_kernel_function(particles, scalars, fielddata, particle_field):
+cpdef compute_zidx_kernel_function(particles, scalars, FieldData, particle_field):
     """Compute the vertical index for particles."""
-    return _compute_zidx(particles, scalars, fielddata, particle_field)
+    return _compute_zidx(particles, scalars, FieldData, particle_field)
 
 
 def compute_z_kernel(particle_field: str = "z") -> ParticleKernel:

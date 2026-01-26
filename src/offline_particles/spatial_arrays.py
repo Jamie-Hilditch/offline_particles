@@ -68,6 +68,15 @@ class Stagger(enum.StrEnum):
         return self is Stagger.CENTER
 
 
+# convenience definitions of Staggers
+ALL_STAGGERS = frozenset(Stagger)
+CENTERED_STAGGERS = frozenset({Stagger.CENTER})
+ON_FACE_STAGGERS = frozenset({s for s in Stagger if s.on_face})
+ACTIVE_STAGGERS = frozenset({s for s in Stagger if s.is_active})
+INVARIANT_STAGGERS = frozenset({Stagger.INVARIANT})
+INACTIVE_STAGGERS = frozenset({s for s in Stagger if not s.is_active})
+
+
 class SpatialArray(abc.ABC):
     """Abstract base class for arrays of spatial data."""
 

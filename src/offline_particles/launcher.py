@@ -7,7 +7,7 @@ import numpy as np
 
 from .fields import FieldData
 from .fieldset import Fieldset
-from .kernels import ParticleKernel
+from .kernels import BoundKernel, is_active
 from .particles import Particles
 from .spatial_arrays import BBox
 
@@ -128,19 +128,20 @@ class Launcher:
         particles: Particles,
     ) -> BBox:
         """Construct a bounding box around the given particles with index padding."""
+        idx = is_active(particles["status"])
 
-        z_indices = particles["zidx"]
-        y_indices = particles["yidx"]
-        x_indices = particles["xidx"]
+        z_indices = particles["zidx"][idx]
+        y_indices = particles["yidx"][idx]
+        x_indices = particles["xidx"][idx]
 
-        zmin = z_indices.min() - self._index_padding
-        zmax = z_indices.max() + self._index_padding
+        zmin = z_indices.min(initial=np.inf) - self._index_padding
+        zmax = z_indices.max(initial=-np.inf) + self._index_padding
 
-        ymin = y_indices.min() - self._index_padding
-        ymax = y_indices.max() + self._index_padding
+        ymin = y_indices.min(initial=np.inf) - self._index_padding
+        ymax = y_indices.max(initial=-np.inf) + self._index_padding
 
-        xmin = x_indices.min() - self._index_padding
-        xmax = x_indices.max() + self._index_padding
+        xmin = x_indices.min(initial=np.inf) - self._index_padding
+        xmax = x_indices.max(initial=-np.inf) + self._index_padding
 
         return BBox(
             zmin=zmin,
@@ -168,11 +169,19 @@ class Launcher:
         """
         return self._fieldset[name].get_field_data(time_index, bbox)
 
-    def launch_kernel(self, kernel: ParticleKernel, particles: Particles, tinfo: Tinfo) -> None:
+    def launch_kernel(self, bound_kernel: BoundKernel, particles: Particles, tinfo: Tinfo) -> None:
         """Launch a kernel."""
         # construct kernel inputs
         bbox = self.construct_bbox(particles)
-        scalars = {name: self._scalar_data_sources[name](tinfo) for name in kernel.scalars}
-        fielddata = {name: self.get_field_data(name, tinfo.tidx, bbox) for name in kernel.simulation_fields}
+        particle_properties = {
+            name: particles[binding] for name, binding in bound_kernel.particle_property_bindings.items()
+        }
+        scalars = {
+            name: self._scalar_data_sources[binding](tinfo) for name, binding in bound_kernel.scalars_bindings.items()
+        }
+        field_data = {
+            name: self.get_field_data(binding, tinfo.tidx, bbox)
+            for name, binding in bound_kernel.field_data_bindings.items()
+        }
         # call the kernel
-        kernel(particles, scalars, fielddata)
+        bound_kernel.kernel(particle_properties, scalars, field_data)

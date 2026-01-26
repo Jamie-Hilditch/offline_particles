@@ -8,7 +8,7 @@ velocity w and then transforms that into index space.
 
 from cython.parallel cimport prange
 
-from .._core cimport unpack_fielddata_1d, unpack_fielddata_2d, unpack_fielddata_3d
+from .._core cimport unpack_FieldData_1d, unpack_FieldData_2d, unpack_FieldData_3d
 from .._interpolation.linear cimport trilinear_interpolation, bilinear_interpolation, linear_interpolation
 from ..status cimport STATUS
 from ._vertical_coordinate cimport compute_z, compute_zidx
@@ -28,7 +28,7 @@ __all__ = [
     "rk2_w_advection_update_kernel",
 ]
 
-cdef void _rk2_step_1(particles, scalars, fielddata):
+cdef void _rk2_step_1(particles, scalars, FieldData):
     # unpack required particle fields
     cdef unsigned char[::1] status
     cdef double[::1] zidx, yidx, xidx, z, dxidx1, dyidx1, dz1
@@ -50,9 +50,9 @@ cdef void _rk2_step_1(particles, scalars, fielddata):
     cdef double u_offz, u_offy, u_offx
     cdef double v_offz, v_offy, v_offx
     cdef double w_offz, w_offy, w_offx
-    u_array, u_offz, u_offy, u_offx = unpack_fielddata_3d(fielddata["u"])
-    v_array, v_offz, v_offy, v_offx = unpack_fielddata_3d(fielddata["v"])
-    w_array, w_offz, w_offy, w_offx = unpack_fielddata_3d(fielddata["w"])
+    u_array, u_offz, u_offy, u_offx = unpack_FieldData_3d(FieldData["u"])
+    v_array, v_offz, v_offy, v_offx = unpack_FieldData_3d(FieldData["v"])
+    w_array, w_offz, w_offy, w_offx = unpack_FieldData_3d(FieldData["w"])
 
     # unpack 2D field data
     cdef double[:, ::1] dx_array, dy_array, h_array, zeta_array
@@ -60,15 +60,15 @@ cdef void _rk2_step_1(particles, scalars, fielddata):
     cdef double dy_offy, dy_offx
     cdef double h_offy, h_offx
     cdef double zeta_offy, zeta_offx
-    dx_array, dx_offy, dx_offx = unpack_fielddata_2d(fielddata["dx"])
-    dy_array, dy_offy, dy_offx = unpack_fielddata_2d(fielddata["dy"])
-    h_array, h_offy, h_offx = unpack_fielddata_2d(fielddata["h"])
-    zeta_array, zeta_offy, zeta_offx = unpack_fielddata_2d(fielddata["zeta"])
+    dx_array, dx_offy, dx_offx = unpack_FieldData_2d(FieldData["dx"])
+    dy_array, dy_offy, dy_offx = unpack_FieldData_2d(FieldData["dy"])
+    h_array, h_offy, h_offx = unpack_FieldData_2d(FieldData["h"])
+    zeta_array, zeta_offy, zeta_offx = unpack_FieldData_2d(FieldData["zeta"])
 
     # unpack 1D field data
     cdef double[::1] C_array
     cdef double C_offz
-    C_array, C_offz = unpack_fielddata_1d(fielddata["C"])
+    C_array, C_offz = unpack_FieldData_1d(FieldData["C"])
 
     # loop over particles
     cdef Py_ssize_t i, nparticles
@@ -152,7 +152,7 @@ cdef void _rk2_step_1(particles, scalars, fielddata):
                 xidx[i] + w_offx
             )
 
-cdef void _rk2_step_2(particles, scalars, fielddata):
+cdef void _rk2_step_2(particles, scalars, FieldData):
     # unpack required particle fields
     cdef unsigned char[::1] status
     cdef double[::1] yidx, xidx, z, dxidx1, dyidx1, dz1, dxidx2, dyidx2, dz2
@@ -178,9 +178,9 @@ cdef void _rk2_step_2(particles, scalars, fielddata):
     cdef double u_offz, u_offy, u_offx
     cdef double v_offz, v_offy, v_offx
     cdef double w_offz, w_offy, w_offx
-    u_array, u_offz, u_offy, u_offx = unpack_fielddata_3d(fielddata["u"])
-    v_array, v_offz, v_offy, v_offx = unpack_fielddata_3d(fielddata["v"])
-    w_array, w_offz, w_offy, w_offx = unpack_fielddata_3d(fielddata["w"])
+    u_array, u_offz, u_offy, u_offx = unpack_FieldData_3d(FieldData["u"])
+    v_array, v_offz, v_offy, v_offx = unpack_FieldData_3d(FieldData["v"])
+    w_array, w_offz, w_offy, w_offx = unpack_FieldData_3d(FieldData["w"])
 
     # unpack 2D field data
     cdef double[:, ::1] dx_array, dy_array, h_array, zeta_array
@@ -188,15 +188,15 @@ cdef void _rk2_step_2(particles, scalars, fielddata):
     cdef double dy_offy, dy_offx
     cdef double h_offy, h_offx
     cdef double zeta_offy, zeta_offx
-    dx_array, dx_offy, dx_offx = unpack_fielddata_2d(fielddata["dx"])
-    dy_array, dy_offy, dy_offx = unpack_fielddata_2d(fielddata["dy"])
-    h_array, h_offy, h_offx = unpack_fielddata_2d(fielddata["h"])
-    zeta_array, zeta_offy, zeta_offx = unpack_fielddata_2d(fielddata["zeta"])
+    dx_array, dx_offy, dx_offx = unpack_FieldData_2d(FieldData["dx"])
+    dy_array, dy_offy, dy_offx = unpack_FieldData_2d(FieldData["dy"])
+    h_array, h_offy, h_offx = unpack_FieldData_2d(FieldData["h"])
+    zeta_array, zeta_offy, zeta_offx = unpack_FieldData_2d(FieldData["zeta"])
 
     # unpack 1D field data
     cdef double[::1] C_array
     cdef double C_offz
-    C_array, C_offz = unpack_fielddata_1d(fielddata["C"])
+    C_array, C_offz = unpack_FieldData_1d(FieldData["C"])
 
     # loop over particles
     cdef Py_ssize_t i, nparticles
@@ -275,7 +275,7 @@ cdef void _rk2_step_2(particles, scalars, fielddata):
             )
 
 
-cdef void _rk2_update(particles, scalars, fielddata):
+cdef void _rk2_update(particles, scalars, FieldData):
     # unpack required particle fields
     cdef unsigned char[::1] status
     cdef double[::1] yidx, xidx, z, dxidx1, dyidx1, dz1, dxidx2, dyidx2, dz2
@@ -313,17 +313,17 @@ cdef void _rk2_update(particles, scalars, fielddata):
         xidx[i] = xidx[i] + b1 * dt * dxidx1[i] + b2 * dt * dxidx2[i]
 
 # define python wrappers
-cpdef rk2_w_advection_step_1(particles, scalars, fielddata):
+cpdef rk2_w_advection_step_1(particles, scalars, FieldData):
     """First step of RK2 with ROMS w advection."""
-    _rk2_step_1(particles, scalars, fielddata)
+    _rk2_step_1(particles, scalars, FieldData)
 
-cpdef rk2_w_advection_step_2(particles, scalars, fielddata):
+cpdef rk2_w_advection_step_2(particles, scalars, FieldData):
     """Second step of RK2 with ROMS w advection."""
-    _rk2_step_2(particles, scalars, fielddata)
+    _rk2_step_2(particles, scalars, FieldData)
 
-cpdef rk2_w_advection_update(particles, scalars, fielddata):
+cpdef rk2_w_advection_update(particles, scalars, FieldData):
     """Update step of RK2 with ROMS w advection."""
-    _rk2_update(particles, scalars, fielddata)
+    _rk2_update(particles, scalars, FieldData)
 
 # define kernels
 rk2_w_advection_step_1_kernel = ParticleKernel(

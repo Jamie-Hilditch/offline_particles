@@ -2,7 +2,7 @@
 
 from cython.parallel cimport prange
 
-from .._core cimport unpack_fielddata_2d, unpack_fielddata_3d
+from .._core cimport unpack_FieldData_2d, unpack_FieldData_3d
 from .._interpolation.linear cimport trilinear_interpolation, bilinear_interpolation
 from ..status cimport STATUS
 
@@ -14,7 +14,7 @@ from .._kernels import ParticleKernel
 
 # compute the horizontal tendencies in index space using linear interpolation
 
-cdef void _xyidx_tendency_linear_interpolation(particles, scalars, fielddata, dxidx_dt, dyidx_dt):
+cdef void _xyidx_tendency_linear_interpolation(particles, scalars, FieldData, dxidx_dt, dyidx_dt):
     # unpack required particle fields
     cdef unsigned char[::1] status
     cdef double[::1] zidx, yidx, xidx
@@ -32,15 +32,15 @@ cdef void _xyidx_tendency_linear_interpolation(particles, scalars, fielddata, dx
     cdef double[:, :, ::1] u_array, v_array
     cdef double u_offz, u_offy, u_offx
     cdef double v_offz, v_offy, v_offx
-    u_array, u_offz, u_offy, u_offx = unpack_fielddata_3d(fielddata["u"])
-    v_array, v_offz, v_offy, v_offx = unpack_fielddata_3d(fielddata["v"])
+    u_array, u_offz, u_offy, u_offx = unpack_FieldData_3d(FieldData["u"])
+    v_array, v_offz, v_offy, v_offx = unpack_FieldData_3d(FieldData["v"])
 
     # unpack 2D field data
     cdef double[:, ::1] dx_array, dy_array
     cdef double dx_offy, dx_offx
     cdef double dy_offy, dy_offx
-    dx_array, dx_offy, dx_offx = unpack_fielddata_2d(fielddata["dx"])
-    dy_array, dy_offy, dy_offx = unpack_fielddata_2d(fielddata["dy"])
+    dx_array, dx_offy, dx_offx = unpack_FieldData_2d(FieldData["dx"])
+    dy_array, dy_offy, dy_offx = unpack_FieldData_2d(FieldData["dy"])
 
     # loop variables
     cdef double u_value, v_value, dx_value, dy_value
@@ -82,7 +82,7 @@ cdef void _xyidx_tendency_linear_interpolation(particles, scalars, fielddata, dx
         )
         dyidx[i] += v_value / dy_value
 
-cpdef xyidx_tendency_linear_interpolation(particles, scalars, fielddata, dxidx_dt, dyidx_dt):
+cpdef xyidx_tendency_linear_interpolation(particles, scalars, FieldData, dxidx_dt, dyidx_dt):
     """Compute horizontal advection tendencies in index space using linear interpolation.
 
     This kernel computes the horizontal advection tendencies for particles in index space
@@ -100,7 +100,7 @@ cpdef xyidx_tendency_linear_interpolation(particles, scalars, fielddata, dxidx_d
         - [dyidx_dt] (double): tendency in eta index space (to be updated)
     scalars : dict[str, np.generic]
         None required by this kernel.
-    fielddata : dict[str, FieldData]
+    FieldData : dict[str, FieldData]
         The field data containing:
         - u (double): 3D xi velocity field
         - v (double): 3D eta velocity field
@@ -111,7 +111,7 @@ cpdef xyidx_tendency_linear_interpolation(particles, scalars, fielddata, dxidx_d
     dyidx_dt : str
         The name of the particle field to add eta index space tendency to.
     """
-    _xyidx_tendency_linear_interpolation(particles, scalars, fielddata, dxidx_dt, dyidx_dt)
+    _xyidx_tendency_linear_interpolation(particles, scalars, FieldData, dxidx_dt, dyidx_dt)
 
 # kernel
 

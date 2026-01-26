@@ -1,6 +1,6 @@
 from cython.parallel cimport prange
 
-from .._core cimport unpack_fielddata_3d
+from .._core cimport unpack_FieldData_3d
 from .._interpolation.linear cimport trilinear_interpolation
 from ..status cimport STATUS
 
@@ -11,7 +11,7 @@ import numpy as np
 from .._kernels import ParticleKernel
 
 # advection in physical space by linearly interpolating the vertical velocity w
-cdef void _z_tendency_linearly_interpolate_w(particles, scalars, fielddata, dz_dt):
+cdef void _z_tendency_linearly_interpolate_w(particles, scalars, FieldData, dz_dt):
     # unpack required particle fields
     cdef unsigned char[::1] status
     cdef double[::1] zidx, yidx, xidx
@@ -25,7 +25,7 @@ cdef void _z_tendency_linearly_interpolate_w(particles, scalars, fielddata, dz_d
     # unpack 3D field data
     cdef double[:, :, ::1] w_array
     cdef double w_offz, w_offy, w_offx
-    w_array, w_offz, w_offy, w_offx = unpack_fielddata_3d(fielddata["w"])
+    w_array, w_offz, w_offy, w_offx = unpack_FieldData_3d(FieldData["w"])
 
     # loop variables
     cdef double w_value
@@ -50,7 +50,7 @@ cdef void _z_tendency_linearly_interpolate_w(particles, scalars, fielddata, dz_d
         dz[i] += w_value
 
 # buoyancy-driven vertical advection tendency
-cdef void _z_tendency_buoyancy_driven(particles, scalars, fielddata, dz_dt, dwb_dt):
+cdef void _z_tendency_buoyancy_driven(particles, scalars, FieldData, dz_dt, dwb_dt):
     # unpack required particle fields
     cdef unsigned char[::1] status
     cdef double[::1] zidx, yidx, xidx
@@ -72,7 +72,7 @@ cdef void _z_tendency_buoyancy_driven(particles, scalars, fielddata, dz_dt, dwb_
     # unpack 3D field data
     cdef double[:, :, ::1] rho_array
     cdef double rho_offz, rho_offy, rho_offx
-    rho_array, rho_offz, rho_offy, rho_offx = unpack_fielddata_3d(fielddata["rho"])
+    rho_array, rho_offz, rho_offy, rho_offx = unpack_FieldData_3d(FieldData["rho"])
 
     # loop variables
     cdef double rho_value, buoyancy
@@ -104,7 +104,7 @@ cdef void _z_tendency_buoyancy_driven(particles, scalars, fielddata, dz_dt, dwb_
 
 # python wrappers
 
-cpdef z_tendency_linearly_interpolate_w(particles, scalars, fielddata, dz_dt):
+cpdef z_tendency_linearly_interpolate_w(particles, scalars, FieldData, dz_dt):
     """
     Compute vertical advection tendency by linearly interpolating the
     vertical velocity field `w` at the particle positions.
@@ -125,16 +125,16 @@ cpdef z_tendency_linearly_interpolate_w(particles, scalars, fielddata, dz_dt):
         - hc (double): critical depth parameter from ROMS.
         - NZ (int): number of vertical levels in the ROMS grid.
 
-    fielddata : dict[str, FieldData]
+    FieldData : dict[str, FieldData]
         - w (double): vertical velocity field.
 
     dx_dt : str
         The name of the particle field to add the vertical tendency to (e.g., "_dz0").
 
     """
-    _z_tendency_linearly_interpolate_w(particles, scalars, fielddata, dz_dt)
+    _z_tendency_linearly_interpolate_w(particles, scalars, FieldData, dz_dt)
 
-cpdef z_tendency_buoyancy_driven(particles, scalars, fielddata, dz_dt, dwb_dt):
+cpdef z_tendency_buoyancy_driven(particles, scalars, FieldData, dz_dt, dwb_dt):
     """
     Compute vertical advection tendency driven by buoyancy effects.
 
@@ -157,7 +157,7 @@ cpdef z_tendency_buoyancy_driven(particles, scalars, fielddata, dz_dt, dwb_dt):
         - g (double): acceleration due to gravity.
         - buoyancy_velocity_damping (double): damping coefficient for buoyancy velocity.
 
-    fielddata : dict[str, FieldData]
+    FieldData : dict[str, FieldData]
         - rho (double): density field.
 
     dz_dt : str
@@ -174,7 +174,7 @@ cpdef z_tendency_buoyancy_driven(particles, scalars, fielddata, dz_dt, dwb_dt):
     `dwb/dt = g * (rho - rho_p) / rho0 - damp * wb` and the vertical position tendency is
     updated as `dz/dt += wb`.
     """
-    _z_tendency_buoyancy_driven(particles, scalars, fielddata, dz_dt, dwb_dt)
+    _z_tendency_buoyancy_driven(particles, scalars, FieldData, dz_dt, dwb_dt)
 
 # kernels
 

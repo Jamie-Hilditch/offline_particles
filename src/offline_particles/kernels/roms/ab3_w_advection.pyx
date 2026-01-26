@@ -8,7 +8,7 @@ velocity w and then transforms that into index space.
 
 from cython.parallel cimport prange
 
-from .._core cimport unpack_fielddata_1d, unpack_fielddata_2d, unpack_fielddata_3d
+from .._core cimport unpack_FieldData_1d, unpack_FieldData_2d, unpack_FieldData_3d
 from .._interpolation.linear cimport trilinear_interpolation, bilinear_interpolation, linear_interpolation
 from ..status cimport STATUS
 from ._vertical_coordinate cimport compute_z
@@ -17,7 +17,7 @@ import numpy as np
 
 from .._kernels import ParticleKernel
 
-cdef void _ab3_w_advection(particles, scalars, fielddata):
+cdef void _ab3_w_advection(particles, scalars, FieldData):
     # unpack required particle fields
     cdef unsigned char[::1] status
     cdef double[::1] zidx, yidx, xidx, z
@@ -49,9 +49,9 @@ cdef void _ab3_w_advection(particles, scalars, fielddata):
     cdef double u_offz, u_offy, u_offx
     cdef double v_offz, v_offy, v_offx
     cdef double w_offz, w_offy, w_offx
-    u_array, u_offz, u_offy, u_offx = unpack_fielddata_3d(fielddata["u"])
-    v_array, v_offz, v_offy, v_offx = unpack_fielddata_3d(fielddata["v"])
-    w_array, w_offz, w_offy, w_offx = unpack_fielddata_3d(fielddata["w"])
+    u_array, u_offz, u_offy, u_offx = unpack_FieldData_3d(FieldData["u"])
+    v_array, v_offz, v_offy, v_offx = unpack_FieldData_3d(FieldData["v"])
+    w_array, w_offz, w_offy, w_offx = unpack_FieldData_3d(FieldData["w"])
 
     # unpack 2D field data
     cdef double[:, ::1] dx_array, dy_array, h_array, zeta_array
@@ -59,15 +59,15 @@ cdef void _ab3_w_advection(particles, scalars, fielddata):
     cdef double dy_offy, dy_offx
     cdef double h_offy, h_offx
     cdef double zeta_offy, zeta_offx
-    dx_array, dx_offy, dx_offx = unpack_fielddata_2d(fielddata["dx"])
-    dy_array, dy_offy, dy_offx = unpack_fielddata_2d(fielddata["dy"])
-    h_array, h_offy, h_offx = unpack_fielddata_2d(fielddata["h"])
-    zeta_array, zeta_offy, zeta_offx = unpack_fielddata_2d(fielddata["zeta"])
+    dx_array, dx_offy, dx_offx = unpack_FieldData_2d(FieldData["dx"])
+    dy_array, dy_offy, dy_offx = unpack_FieldData_2d(FieldData["dy"])
+    h_array, h_offy, h_offx = unpack_FieldData_2d(FieldData["h"])
+    zeta_array, zeta_offy, zeta_offx = unpack_FieldData_2d(FieldData["zeta"])
 
     # unpack 1D field data
     cdef double[::1] C_array
     cdef double C_offz
-    C_array, C_offz = unpack_fielddata_1d(fielddata["C"])
+    C_array, C_offz = unpack_FieldData_1d(FieldData["C"])
 
     # loop variables
     cdef double h_value, zeta_value, C_value
@@ -179,9 +179,9 @@ cdef void _ab3_w_advection(particles, scalars, fielddata):
 
 
 # python wrapper
-cpdef ab3_w_advection(particles, scalars, fielddata):
+cpdef ab3_w_advection(particles, scalars, FieldData):
     """Advect particles using 3rd-order Adams-Bashforth scheme using wy."""
-    _ab3_w_advection(particles, scalars, fielddata)
+    _ab3_w_advection(particles, scalars, FieldData)
 
 # kernel
 ab3_w_advection_kernel = ParticleKernel(

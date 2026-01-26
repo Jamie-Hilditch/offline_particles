@@ -1,22 +1,90 @@
 """Particle Kernels."""
 
+from __future__ import annotations
+
+import dataclasses
 import types
 from typing import Callable, Iterable, Mapping, Self
 
 import numpy as np
 import numpy.typing as npt
 
-from ..fields import FieldData
-from ..particles import Particles
+from ..fields import Field, FieldData
+from ..spatial_arrays import ALL_STAGGERS, Stagger
 
-type KernelFunction = Callable[[Particles, dict[str, np.generic], dict[str, FieldData]], None]
+type KernelFunction = Callable[[Mapping[str, npt.NDArray], Mapping[str, np.generic], Mapping[str, FieldData]], None]
 
-DEFAULT_PARTICLE_FIELDS: dict[str, np.dtype] = {
-    "status": np.dtype(np.uint8),
-    "zidx": np.dtype(np.float64),
-    "yidx": np.dtype(np.float64),
-    "xidx": np.dtype(np.float64),
-}
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class KernelInputDeclaration:
+    """Declaration of a kernel input."""
+
+    name: str
+    dtype: np.dtype
+
+    def __post_init__(self):
+        object.__setattr__(self, "dtype", np.dtype(self.dtype))
+
+    @property
+    def doc_string_part(self) -> str:
+        return f"'{self.name}' ({self.dtype})"
+
+
+class ParticlePropertyDeclaration(KernelInputDeclaration):
+    """Declaration of a particle property required by a kernel."""
+
+
+class ScalarDeclaration(KernelInputDeclaration):
+    """Declaration of a scalar required by a kernel."""
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class FieldDataDeclaration(KernelInputDeclaration):
+    """Declaration of field data required by a kernel."""
+
+    z_staggers: frozenset[Stagger] = dataclasses.field(default=ALL_STAGGERS, kw_only=True)
+    y_staggers: frozenset[Stagger] = dataclasses.field(default=ALL_STAGGERS, kw_only=True)
+    x_staggers: frozenset[Stagger] = dataclasses.field(default=ALL_STAGGERS, kw_only=True)
+
+    def __post_init__(self):
+        super().__post_init__()
+        object.__setattr__(self, "z_staggers", frozenset(Stagger(s) for s in self.z_staggers))
+        object.__setattr__(self, "y_staggers", frozenset(Stagger(s) for s in self.y_staggers))
+        object.__setattr__(self, "x_staggers", frozenset(Stagger(s) for s in self.x_staggers))
+
+    def validate_field(self, field: Field) -> None:
+        """Validate that a field matches this declaration."""
+        if field.output_dtype != self.dtype:
+            raise TypeError(
+                f"Kernel field data '{self.name}' has dtype '{self.dtype}', but field has dtype '{field.output_dtype}'."
+            )
+        if field.z_stagger not in self.z_staggers:
+            raise ValueError(
+                f"Valid z_staggers for kernel field data '{self.name}' are "
+                f"{self.z_staggers}, "
+                f"but field has z_stagger '{field.z_stagger}'."
+            )
+        if field.y_stagger not in self.y_staggers:
+            raise ValueError(
+                f"Valid y_staggers for kernel field data '{self.name}' are "
+                f"{self.y_staggers}, "
+                f"but field has y_stagger '{field.y_stagger}'."
+            )
+        if field.x_stagger not in self.x_staggers:
+            raise ValueError(
+                f"Valid x_staggers for kernel field data '{self.name}' are "
+                f"{self.x_staggers}, "
+                f"but field has x_stagger '{field.x_stagger}'."
+            )
+
+    @property
+    def doc_string_part(self) -> str:
+        return (
+            f"'{self.name}' ({self.dtype})\n"
+            f"    z_staggers={self.z_staggers}\n"
+            f"    y_staggers={self.y_staggers}\n"
+            f"    x_staggers={self.x_staggers}"
+        )
 
 
 class ParticleKernel:
@@ -25,9 +93,9 @@ class ParticleKernel:
     def __init__(
         self,
         fn: KernelFunction | Iterable[KernelFunction],
-        particle_fields: Mapping[str, npt.DTypeLike],
-        scalars: Mapping[str, npt.DTypeLike],
-        simulation_fields: Iterable[str],
+        particle_properties: Iterable[ParticlePropertyDeclaration],
+        scalars: Iterable[ScalarDeclaration],
+        field_data: Iterable[FieldDataDeclaration],
     ):
         # store kernels as tuple of functions
         if callable(fn):
@@ -39,29 +107,40 @@ class ParticleKernel:
             raise TypeError("All kernel functions must be callable")
         self._funcs: tuple[KernelFunction, ...] = funcs
 
-        self._particle_fields = {field: np.dtype(dtype) for field, dtype in particle_fields.items()}
-        self._scalars = {scalar: np.dtype(dtype) for scalar, dtype in scalars.items()}
-        self._simulation_fields = frozenset(simulation_fields)
+        self._particle_properties = {p.name: p for p in particle_properties}
+        self._scalars = {s.name: s for s in scalars}
+        self._field_data = {f.name: f for f in field_data}
 
-    @property
-    def particle_fields(self) -> Mapping[str, np.dtype]:
-        """The required particle fields and their dtypes."""
-        return types.MappingProxyType(self._particle_fields)
+        # check for duplicate names
+        if len(self._particle_properties) != len(particle_properties):
+            raise ValueError("Duplicate particle property names in kernel declarations.")
+        if len(self._scalars) != len(scalars):
+            raise ValueError("Duplicate scalar names in kernel declarations.")
+        if len(self._field_data) != len(field_data):
+            raise ValueError("Duplicate field data names in kernel declarations.")
 
-    @property
-    def scalars(self) -> Mapping[str, np.dtype]:
-        """The required scalar fields and their dtypes."""
-        return types.MappingProxyType(self._scalars)
-
-    @property
-    def simulation_fields(self) -> frozenset[str]:
-        """The required simulation fields."""
-        return self._simulation_fields
+        # build docstring
+        self.__doc__ = self._build_doc_string()
 
     @property
     def functions(self) -> tuple[KernelFunction, ...]:
         """The kernel functions."""
         return self._funcs
+
+    @property
+    def particle_properties(self) -> Mapping[str, ParticlePropertyDeclaration]:
+        """The particle properties required by this kernel."""
+        return types.MappingProxyType(self._particle_properties)
+
+    @property
+    def scalars(self) -> Mapping[str, ScalarDeclaration]:
+        """The scalars required by this kernel."""
+        return types.MappingProxyType(self._scalars)
+
+    @property
+    def field_data(self) -> Mapping[str, FieldDataDeclaration]:
+        """The field data required by this kernel."""
+        return types.MappingProxyType(self._field_data)
 
     @staticmethod
     def func_name(fn: KernelFunction) -> str:
@@ -73,9 +152,9 @@ class ParticleKernel:
         return (
             f"{self.__class__.__name__}("
             f"funcs=[{funcs}], "
-            f"particle_fields={list(self._particle_fields)}, "
-            f"scalars={list(self._scalars)}, "
-            f"simulation_fields={sorted(self._simulation_fields)}"
+            f"particle_properties={list(self.particle_properties.values())}, "
+            f"scalars={list(self.scalars.values())}, "
+            f"field_data={list(self.field_data.values())}"
             f")"
         )
 
@@ -84,66 +163,191 @@ class ParticleKernel:
 
     def __call__(
         self,
-        particles: Particles,
-        scalars: dict[str, np.generic],
-        fielddata: dict[str, FieldData],
+        particle_properties: Mapping[str, npt.NDArray],
+        scalars: Mapping[str, np.generic],
+        field_data: Mapping[str, FieldData],
     ) -> None:
-        """Execute the kernel on the given particles."""
+        """Execute the kernel."""
         for fn in self._funcs:
-            fn(particles, scalars, fielddata)
+            fn(particle_properties, scalars, field_data)
+
+    def _build_doc_string(self) -> str:
+        doc_lines = ["Particle Kernel"]
+
+        doc_lines.extend(_new_doc_section("Functions"))
+        doc_lines.extend(self.func_name(fn) for fn in self._funcs)
+
+        doc_lines.extend(_new_doc_section("Particle Properties"))
+        doc_lines.extend(decl.doc_string_part for decl in self._particle_properties.values())
+
+        doc_lines.extend(_new_doc_section("Scalars"))
+        doc_lines.extend(decl.doc_string_part for decl in self._scalars.values())
+
+        doc_lines.extend(_new_doc_section("Field Data"))
+        doc_lines.extend(decl.doc_string_part for decl in self._field_data.values())
+
+        return "\n".join(doc_lines)
+
+    def bind(
+        self,
+        *,
+        particle_properties: Mapping[str, str] | None = None,
+        scalars: Mapping[str, str] | None = None,
+        field_data: Mapping[str, str] | None = None,
+    ) -> KernelBinding:
+        """Create a KernelBinding for this kernel."""
+        return KernelBinding(
+            self,
+            particle_property_bindings=particle_properties,
+            scalar_bindings=scalars,
+            field_data_bindings=field_data,
+        )
 
     @classmethod
-    def chain(cls, *kernels: Self) -> Self:
-        """Create a ParticleKernel by merging multiple kernels."""
-        funcs = tuple(fn for kernel in kernels for fn in kernel._funcs)
-        particle_fields = merge_particle_fields(kernels)
-        scalars = merge_scalars(kernels)
-        simulation_fields = merge_simulation_fields(kernels)
+    def chain(cls, *Kernels: Self) -> Self:
+        """Create a new ParticleKernel by merging kernels."""
+        # concatenate functions
+        funcs = sum((k._funcs for k in Kernels), ())
+        # merge declarations
+        particle_properties = _merge_declaration_dicts(*(k.particle_properties for k in Kernels))
+        scalars = _merge_declaration_dicts(*(k.scalars for k in Kernels))
+        field_data = _merge_declaration_dicts(*(k.field_data for k in Kernels))
 
         return cls(
             funcs,
-            particle_fields,
+            particle_properties,
             scalars,
-            simulation_fields,
+            field_data,
         )
 
-    def chain_with(self, *others: Self) -> Self:
-        """Chain this kernel with other kernels."""
+    def chain_with(
+        self,
+        *others: Self,
+    ) -> Self:
+        """Chain this kernel with another kernel."""
         return self.__class__.chain(self, *others)
 
 
-def merge_particle_fields(kernels: Iterable[ParticleKernel]) -> dict[str, np.dtype]:
-    """Merge particle fields from multiple kernels."""
-    merged_fields: dict[str, np.dtype] = DEFAULT_PARTICLE_FIELDS.copy()
-    for kernel in kernels:
-        for field, dtype in kernel.particle_fields.items():
-            if field in merged_fields:
-                if merged_fields[field] != dtype:
-                    raise TypeError(
-                        f"Conflicting dtypes for particle field '{field}': {merged_fields[field]} vs {dtype}"
-                    )
+def _merge_declaration_dicts(*dicts: Mapping[str, KernelInputDeclaration]) -> dict[str, KernelInputDeclaration]:
+    """Merge multiple declaration dicts, checking for conflicts."""
+    merged: dict[str, KernelInputDeclaration] = {}
+    for d in dicts:
+        for key, decl in d.items():
+            if key in merged:
+                if merged[key] != decl:
+                    raise ValueError(f"Conflicting declarations for '{key}': {merged[key]} vs {decl}")
             else:
-                merged_fields[field] = dtype
-    return merged_fields
+                merged[key] = decl
+    return merged
 
 
-def merge_scalars(kernels: Iterable[ParticleKernel]) -> dict[str, np.dtype]:
-    """Merge scalar fields from multiple kernels."""
-    merged_scalars: dict[str, np.dtype] = {}
-    for kernel in kernels:
-        for scalar, dtype in kernel.scalars.items():
-            if scalar in merged_scalars:
-                if merged_scalars[scalar] != dtype:
-                    raise TypeError(f"Conflicting dtypes for scalar '{scalar}': {merged_scalars[scalar]} vs {dtype}")
-            else:
-                merged_scalars[scalar] = dtype
-
-    return merged_scalars
+def _new_doc_section(title: str) -> list[str]:
+    return ["", title, "--------------"]
 
 
-def merge_simulation_fields(kernels: Iterable[ParticleKernel]) -> frozenset[str]:
-    """Merge simulation fields from multiple kernels."""
-    merged_fields: set[str] = set()
-    for kernel in kernels:
-        merged_fields.update(kernel.simulation_fields)
-    return frozenset(merged_fields)
+class KernelBinding:
+    """An interface class binding kernel inputs to argument names."""
+
+    def __init__(
+        self,
+        kernel: ParticleKernel,
+        particle_property_bindings: Mapping[str, str] | None = None,
+        scalar_bindings: Mapping[str, str] | None = None,
+        field_data_bindings: Mapping[str, str] | None = None,
+    ):
+        self._kernel = kernel
+
+        # defaults for optional arguments
+        if particle_property_bindings is None:
+            particle_property_bindings = {}
+        if scalar_bindings is None:
+            scalar_bindings = {}
+        if field_data_bindings is None:
+            field_data_bindings = {}
+
+        # copy bindings to allow modification
+        particle_property_bindings = dict(particle_property_bindings)
+        scalar_bindings = dict(scalar_bindings)
+        field_data_bindings = dict(field_data_bindings)
+
+        # bind inputs defaulting to the declared names
+        self._particle_property_bindings = {
+            name: particle_property_bindings.pop(name, name) for name in kernel.particle_properties
+        }
+        self._scalar_bindings = {name: scalar_bindings.pop(name, name) for name in kernel.scalars}
+        self._field_data_bindings = {name: field_data_bindings.pop(name, name) for name in kernel.field_data}
+
+        # error if unused bindings
+        if particle_property_bindings:
+            raise ValueError(f"Unused particle property bindings: {particle_property_bindings}")
+        if scalar_bindings:
+            raise ValueError(f"Unused scalar bindings: {scalar_bindings}")
+        if field_data_bindings:
+            raise ValueError(f"Unused field data bindings: {field_data_bindings}")
+
+        # build docstring
+        self.__doc__ = self._build_doc_string()
+
+    @property
+    def kernel(self) -> ParticleKernel:
+        """The underlying ParticleKernel."""
+        return self._kernel
+
+    @property
+    def particle_property_bindings(self) -> Mapping[str, str]:
+        """The particle property bindings."""
+        return types.MappingProxyType(self._particle_property_bindings)
+
+    @property
+    def scalar_bindings(self) -> Mapping[str, str]:
+        """The scalar bindings."""
+        return types.MappingProxyType(self._scalar_bindings)
+
+    @property
+    def field_data_bindings(self) -> Mapping[str, str]:
+        """The field data bindings."""
+        return types.MappingProxyType(self._field_data_bindings)
+
+    def rebind(
+        self,
+        *,
+        particle_properties: Mapping[str, str] | None = None,
+        scalars: Mapping[str, str] | None = None,
+        field_data: Mapping[str, str] | None = None,
+    ) -> Self:
+        """Create a new KernelBinding with updated bindings."""
+        new_particle_property_bindings = self._particle_property_bindings.copy()
+        new_scalar_bindings = self._scalar_bindings.copy()
+        new_field_data_bindings = self._field_data_bindings.copy()
+
+        if particle_properties is not None:
+            new_particle_property_bindings.update(particle_properties)
+        if scalars is not None:
+            new_scalar_bindings.update(scalars)
+        if field_data is not None:
+            new_field_data_bindings.update(field_data)
+
+        return self.__class__(
+            self._kernel,
+            new_particle_property_bindings,
+            new_scalar_bindings,
+            new_field_data_bindings,
+        )
+
+    def _build_doc_string(self) -> str:
+        kernel = self._kernel
+        doc_lines = [f"Kernel Binding for {kernel}"]
+
+        doc_lines.extend(_new_doc_section("Particle Property Bindings"))
+        for name, binding in self._particle_property_bindings.items():
+            doc_lines.append(f"'{binding}' → {kernel.particle_properties[name].doc_string_part}")
+
+        doc_lines.extend(_new_doc_section("Scalar Bindings"))
+        for name, binding in self._scalar_bindings.items():
+            doc_lines.append(f"'{binding}' → {kernel.scalars[name].doc_string_part}")
+
+        doc_lines.extend(_new_doc_section("Field Data Bindings"))
+        for name, binding in self._field_data_bindings.items():
+            doc_lines.append(f"'{binding}' → {kernel.field_data[name].doc_string_part}")
+
+        return "\n".join(doc_lines)

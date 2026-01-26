@@ -1,21 +1,29 @@
 """Submodule defining particle kernels."""
 
+from . import common_inputs, roms, status, timestepping, validation
 from ._kernels import (
+    FieldDataDeclaration,
     KernelFunction,
     ParticleKernel,
-    merge_particle_fields,
-    merge_scalars,
-    merge_simulation_fields,
+    ParticlePropertyDeclaration,
+    ScalarDeclaration,
 )
-from .status import ParticleStatus, is_active, is_inactive
+from .status import Status, is_active, is_inactive
+from .validation import validation_kernel_binding
 
 __all__ = [
-    "ParticleKernel",
+    "common_inputs",
+    "roms",
+    "status",
+    "timestepping",
+    "validation",
+    "FieldDataDeclaration",
     "KernelFunction",
-    "ParticleStatus",
+    "ParticleKernel",
+    "ParticlePropertyDeclaration",
+    "ScalarDeclaration",
+    "Status",
     "is_active",
     "is_inactive",
-    "merge_particle_fields",
-    "merge_scalars",
-    "merge_simulation_fields",
+    "validation_kernel_binding",
 ]

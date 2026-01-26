@@ -1,0 +1,7 @@
+"""Kernel functions performing linear interpolation."""
+
+from .._kernels import KernelFunction
+
+linear_interpolation_kernel_function: KernelFunction
+bilinear_interpolation_kernel_function: KernelFunction
+trilinear_interpolation_kernel_function: KernelFunction

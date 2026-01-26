@@ -96,6 +96,12 @@ class Field(abc.ABC):
         pass
 
     @property
+    def output_dtype(self) -> np.dtype:
+        """Output data type of the field."""
+        # Default to the same as the underlying data.
+        return self.dtype
+
+    @property
     @abc.abstractmethod
     def spatial_shape(self) -> tuple[int, ...]:
         """Shape of the spatial dimensions of the field."""
@@ -330,6 +336,11 @@ class TimeDependentField(Field):
     def dtype(self) -> np.dtype:
         """Data type of the field."""
         return self._data_dtype
+
+    @property
+    def output_dtype(self) -> np.dtype:
+        """Output data type of the field."""
+        return self._output_dtype
 
     @property
     def spatial_shape(self) -> tuple[int, ...]:
