@@ -16,7 +16,7 @@ from .events import (
     TimeScheduler,
 )
 from .fieldset import Fieldset
-from .kernels import ParticleKernel, merge_particle_fields
+from .kernels import KernelBinding, get_required_particle_properties
 from .launcher import Launcher, Tinfo
 from .output import AbstractOutputWriter, AbstractOutputWriterBuilder
 from .particles import Particles, ParticlesView
@@ -90,9 +90,9 @@ class Simulation:
             for event in self._time_scheduler.events:
                 kernels.extend(event.kernels.get(name, ()))
 
-            # then merge required particle fields from all kernels
-            particle_fields = merge_particle_fields(kernels)
-            self._particles[name] = Particles(nparticles, **particle_fields)
+            # then merge required particle properties from all kernels
+            particle_properties = get_required_particle_properties(*kernels)
+            self._particles[name] = Particles(nparticles, **particle_properties)
             self._particles_view[name] = ParticlesView(self._particles[name])
 
         # store the current wall time
@@ -446,28 +446,28 @@ class Simulation:
         if xidx is not None:
             particles.xidx[:] = xidx
 
-    def set_particle_field(
+    def set_particle_property(
         self,
         particle_set: str,
-        field_name: str,
+        property_name: str,
         values: npt.ArrayLike,
     ) -> None:
-        """Set a particle field to the given values.
+        """Set a particle property to the given values.
 
         Args:
             particle_set: The name of the particle set to modify.
-            field_name: The name of the particle field to set.
+            property_name: The name of the particle property to set.
             values: The values to set the particle field to.
         """
         if particle_set not in self._particles:
             raise ValueError(f"Particle set '{particle_set}' not found in simulation.")
 
-        particle_field = self._particles[particle_set][field_name]
-        values_array = np.asarray(values, dtype=particle_field.dtype)
-        values_array = np.broadcast_to(values_array, particle_field.shape)
-        particle_field[:] = values_array
+        particle_property = self._particles[particle_set][property_name]
+        values_array = np.asarray(values, dtype=particle_property.dtype)
+        values_array = np.broadcast_to(values_array, particle_property.shape)
+        particle_property[:] = values_array
 
-    def run_kernel(self, name: str, kernel: ParticleKernel) -> None:
+    def run_kernel(self, name: str, kernel: KernelBinding) -> None:
         """Execute a kernel on the particles.
 
         Args:
@@ -479,14 +479,17 @@ class Simulation:
             raise ValueError(f"Particle set '{name}' not found in simulation.")
         particles = self._particles[name]
 
-        # check kernel fields are available
-        for field, dtype in kernel.particle_fields.items():
-            if field not in particles.arrays:
-                raise ValueError(f"Particle field '{field}' required by kernel is not available in the simulation.")
-            if particles.arrays[field].dtype != dtype:
+        # check required particle properties are available
+        required_properties = get_required_particle_properties(kernel)
+        for binding, decl in required_properties.items():
+            if binding not in particles.arrays:
+                raise ValueError(
+                    f"Particle property '{binding}' required by kernel is not available in the simulation."
+                )
+            if particles.arrays[binding].dtype != decl.dtype:
                 raise TypeError(
-                    f"Particle field '{field}' has dtype {particles.arrays[field].dtype}, "
-                    f"but kernel requires dtype {dtype}."
+                    f"Particle property '{binding}' has dtype {particles.arrays[binding].dtype}, "
+                    f"but kernel declares dtype {decl.dtype}."
                 )
         self._launcher.launch_kernel(kernel, particles, self.tinfo)
 

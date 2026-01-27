@@ -7,7 +7,7 @@ import numpy as np
 
 from .fields import FieldData
 from .fieldset import Fieldset
-from .kernels import BoundKernel, is_active
+from .kernels import KernelBinding, is_active
 from .particles import Particles
 from .spatial_arrays import BBox
 
@@ -53,7 +53,7 @@ type ScalarProvider = Callable[[Tinfo], np.generic]
 
 
 class Launcher:
-    """Class to launch particle kernels."""
+    """Class to launch bound kernels."""
 
     def __init__(
         self,
@@ -169,19 +169,19 @@ class Launcher:
         """
         return self._fieldset[name].get_field_data(time_index, bbox)
 
-    def launch_kernel(self, bound_kernel: BoundKernel, particles: Particles, tinfo: Tinfo) -> None:
+    def launch_kernel(self, kernel_binding: KernelBinding, particles: Particles, tinfo: Tinfo) -> None:
         """Launch a kernel."""
         # construct kernel inputs
         bbox = self.construct_bbox(particles)
         particle_properties = {
-            name: particles[binding] for name, binding in bound_kernel.particle_property_bindings.items()
+            name: particles[binding] for name, binding in kernel_binding.particle_property_bindings.items()
         }
         scalars = {
-            name: self._scalar_data_sources[binding](tinfo) for name, binding in bound_kernel.scalars_bindings.items()
+            name: self._scalar_data_sources[binding](tinfo) for name, binding in kernel_binding.scalars_bindings.items()
         }
         field_data = {
             name: self.get_field_data(binding, tinfo.tidx, bbox)
-            for name, binding in bound_kernel.field_data_bindings.items()
+            for name, binding in kernel_binding.field_data_bindings.items()
         }
         # call the kernel
-        bound_kernel.kernel(particle_properties, scalars, field_data)
+        kernel_binding.kernel(particle_properties, scalars, field_data)

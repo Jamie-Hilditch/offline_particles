@@ -360,6 +360,37 @@ class KernelBinding:
         return self.__class__.chain(self, *others)
 
 
+def get_required_particle_properties(*kernel_bindings: KernelBinding) -> Mapping[str, ParticlePropertyDeclaration]:
+    """Get the required particle properties from kernel bindings.
+
+    Args:
+        kernel_bindings: The kernel bindings to get the required particle properties from.
+
+    Returns:
+        A mapping of required particle property names to their declarations.
+
+    Raises:
+        ValueError: If there are conflicting declarations for the same particle property name.
+    """
+    required: dict[str, ParticlePropertyDeclaration] = {}
+    for kb in kernel_bindings:
+        for name in kb.particle_property_bindings:
+            binding = kb.particle_property_bindings[name]
+            particle_property = kb.kernel.particle_properties[name]
+            if binding in required:
+                if required[binding] != particle_property:
+                    raise ValueError(
+                        f"Conflicting declarations for particle property '{binding}': "
+                        f"{required[binding]} vs {particle_property}"
+                    )
+            else:
+                required[binding] = particle_property
+    return types.MappingProxyType(required)
+
+
+# helper functions
+
+
 def _merge_declaration_dicts(*dicts: Mapping[str, KernelInputDeclaration]) -> dict[str, KernelInputDeclaration]:
     """Merge multiple declaration dicts, checking for conflicts."""
     merged: dict[str, KernelInputDeclaration] = {}

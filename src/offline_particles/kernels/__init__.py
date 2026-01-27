@@ -7,6 +7,7 @@ from ._kernels import (
     ParticleKernel,
     ParticlePropertyDeclaration,
     ScalarDeclaration,
+    get_required_particle_properties,
 )
 from .status import Status, is_active, is_inactive
 from .validation import validation_kernel_binding
@@ -22,6 +23,7 @@ __all__ = [
     "ParticleKernel",
     "ParticlePropertyDeclaration",
     "ScalarDeclaration",
+    "get_required_particle_properties",
     "Status",
     "is_active",
     "is_inactive",
