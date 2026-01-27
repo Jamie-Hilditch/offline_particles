@@ -4,11 +4,11 @@ from .horizontal_advection import (
     construct_horizontal_idx_tendency_kernel_from_velocity_field,
     construct_horizontal_idx_tendency_kernel_from_velocity_property,
 )
-from .vertical_coordinate import COMPUTE_Z_KERNEL, COMPUTE_ZIDX_KERNEL
+from .vertical_coordinate import construct_compute_z_kernel, construct_compute_zidx_kernel
 
 __all__ = [
-    "COMPUTE_Z_KERNEL",
-    "COMPUTE_ZIDX_KERNEL",
+    "construct_compute_z_kernel",
+    "construct_compute_zidx_kernel",
     "construct_horizontal_idx_tendency_kernel_from_velocity_field",
     "construct_horizontal_idx_tendency_kernel_from_velocity_property",
 ]

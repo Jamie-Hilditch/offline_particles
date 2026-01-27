@@ -2,20 +2,21 @@
 
 from cython.parallel cimport prange
 
+from .._core cimport float_t
 from ..status cimport STATUS
 
 
-cdef void _ab2_update(particle_properties, scalars, field_data):
+cdef void _ab2_update(particle_properties):
     # unpack required particle fields
     cdef unsigned char[::1] status
-    cdef double[::1] prop, dprop_0, dprop_1
+    cdef float_t[::1] prop, dprop_0, dprop_1
     status = particle_properties["status"]
     prop = particle_properties["prop"]
     dprop_0 = particle_properties["dprop_0"]
     dprop_1 = particle_properties["dprop_1"]
 
     # unpack scalars
-    cdef double dt = scalars["_dt"]
+    cdef float_t dt = scalars["_dt"]
 
     # loop over particles
     cdef Py_ssize_t i, nparticles
@@ -37,7 +38,7 @@ cdef void _ab2_update(particle_properties, scalars, field_data):
         dprop_1[i] = dprop_0[i]
         dprop_0[i] = 0.0  # reset current tendency for next accumulation
 
-cdef void _ab2_bump_status(particle_properties, scalars, field_data):
+cdef void _ab2_bump_status(particle_properties):
     # unpack required particle fields
     cdef unsigned char[::1] status
     status = particles_properties["status"]
@@ -54,10 +55,25 @@ cdef void _ab2_bump_status(particle_properties, scalars, field_data):
         if status[i] == STATUS.MULTISTEP_1:
             status[i] = STATUS.NORMAL
 
-cdef void _ab3_update(particle_properties, scalars, field_data):
+cdef void _ab2_initialisation(particle_properties):
     # unpack required particle fields
     cdef unsigned char[::1] status
-    cdef double[::1] prop, dprop_0, dprop_1, dprop_2
+    status = particle_properties["status"]
+
+    # loop over particles
+    cdef Py_ssize_t i, nparticles
+    nparticles = status.shape[0]
+
+    for i in prange(nparticles, schedule='static', nogil=True):
+        if status[i] & STATUS.INACTIVE:
+            continue
+
+        status[i] == STATUS.MULTISTEP_1
+
+cdef void _ab3_update(particle_properties):
+    # unpack required particle fields
+    cdef unsigned char[::1] status
+    cdef float_t[::1] prop, dprop_0, dprop_1, dprop_2
     status = particle_properties["status"]
     prop = particle_properties["prop"]
     dprop_0 = particle_properties["dprop_0"]
@@ -65,7 +81,7 @@ cdef void _ab3_update(particle_properties, scalars, field_data):
     dprop_2 = particle_properties["dprop_2"]
 
     # unpack scalars
-    cdef double dt = scalars["_dt"]
+    cdef float_t dt = scalars["_dt"]
 
     # loop over particles
     cdef Py_ssize_t i, nparticles
@@ -92,7 +108,7 @@ cdef void _ab3_update(particle_properties, scalars, field_data):
         dprop_1[i] = dprop_0[i]
         dprop_0[i] = 0.0  # reset current tendency for next accumulation
 
-cdef _ab3_bump_status(particle_properties, scalars, field_data):
+cdef _ab3_bump_status(particle_properties):
     # unpack required particle fields
     cdef unsigned char[::1] status
     status = particles_properties["status"]
@@ -111,27 +127,54 @@ cdef _ab3_bump_status(particle_properties, scalars, field_data):
         elif status[i] == STATUS.MULTISTEP_2:
             status[i] = STATUS.NORMAL
 
+cdef _ab3_initialisation(particle_properties):
+    # unpack required particle fields
+    cdef unsigned char[::1] status
+    status = particle_properties["status"]
+
+    # loop over particles
+    cdef Py_ssize_t i, nparticles
+    nparticles = status.shape[0]
+
+    for i in prange(nparticles, schedule='static', nogil=True):
+        if status[i] & STATUS.INACTIVE:
+            continue
+
+        status[i] == STATUS.MULTISTEP_2
+
 # python wrappers
 cpdef ab2_update(particle_properties, scalars, field_data):
     """
     Update particle property using 2nd-order Adams-Bashforth scheme.
     """
-    _ab2_update(particle_properties, scalars, field_data)
+    _ab2_update(particle_properties)
 
 cpdef ab2_bump_status(particle_properties, scalars, field_data):
     """
     Bump particle status after Adams-Bashforth 2nd-order update.
     """
-    _ab2_bump_status(particle_properties, scalars, field_data)
+    _ab2_bump_status(particle_properties)
+
+cpdef ab2_initialisation(particle_properties, scalars, field_data):
+    """
+    Initialise particle status for Adams-Bashforth 2nd-order scheme.
+    """
+    _ab2_initialisation(particle_properties)
 
 cpdef ab3_update(particle_properties, scalars, field_data):
     """
     Update particle property using 3rd-order Adams-Bashforth scheme.
     """
-    _ab3_update(particle_properties, scalars, field_data)
+    _ab3_update(particle_properties)
 
 cpdef ab3_bump_status(particle_properties, scalars, field_data):
     """
     Bump particle status after Adams-Bashforth 3rd-order update.
     """
-    _ab3_bump_status(particle_properties, scalars, field_data)
+    _ab3_bump_status(particle_properties)
+
+cpdef ab3_initialisation(particle_properties, scalars, field_data):
+    """
+    Initialise particle status for Adams-Bashforth 3rd-order scheme.
+    """
+    _ab3_initialisation(particle_properties)

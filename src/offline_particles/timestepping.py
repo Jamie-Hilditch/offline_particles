@@ -7,8 +7,8 @@ from typing import Iterator
 import numpy as np
 import numpy.typing as npt
 
-from .fields import FieldData
-from .kernels import ParticleKernel, ParticleStatus, is_active
+from .kernels import KernelBinding
+from .kernels.timestepping import construct_ab3_initialisation_kernel
 from .launcher import Launcher, ScalarSource, Time_info, Tinfo
 from .particles import Particles
 
@@ -163,15 +163,15 @@ class Timestepper(abc.ABC):
         self._pre_step_kernels = []
         self._post_step_kernels = []
 
-    def add_initialisation_kernels(self, *kernels: ParticleKernel) -> None:
+    def add_initialisation_kernels(self, *kernels: KernelBinding) -> None:
         """Add kernels to be launched during initialisation."""
         self._initialisation_kernels.extend(kernels)
 
-    def add_pre_step_kernels(self, *kernels: ParticleKernel) -> None:
+    def add_pre_step_kernels(self, *kernels: KernelBinding) -> None:
         """Add kernels to be launched before each timestep."""
         self._pre_step_kernels.extend(kernels)
 
-    def add_post_step_kernels(self, *kernels: ParticleKernel) -> None:
+    def add_post_step_kernels(self, *kernels: KernelBinding) -> None:
         """Add kernels to be launched after each timestep."""
         self._post_step_kernels.extend(kernels)
 
@@ -181,22 +181,22 @@ class Timestepper(abc.ABC):
         return self._index_padding
 
     @property
-    def initialisation_kernels(self) -> list[ParticleKernel]:
+    def initialisation_kernels(self) -> list[KernelBinding]:
         """The initialisation kernels used by this timestepper."""
         return self._initialisation_kernels
 
     @property
-    def pre_step_kernels(self) -> list[ParticleKernel]:
+    def pre_step_kernels(self) -> list[KernelBinding]:
         """The pre-step kernels used by this timestepper."""
         return self._pre_step_kernels
 
     @property
-    def post_step_kernels(self) -> list[ParticleKernel]:
+    def post_step_kernels(self) -> list[KernelBinding]:
         """The post-step kernels used by this timestepper."""
         return self._post_step_kernels
 
     @property
-    def kernels(self) -> Iterator[ParticleKernel]:
+    def kernels(self) -> Iterator[KernelBinding]:
         """Get the kernels used by this timestepper."""
         return itertools.chain(
             self._initialisation_kernels,
@@ -249,15 +249,15 @@ class RK2Timestepper(Timestepper):
         self._alpha = alpha
         self._index_padding = index_padding
 
-    def add_rk_step_1_kernels(self, *kernels: ParticleKernel) -> None:
+    def add_rk_step_1_kernels(self, *kernels: KernelBinding) -> None:
         """Add kernel to be launched during first rk step."""
         self._rk_step_1_kernels.extend(kernels)
 
-    def add_rk_step_2_kernels(self, *kernels: ParticleKernel) -> None:
+    def add_rk_step_2_kernels(self, *kernels: KernelBinding) -> None:
         """Add kernel to be launched during second rk step."""
         self._rk_step_2_kernels.extend(kernels)
 
-    def add_rk_update_kernels(self, *kernels: ParticleKernel) -> None:
+    def add_rk_update_kernels(self, *kernels: KernelBinding) -> None:
         """Add kernel to be launched during rk update step."""
         self._rk_update_kernels.extend(kernels)
 
@@ -267,7 +267,7 @@ class RK2Timestepper(Timestepper):
         return self._alpha
 
     @property
-    def kernels(self) -> Iterator[ParticleKernel]:
+    def kernels(self) -> Iterator[KernelBinding]:
         """Get the kernels used by this timestepper."""
         return itertools.chain(
             super().kernels,
@@ -310,14 +310,14 @@ class ABTimestepper(Timestepper):
         self._index_padding = index_padding
 
         # Add AB3 initialisation kernel
-        self.add_initialisation_kernels(ab_initialisation_kernel)
+        self.add_initialisation_kernels(construct_ab3_initialisation_kernel())
 
-    def add_ab_kernels(self, *kernels: ParticleKernel) -> None:
+    def add_ab_kernels(self, *kernels: KernelBinding) -> None:
         """Add kernels to be launched during Adams-Bashforth step."""
         self._ab_kernels.extend(kernels)
 
     @property
-    def kernels(self) -> Iterator[ParticleKernel]:
+    def kernels(self) -> Iterator[KernelBinding]:
         """Get the kernels used by this timestepper."""
         return itertools.chain(super().kernels, self._ab_kernels)
 
@@ -326,21 +326,3 @@ class ABTimestepper(Timestepper):
         # Launch Adams-Bashforth kernel
         for kernel in self._ab_kernels:
             launcher.launch_kernel(kernel, particles, clock.tinfo)
-
-
-# Kernel for AB3 initialisation
-def _ab_initialisation_kernel_function(
-    particles: Particles, scalars: dict[str, np.generic], fields: dict[str, FieldData]
-) -> None:
-    """Kernel function to set status for AB3 initialisation."""
-    status = particles.status
-    idx = is_active(status)
-    status[idx] = ParticleStatus.MULTISTEP_1
-
-
-ab_initialisation_kernel = ParticleKernel(
-    _ab_initialisation_kernel_function,
-    particle_fields={"status": np.dtype(np.uint8)},
-    scalars={},
-    simulation_fields=[],
-)

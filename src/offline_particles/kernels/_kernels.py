@@ -228,23 +228,6 @@ class ParticleKernel:
         return self.__class__.chain(self, *others)
 
 
-def _merge_declaration_dicts(*dicts: Mapping[str, KernelInputDeclaration]) -> dict[str, KernelInputDeclaration]:
-    """Merge multiple declaration dicts, checking for conflicts."""
-    merged: dict[str, KernelInputDeclaration] = {}
-    for d in dicts:
-        for key, decl in d.items():
-            if key in merged:
-                if merged[key] != decl:
-                    raise ValueError(f"Conflicting declarations for '{key}': {merged[key]} vs {decl}")
-            else:
-                merged[key] = decl
-    return merged
-
-
-def _new_doc_section(title: str) -> list[str]:
-    return ["", title, "--------------"]
-
-
 class KernelBinding:
     """An interface class binding kernel inputs to argument names."""
 
@@ -351,3 +334,57 @@ class KernelBinding:
             doc_lines.append(f"'{binding}' → {kernel.field_data[name].doc_string_part}")
 
         return "\n".join(doc_lines)
+
+    @classmethod
+    def chain(cls, *Kernels: Self) -> Self:
+        """Create a new KernelBinding by merging kernels."""
+        # chain underlying kernels
+        chained_kernel = ParticleKernel.chain(*(k._kernel for k in Kernels))
+        # merge bindings
+        particle_property_bindings = _merge_binding_dicts(*(k._particle_property_bindings for k in Kernels))
+        scalar_bindings = _merge_binding_dicts(*(k._scalar_bindings for k in Kernels))
+        field_data_bindings = _merge_binding_dicts(*(k._field_data_bindings for k in Kernels))
+
+        return cls(
+            chained_kernel,
+            particle_property_bindings,
+            scalar_bindings,
+            field_data_bindings,
+        )
+
+    def chain_with(
+        self,
+        *others: Self,
+    ) -> Self:
+        """Chain this kernel binding with other kernel bindings."""
+        return self.__class__.chain(self, *others)
+
+
+def _merge_declaration_dicts(*dicts: Mapping[str, KernelInputDeclaration]) -> dict[str, KernelInputDeclaration]:
+    """Merge multiple declaration dicts, checking for conflicts."""
+    merged: dict[str, KernelInputDeclaration] = {}
+    for d in dicts:
+        for key, decl in d.items():
+            if key in merged:
+                if merged[key] != decl:
+                    raise ValueError(f"Conflicting declarations for '{key}': {merged[key]} vs {decl}")
+            else:
+                merged[key] = decl
+    return merged
+
+
+def _merge_binding_dicts(*dicts: Mapping[str, KernelInputDeclaration]) -> dict[str, str]:
+    """Merge multiple binding dicts, checking for conflicts."""
+    merged: dict[str, str] = {}
+    for d in dicts:
+        for name, binding in d.items():
+            if name in merged:
+                if merged[name] != binding:
+                    raise ValueError(f"Conflicting bindings for '{name}': {merged[name]} vs {binding}")
+            else:
+                merged[name] = binding
+    return merged
+
+
+def _new_doc_section(title: str) -> list[str]:
+    return ["", title, "--------------"]

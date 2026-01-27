@@ -21,6 +21,7 @@ find_package(OpenMP REQUIRED)
 # Declare extension modules
 set(EXTENSION_MODULES
     kernels._core.inputs.field_data
+    kernels.base._base
     kernels.buoyancy._buoyancy_force
     kernels.interpolation._linear 
     kernels.relaxation._relaxation

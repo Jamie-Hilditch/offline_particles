@@ -15,7 +15,7 @@ cdef void _linear_damping_accumulation(particle_properties, scalars):
     rhs = particle_properties["rhs"]
 
     # unpack scalars
-    cdef double drag_coeff = scalars["linear_drag_coefficient"]
+    cdef double drag_coeff = scalars["linear_damping_coefficient"]
 
     # loop over particles
     cdef Py_ssize_t i, nparticles
@@ -38,7 +38,7 @@ cdef void _quadratic_damping_accumulation(particle_properties, scalars):
     rhs = particle_properties["rhs"]
 
     # unpack scalars
-    cdef double drag_coeff = scalars["quadratic_drag_coefficient"]
+    cdef double drag_coeff = scalars["quadratic_damping_coefficient"]
 
     # loop over particles
     cdef Py_ssize_t i, nparticles

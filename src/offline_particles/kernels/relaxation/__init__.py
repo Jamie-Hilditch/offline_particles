@@ -21,8 +21,8 @@ __all__ = [
 prop_declaration = ParticlePropertyDeclaration("prop", np.float64)
 rhs_declaration = ParticlePropertyDeclaration("rhs", np.float64)
 target_declaration = ParticlePropertyDeclaration("target", np.float64)
-linear_drag_declaration = ScalarDeclaration("linear_drag_coefficient", np.float64)
-quadratic_drag_declaration = ScalarDeclaration("quadratic_drag_coefficient", np.float64)
+linear_damping_declaration = ScalarDeclaration("linear_damping_coefficient", np.float64)
+quadratic_damping_declaration = ScalarDeclaration("quadratic_damping_coefficient", np.float64)
 linear_relaxation_declaration = ScalarDeclaration("linear_relaxation_coefficient", np.float64)
 quadratic_relaxation_declaration = ScalarDeclaration("quadratic_relaxation_coefficient", np.float64)
 
@@ -41,7 +41,7 @@ def construct_linear_damping_accumulation_kernel(
             rhs_declaration,
         ],
         scalars=[
-            linear_drag_declaration,
+            linear_damping_declaration,
         ],
     )
     return KernelBinding(
@@ -51,7 +51,7 @@ def construct_linear_damping_accumulation_kernel(
             "prop": prop,
         },
         scalar_bindings={
-            "linear_drag_coefficient": coefficient,
+            "linear_damping_coefficient": coefficient,
         },
     )
 
@@ -70,7 +70,7 @@ def construct_quadratic_damping_accumulation_kernel(
             rhs_declaration,
         ],
         scalars=[
-            quadratic_drag_declaration,
+            quadratic_damping_declaration,
         ],
     )
     return KernelBinding(
@@ -80,7 +80,7 @@ def construct_quadratic_damping_accumulation_kernel(
             "prop": prop,
         },
         scalar_bindings={
-            "quadratic_drag_coefficient": coefficient,
+            "quadratic_damping_coefficient": coefficient,
         },
     )
 
