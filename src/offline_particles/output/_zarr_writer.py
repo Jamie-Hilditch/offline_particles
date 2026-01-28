@@ -244,7 +244,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             self._store,
             name=name,
             shape=shape,
-            dtype=output.dtype,
+            dtype=output.particle_property.dtype,
             chunks=chunks,
             attributes=output.attrs,
             dimension_names=(self._time_name, output.particle_set),

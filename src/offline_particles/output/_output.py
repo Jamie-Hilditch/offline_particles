@@ -3,13 +3,14 @@
 import abc
 import dataclasses
 import functools
+import types
 from typing import Any, Mapping
 
 import numpy as np
 import numpy.typing as npt
 
 from ..events import Event, SimulationState
-from ..kernels import ParticleKernel, merge_particle_fields
+from ..kernels import BoundKernel, ParticlePropertyDeclaration, get_required_particle_properties
 
 
 @dataclasses.dataclass(frozen=True, slots=True, init=False)
@@ -17,39 +18,50 @@ class Output:
     """Class defining a single output."""
 
     particle_set: str
-    particle_field: str
-    kernels: tuple[ParticleKernel, ...]
-    dtype: npt.DTypeLike
+    particle_property: ParticlePropertyDeclaration
+    kernels: tuple[BoundKernel, ...]
     attrs: dict[str, Any]
 
     def __init__(
         self,
         particle_set: str,
-        particle_field: str,
-        *kernels: ParticleKernel,
+        particle_property_name: str,
+        *kernels: BoundKernel,
         dtype: npt.DTypeLike | None = None,
         **attrs: Any,
     ) -> None:
         """Initialize the Output."""
 
-        if dtype is None:
-            # infer dtype from kernels or default to float64
-            fields = merge_particle_fields(kernels)
-            dtype = fields.get(particle_field, np.float64)
+        kernel_particle_properties = get_required_particle_properties(*kernels)
+
+        # case 1: the particle property is already defined by the kernels
+        if particle_property_name in kernel_particle_properties:
+            particle_property = kernel_particle_properties[particle_property_name]
+            # Check dtype compatibility
+            if dtype is not None and np.dtype(dtype) != particle_property.dtype:
+                raise ValueError(
+                    f"Output particle property '{particle_property_name}' has dtype "
+                    f"{dtype}, but a different dtype {particle_property.dtype} is required by the kernels."
+                )
+        # case 2: the particle property not required by kernels
+        else:
+            # default value for dtype
+            if dtype is None:
+                dtype = np.float64
+            # create particle property declaration
+            particle_property = ParticlePropertyDeclaration(particle_property_name, np.dtype(dtype))
 
         object.__setattr__(self, "particle_set", particle_set)
-        object.__setattr__(self, "particle_field", particle_field)
+        object.__setattr__(self, "particle_property", particle_property)
         object.__setattr__(self, "kernels", kernels)
-        object.__setattr__(self, "dtype", dtype)
         object.__setattr__(self, "attrs", dict(attrs))
 
     @property
-    def required_fields(self) -> set[str]:
-        """Get the particle fields required by the output."""
-        fields = set(self.particle_field)
-        for kernel in self.kernels:
-            fields.update(kernel.particle_fields)
-        return fields
+    def required_properties(self) -> Mapping[str, ParticlePropertyDeclaration]:
+        """Get the particle properties required by the output."""
+        required_properties = {self.particle_property.name: self.particle_property}
+        required_properties.update(get_required_particle_properties(*self.kernels))
+        return types.MappingProxyType(required_properties)
 
 
 class AbstractOutputWriter(abc.ABC):

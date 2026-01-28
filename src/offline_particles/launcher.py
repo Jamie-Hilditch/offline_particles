@@ -177,7 +177,7 @@ class Launcher:
             name: particles[binding] for name, binding in bound_kernel.particle_property_bindings.items()
         }
         scalars = {
-            name: self._scalar_data_sources[binding](tinfo) for name, binding in bound_kernel.scalars_bindings.items()
+            name: self._scalar_data_sources[binding](tinfo) for name, binding in bound_kernel.scalar_bindings.items()
         }
         field_data = {
             name: self.get_field_data(binding, tinfo.tidx, bbox)

@@ -121,13 +121,13 @@ def roms_ab3_timestepper(
 
     # AB3 steps
     ab_kernels = []
-    ab_kernels.append(construct_ab3_update_kernel("xidx", "_dxidx0", "_dxidx1"))
-    ab_kernels.append(construct_ab3_update_kernel("yidx", "_dyidx0", "_dyidx1"))
+    ab_kernels.append(construct_ab3_update_kernel("xidx", "_dxidx0", "_dxidx1", "_dxidx2"))
+    ab_kernels.append(construct_ab3_update_kernel("yidx", "_dyidx0", "_dyidx1", "_dyidx2"))
 
     if vertical_velocity or buoyant_particles or linear_damping or quadratic_damping:
-        ab_kernels.append(construct_ab3_update_kernel("z", "_dz0", "_dz1"))
+        ab_kernels.append(construct_ab3_update_kernel("z", "_dz0", "_dz1", "_dz2"))
     if buoyant_particles or linear_damping or quadratic_damping:
-        ab_kernels.append(construct_ab3_update_kernel("w_rel", "_dw_rel0", "_dw_rel1"))
+        ab_kernels.append(construct_ab3_update_kernel("w_rel", "_dw_rel0", "_dw_rel1", "_dw_rel2"))
 
     # finally add the status bump kernel
     ab_kernels.append(construct_ab3_bump_status_kernel())

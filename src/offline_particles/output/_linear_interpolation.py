@@ -1,17 +1,17 @@
 """Generate output by linearly interpolating field data to particle positions."""
 
 from ..fieldset import Fieldset
-from ..kernels.output import (
-    bilinear_interpolation_kernel,
-    linear_interpolation_kernel,
-    trilinear_interpolation_kernel,
+from ..kernels.interpolation import (
+    construct_bilinear_interpolation_kernel,
+    construct_linear_interpolation_kernel,
+    construct_trilinear_interpolation_kernel,
 )
 from ._output import Output
 
 DMASK_DIM_MAPPING_2D = {
-    (True, True, False): ("z", "y"),
-    (True, False, True): ("z", "x"),
-    (False, True, True): ("y", "x"),
+    (True, True, False): ("zidx", "yidx"),
+    (True, False, True): ("zidx", "xidx"),
+    (False, True, True): ("yidx", "xidx"),
 }
 
 
@@ -19,7 +19,7 @@ def linearly_interpolate_fields(
     fieldset: Fieldset,
     particle_set: str,
     *variables: str,
-    particle_field_prefix: str = "_output",
+    particle_property_prefix: str = "_output",
 ) -> dict[str, Output]:
     """Output variables that linearly interpolate field data.
 
@@ -28,7 +28,7 @@ def linearly_interpolate_fields(
         variables: The list of variable names to interpolate.
         particle_field_prefix: The prefix for the particle array to store the output data.
     """
-    dims = ("z", "y", "x")
+    dims = ("zidx", "yidx", "xidx")
     outputs = {}
 
     for var in variables:
@@ -38,21 +38,21 @@ def linearly_interpolate_fields(
         field = fieldset[var]
         dmask = field.dmask
         ndim = field.nspatial_dims
-        dtype = field.dtype
-        particle_field = f"{particle_field_prefix}_{dtype}"
+        dtype = field.output_dtype
+        particle_property = f"{particle_property_prefix}_{dtype}"
 
         if ndim == 1:
             dim = dims[dmask.index(True)]
-            kernel = linear_interpolation_kernel(var, particle_field, dim)
+            kernel = construct_linear_interpolation_kernel(dim, particle_property, var)
         elif ndim == 2:
             dim = DMASK_DIM_MAPPING_2D[dmask]
-            kernel = bilinear_interpolation_kernel(var, particle_field, dim)
+            kernel = construct_bilinear_interpolation_kernel(dim, particle_property, var)
         elif ndim == 3:
-            kernel = trilinear_interpolation_kernel(var, particle_field)
+            kernel = construct_trilinear_interpolation_kernel(particle_property, var)
         else:
             raise ValueError(f"Field '{var}' has unsupported number of dimensions: {ndim}")
 
         name = f"{particle_set}:{var}"
-        outputs[name] = Output(particle_set, particle_field, kernel)
+        outputs[name] = Output(particle_set, particle_property, kernel)
 
     return outputs

@@ -90,7 +90,7 @@ def _trilinear_interpolation_kernel() -> ParticleKernel:
         ],
         field_data=[
             FieldDataDeclaration(
-                "field", np.float64, zstaggers=ACTIVE_STAGGERS, y_staggers=ACTIVE_STAGGERS, x_staggers=ACTIVE_STAGGERS
+                "field", np.float64, z_staggers=ACTIVE_STAGGERS, y_staggers=ACTIVE_STAGGERS, x_staggers=ACTIVE_STAGGERS
             ),
         ],
     )
@@ -137,7 +137,7 @@ def _trilinear_interpolation_accumulation_kernel() -> ParticleKernel:
         ],
         field_data=[
             FieldDataDeclaration(
-                "field", np.float64, zstaggers=ACTIVE_STAGGERS, y_staggers=ACTIVE_STAGGERS, x_staggers=ACTIVE_STAGGERS
+                "field", np.float64, z_staggers=ACTIVE_STAGGERS, y_staggers=ACTIVE_STAGGERS, x_staggers=ACTIVE_STAGGERS
             ),
         ],
     )

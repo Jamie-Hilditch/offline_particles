@@ -287,7 +287,7 @@ class TimeDependentField(Field):
         self._data = data
         self._spatial_array_factory = spatial_array_factory
         self._data_dtype = data.dtype
-        self._output_dtype = output_dtype
+        self._output_dtype = np.dtype(output_dtype)
 
         # temporary arrays for interpolation
         self._allocate_interpolation_arrays((0,) * (data.ndim - 1))
@@ -520,5 +520,5 @@ def _perform_interpolation(
 ) -> None:
     """Perform linear interpolation in time."""
     n = previous.size
-    for i in numba.prange(n):
+    for i in numba.prange(n):  # ty: ignore[not-iterable]
         output[i] = previous[i] + ft * delta[i]

@@ -15,15 +15,16 @@ from ..spatial_arrays import ALL_STAGGERS, Stagger
 type KernelFunction = Callable[[Mapping[str, npt.NDArray], Mapping[str, np.generic], Mapping[str, FieldData]], None]
 
 
-@dataclasses.dataclass(frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True, slots=True, init=False)
 class KernelInputDeclaration:
     """Declaration of a kernel input."""
 
     name: str
-    dtype: np.dtype
+    dtype: np.dtype[np.generic]
 
-    def __post_init__(self):
-        object.__setattr__(self, "dtype", np.dtype(self.dtype))
+    def __init__(self, name: str, dtype: npt.DTypeLike) -> None:
+        object.__setattr__(self, "name", name)
+        object.__setattr__(self, "dtype", np.dtype(dtype))
 
     @property
     def doc_string_part(self) -> str:
@@ -38,19 +39,27 @@ class ScalarDeclaration(KernelInputDeclaration):
     """Declaration of a scalar required by a kernel."""
 
 
-@dataclasses.dataclass(frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True, slots=True, init=False)
 class FieldDataDeclaration(KernelInputDeclaration):
     """Declaration of field data required by a kernel."""
 
-    z_staggers: frozenset[Stagger] = dataclasses.field(default=ALL_STAGGERS, kw_only=True)
-    y_staggers: frozenset[Stagger] = dataclasses.field(default=ALL_STAGGERS, kw_only=True)
-    x_staggers: frozenset[Stagger] = dataclasses.field(default=ALL_STAGGERS, kw_only=True)
+    z_staggers: frozenset[Stagger]
+    y_staggers: frozenset[Stagger]
+    x_staggers: frozenset[Stagger]
 
-    def __post_init__(self):
-        super().__post_init__()
-        object.__setattr__(self, "z_staggers", frozenset(Stagger(s) for s in self.z_staggers))
-        object.__setattr__(self, "y_staggers", frozenset(Stagger(s) for s in self.y_staggers))
-        object.__setattr__(self, "x_staggers", frozenset(Stagger(s) for s in self.x_staggers))
+    def __init__(
+        self,
+        name: str,
+        dtype: npt.DTypeLike,
+        *,
+        z_staggers: Iterable[Stagger] = ALL_STAGGERS,
+        y_staggers: Iterable[Stagger] = ALL_STAGGERS,
+        x_staggers: Iterable[Stagger] = ALL_STAGGERS,
+    ) -> None:
+        super().__init__(name, dtype)
+        object.__setattr__(self, "z_staggers", frozenset(Stagger(s) for s in z_staggers))
+        object.__setattr__(self, "y_staggers", frozenset(Stagger(s) for s in y_staggers))
+        object.__setattr__(self, "x_staggers", frozenset(Stagger(s) for s in x_staggers))
 
     def validate_field(self, field: Field) -> None:
         """Validate that a field matches this declaration."""
@@ -93,9 +102,9 @@ class ParticleKernel:
     def __init__(
         self,
         fn: KernelFunction | Iterable[KernelFunction],
-        particle_properties: Iterable[ParticlePropertyDeclaration],
-        scalars: Iterable[ScalarDeclaration],
-        field_data: Iterable[FieldDataDeclaration],
+        particle_properties: Iterable[ParticlePropertyDeclaration] = (),
+        scalars: Iterable[ScalarDeclaration] = (),
+        field_data: Iterable[FieldDataDeclaration] = (),
     ):
         # store kernels as tuple of functions
         if callable(fn):
@@ -107,6 +116,12 @@ class ParticleKernel:
             raise TypeError("All kernel functions must be callable")
         self._funcs: tuple[KernelFunction, ...] = funcs
 
+        # collect declarations
+        particle_properties = tuple(particle_properties)
+        scalars = tuple(scalars)
+        field_data = tuple(field_data)
+
+        # store declarations as dicts
         self._particle_properties = {p.name: p for p in particle_properties}
         self._scalars = {s.name: s for s in scalars}
         self._field_data = {f.name: f for f in field_data}
@@ -215,9 +230,9 @@ class ParticleKernel:
 
         return cls(
             funcs,
-            particle_properties,
-            scalars,
-            field_data,
+            particle_properties.values(),
+            scalars.values(),
+            field_data.values(),
         )
 
     def chain_with(
@@ -391,9 +406,9 @@ def get_required_particle_properties(*bound_kernels: BoundKernel) -> Mapping[str
 # helper functions
 
 
-def _merge_declaration_dicts(*dicts: Mapping[str, KernelInputDeclaration]) -> dict[str, KernelInputDeclaration]:
+def _merge_declaration_dicts[KID: KernelInputDeclaration](*dicts: Mapping[str, KID]) -> dict[str, KID]:
     """Merge multiple declaration dicts, checking for conflicts."""
-    merged: dict[str, KernelInputDeclaration] = {}
+    merged: dict[str, KID] = {}
     for d in dicts:
         for key, decl in d.items():
             if key in merged:
@@ -404,7 +419,7 @@ def _merge_declaration_dicts(*dicts: Mapping[str, KernelInputDeclaration]) -> di
     return merged
 
 
-def _merge_binding_dicts(*dicts: Mapping[str, KernelInputDeclaration]) -> dict[str, str]:
+def _merge_binding_dicts(*dicts: Mapping[str, str]) -> dict[str, str]:
     """Merge multiple binding dicts, checking for conflicts."""
     merged: dict[str, str] = {}
     for d in dicts:

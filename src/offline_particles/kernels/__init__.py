@@ -2,6 +2,7 @@
 
 from . import common_inputs, roms, status, timestepping, validation
 from ._kernels import (
+    BoundKernel,
     FieldDataDeclaration,
     KernelFunction,
     ParticleKernel,
@@ -10,7 +11,7 @@ from ._kernels import (
     get_required_particle_properties,
 )
 from .status import Status, is_active, is_inactive
-from .validation import validation_bound_kernel
+from .validation import construct_validation_kernel
 
 __all__ = [
     "common_inputs",
@@ -18,6 +19,7 @@ __all__ = [
     "status",
     "timestepping",
     "validation",
+    "BoundKernel",
     "FieldDataDeclaration",
     "KernelFunction",
     "ParticleKernel",
@@ -27,5 +29,5 @@ __all__ = [
     "Status",
     "is_active",
     "is_inactive",
-    "validation_bound_kernel",
+    "construct_validation_kernel",
 ]

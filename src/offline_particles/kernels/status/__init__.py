@@ -14,8 +14,11 @@ __all__ = [
 Status = enum.IntEnum("Status", STATUS_VALUES)
 Status.__doc__ = """Enumeration of particle status codes."""
 
+# extract constants we know exist for type checking purposes
+INACTIVE: int = Status.INACTIVE  # ty: ignore[unresolved-attribute]
 
-def is_inactive(status: npt.NDArray[np.unit8]) -> npt.NDArray[np.bool_]:
+
+def is_inactive(status: npt.NDArray[np.uint8]) -> npt.NDArray[np.bool_]:
     """Check if particles are inactive.
 
     Parameters
@@ -28,10 +31,10 @@ def is_inactive(status: npt.NDArray[np.unit8]) -> npt.NDArray[np.bool_]:
     npt.NDArray[np.bool_]
         Boolean array indicating active particles.
     """
-    return (status & Status.INACTIVE) == Status.INACTIVE
+    return (status & INACTIVE) == INACTIVE
 
 
-def is_active(status: npt.NDArray[np.unit8]) -> npt.NDArray[np.bool_]:
+def is_active(status: npt.NDArray[np.uint8]) -> npt.NDArray[np.bool_]:
     """Check if particles are active.
 
     Parameters

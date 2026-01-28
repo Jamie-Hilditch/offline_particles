@@ -2,15 +2,15 @@
 
 import numpy as np
 
-from ....spatial_arrays import ACTIVE_STAGGERS
-from ..._kernels import (
+from ...spatial_arrays import ACTIVE_STAGGERS
+from .._kernels import (
     BoundKernel,
     FieldDataDeclaration,
     ParticleKernel,
     ParticlePropertyDeclaration,
     ScalarDeclaration,
 )
-from ...common_inputs import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
+from ..common_inputs import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
 from ._buoyancy_force import buoyancy_force_accumulation
 
 rhs_declaration = ParticlePropertyDeclaration("rhs", np.float64)

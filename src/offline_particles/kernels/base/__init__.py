@@ -11,7 +11,7 @@ from ._base import (
     subtract_property,
 )
 
-type SupportedDTypes = np.float32 | np.float64 | np.integer
+type SupportedDTypes = type[np.float32] | type[np.float64] | type[np.integer]
 
 
 def construct_copy_property_kernel(
@@ -27,8 +27,8 @@ def construct_copy_property_kernel(
         dtype: Data type of the particle properties (default np.float64).
             Supported types are np.float32, np.float64, and any np.integer.
     """
-    source_declaration = ParticlePropertyDeclaration("source", dtype)
-    destination_declaration = ParticlePropertyDeclaration("destination", dtype)
+    source_declaration = ParticlePropertyDeclaration("source", np.dtype(dtype))
+    destination_declaration = ParticlePropertyDeclaration("destination", np.dtype(dtype))
 
     kernel = ParticleKernel(
         copy_property,
@@ -59,8 +59,8 @@ def construct_add_property_kernel(
         dtype: Data type of the particle properties (default np.float64).
             Supported types are np.float32, np.float64, and any np.integer.
     """
-    source_declaration = ParticlePropertyDeclaration("source", dtype)
-    destination_declaration = ParticlePropertyDeclaration("destination", dtype)
+    source_declaration = ParticlePropertyDeclaration("source", np.dtype(dtype))
+    destination_declaration = ParticlePropertyDeclaration("destination", np.dtype(dtype))
 
     kernel = ParticleKernel(
         add_property,
@@ -91,8 +91,8 @@ def construct_subtract_property_kernel(
         dtype: Data type of the particle properties (default np.float64).
             Supported types are np.float32, np.float64, and any np.integer.
     """
-    source_declaration = ParticlePropertyDeclaration("source", dtype)
-    destination_declaration = ParticlePropertyDeclaration("destination", dtype)
+    source_declaration = ParticlePropertyDeclaration("source", np.dtype(dtype))
+    destination_declaration = ParticlePropertyDeclaration("destination", np.dtype(dtype))
 
     kernel = ParticleKernel(
         subtract_property,
@@ -123,8 +123,8 @@ def construct_multiply_property_kernel(
         dtype: Data type of the particle properties (default np.float64).
             Supported types are np.float32, np.float64, and any np.integer.
     """
-    source_declaration = ParticlePropertyDeclaration("source", dtype)
-    destination_declaration = ParticlePropertyDeclaration("destination", dtype)
+    source_declaration = ParticlePropertyDeclaration("source", np.dtype(dtype))
+    destination_declaration = ParticlePropertyDeclaration("destination", np.dtype(dtype))
 
     kernel = ParticleKernel(
         multiply_property,
@@ -145,7 +145,7 @@ def construct_multiply_property_kernel(
 def construct_divide_property_kernel(
     source: str,
     destination: str,
-    dtype: np.float32 | np.float64 = np.float64,
+    dtype: type[np.float32] | type[np.float64] = np.float64,
 ) -> BoundKernel:
     """Construct a kernel to divide particle property destination by source.
 
@@ -155,8 +155,8 @@ def construct_divide_property_kernel(
         dtype: Data type of the particle properties (default np.float64).
             Only np.float32 and np.float64 are supported.
     """
-    source_declaration = ParticlePropertyDeclaration("source", dtype)
-    destination_declaration = ParticlePropertyDeclaration("destination", dtype)
+    source_declaration = ParticlePropertyDeclaration("source", np.dtype(dtype))
+    destination_declaration = ParticlePropertyDeclaration("destination", np.dtype(dtype))
 
     kernel = ParticleKernel(
         divide_property,
