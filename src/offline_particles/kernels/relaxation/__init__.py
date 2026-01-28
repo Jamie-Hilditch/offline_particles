@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from ..._kernels import KernelBinding, ParticleKernel, ParticlePropertyDeclaration, ScalarDeclaration
+from ..._kernels import BoundKernel, ParticleKernel, ParticlePropertyDeclaration, ScalarDeclaration
 from ...common_inputs import STATUS_DECLARATION
 from ._relaxation import (
     linear_damping_accumulation,
@@ -31,7 +31,7 @@ def construct_linear_damping_accumulation_kernel(
     rhs: str,
     prop: str,
     coefficient: str,
-) -> KernelBinding:
+) -> BoundKernel:
     """Construct a kernel to apply linear damping to a particle property."""
     kernel = ParticleKernel(
         linear_damping_accumulation,
@@ -44,7 +44,7 @@ def construct_linear_damping_accumulation_kernel(
             linear_damping_declaration,
         ],
     )
-    return KernelBinding(
+    return BoundKernel(
         kernel,
         particle_property_bindings={
             "rhs": rhs,
@@ -60,7 +60,7 @@ def construct_quadratic_damping_accumulation_kernel(
     rhs: str,
     prop: str,
     coefficient: str,
-) -> KernelBinding:
+) -> BoundKernel:
     """Construct a kernel to apply quadratic damping to a particle property."""
     kernel = ParticleKernel(
         quadratic_damping_accumulation,
@@ -73,7 +73,7 @@ def construct_quadratic_damping_accumulation_kernel(
             quadratic_damping_declaration,
         ],
     )
-    return KernelBinding(
+    return BoundKernel(
         kernel,
         particle_property_bindings={
             "rhs": rhs,
@@ -90,7 +90,7 @@ def construct_linear_relaxation_accumulation_kernel(
     prop: str,
     target: str,
     coefficient: str,
-) -> KernelBinding:
+) -> BoundKernel:
     """Construct a kernel to apply linear relaxation to a particle property."""
     kernel = ParticleKernel(
         linear_relaxation_accumulation,
@@ -104,7 +104,7 @@ def construct_linear_relaxation_accumulation_kernel(
             linear_relaxation_declaration,
         ],
     )
-    return KernelBinding(
+    return BoundKernel(
         kernel,
         particle_property_bindings={
             "rhs": rhs,
@@ -122,7 +122,7 @@ def construct_quadratic_relaxation_accumulation_kernel(
     prop: str,
     target: str,
     coefficient: str,
-) -> KernelBinding:
+) -> BoundKernel:
     """Construct a kernel to apply quadratic relaxation to a particle property."""
     kernel = ParticleKernel(
         quadratic_relaxation_accumulation,
@@ -136,7 +136,7 @@ def construct_quadratic_relaxation_accumulation_kernel(
             quadratic_relaxation_declaration,
         ],
     )
-    return KernelBinding(
+    return BoundKernel(
         kernel,
         particle_property_bindings={
             "rhs": rhs,

@@ -194,9 +194,9 @@ class ParticleKernel:
         particle_properties: Mapping[str, str] | None = None,
         scalars: Mapping[str, str] | None = None,
         field_data: Mapping[str, str] | None = None,
-    ) -> KernelBinding:
-        """Create a KernelBinding for this kernel."""
-        return KernelBinding(
+    ) -> BoundKernel:
+        """Create a BoundKernel for this kernel."""
+        return BoundKernel(
             self,
             particle_property_bindings=particle_properties,
             scalar_bindings=scalars,
@@ -228,7 +228,7 @@ class ParticleKernel:
         return self.__class__.chain(self, *others)
 
 
-class KernelBinding:
+class BoundKernel:
     """An interface class binding kernel inputs to argument names."""
 
     def __init__(
@@ -298,7 +298,7 @@ class KernelBinding:
         scalars: Mapping[str, str] | None = None,
         field_data: Mapping[str, str] | None = None,
     ) -> Self:
-        """Create a new KernelBinding with updated bindings."""
+        """Create a new BoundKernel with updated bindings."""
         new_particle_property_bindings = self._particle_property_bindings.copy()
         new_scalar_bindings = self._scalar_bindings.copy()
         new_field_data_bindings = self._field_data_bindings.copy()
@@ -337,7 +337,7 @@ class KernelBinding:
 
     @classmethod
     def chain(cls, *Kernels: Self) -> Self:
-        """Create a new KernelBinding by merging kernels."""
+        """Create a new BoundKernel by merging kernels."""
         # chain underlying kernels
         chained_kernel = ParticleKernel.chain(*(k._kernel for k in Kernels))
         # merge bindings
@@ -356,15 +356,15 @@ class KernelBinding:
         self,
         *others: Self,
     ) -> Self:
-        """Chain this kernel binding with other kernel bindings."""
+        """Chain this bound kernel with other bound kernels."""
         return self.__class__.chain(self, *others)
 
 
-def get_required_particle_properties(*kernel_bindings: KernelBinding) -> Mapping[str, ParticlePropertyDeclaration]:
-    """Get the required particle properties from kernel bindings.
+def get_required_particle_properties(*bound_kernels: BoundKernel) -> Mapping[str, ParticlePropertyDeclaration]:
+    """Get the required particle properties from bound kernels.
 
     Args:
-        kernel_bindings: The kernel bindings to get the required particle properties from.
+        bound_kernels: The bound kernels to get the required particle properties from.
 
     Returns:
         A mapping of required particle property names to their declarations.
@@ -373,7 +373,7 @@ def get_required_particle_properties(*kernel_bindings: KernelBinding) -> Mapping
         ValueError: If there are conflicting declarations for the same particle property name.
     """
     required: dict[str, ParticlePropertyDeclaration] = {}
-    for kb in kernel_bindings:
+    for kb in bound_kernels:
         for name in kb.particle_property_bindings:
             binding = kb.particle_property_bindings[name]
             particle_property = kb.kernel.particle_properties[name]

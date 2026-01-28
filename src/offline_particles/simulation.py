@@ -16,7 +16,7 @@ from .events import (
     TimeScheduler,
 )
 from .fieldset import Fieldset
-from .kernels import KernelBinding, get_required_particle_properties
+from .kernels import BoundKernel, get_required_particle_properties
 from .launcher import Launcher, Tinfo
 from .output import AbstractOutputWriter, AbstractOutputWriterBuilder
 from .particles import Particles, ParticlesView
@@ -467,7 +467,7 @@ class Simulation:
         values_array = np.broadcast_to(values_array, particle_property.shape)
         particle_property[:] = values_array
 
-    def run_kernel(self, name: str, kernel: KernelBinding) -> None:
+    def run_kernel(self, name: str, kernel: BoundKernel) -> None:
         """Execute a kernel on the particles.
 
         Args:

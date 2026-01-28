@@ -4,8 +4,8 @@ import numpy as np
 
 from ....spatial_arrays import ACTIVE_STAGGERS
 from ..._kernels import (
+    BoundKernel,
     FieldDataDeclaration,
-    KernelBinding,
     ParticleKernel,
     ParticlePropertyDeclaration,
     ScalarDeclaration,
@@ -28,7 +28,7 @@ def construct_buoyancy_force_accumulation_kernel(
     density_field: str = "rho",
     reference_density: str = "rho0",
     gravity: str = "g",
-) -> KernelBinding:
+) -> BoundKernel:
     """Construct a kernel to compute buoyancy force accumulation on particles."""
     kernel = ParticleKernel(
         buoyancy_force_accumulation,
@@ -48,7 +48,7 @@ def construct_buoyancy_force_accumulation_kernel(
             rho_field_declaration,
         ],
     )
-    return KernelBinding(
+    return BoundKernel(
         kernel,
         particle_property_bindings={
             "rhs": rhs,

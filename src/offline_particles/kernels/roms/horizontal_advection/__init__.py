@@ -3,7 +3,7 @@
 import numpy as np
 
 from ....spatial_arrays import ACTIVE_STAGGERS
-from ..._kernels import FieldDataDeclaration, KernelBinding, ParticleKernel, ParticlePropertyDeclaration
+from ..._kernels import BoundKernel, FieldDataDeclaration, ParticleKernel, ParticlePropertyDeclaration
 from ...common_inputs import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
 from .linear_interpolation import (
     horizontal_idx_tendency_from_velocity_field,
@@ -32,7 +32,7 @@ def construct_horizontal_idx_tendency_kernel_from_velocity_field(output: str, ve
             velocity_field_declaration,
         ],
     )
-    return KernelBinding(
+    return BoundKernel(
         kernel,
         particle_property_bindings={
             "output": output,
@@ -58,7 +58,7 @@ def construct_horizontal_idx_tendency_kernel_from_velocity_property(
             output_declaration,
         ],
     )
-    return KernelBinding(
+    return BoundKernel(
         kernel,
         particle_property_bindings={
             "output": output,

@@ -4,8 +4,8 @@ import numpy as np
 
 from ....spatial_arrays import ACTIVE_STAGGERS, INACTIVE_STAGGERS
 from ..._kernels import (
+    BoundKernel,
     FieldDataDeclaration,
-    KernelBinding,
     ParticleKernel,
     ParticlePropertyDeclaration,
     ScalarDeclaration,
@@ -41,7 +41,7 @@ def construct_compute_z_kernel(
     h: str = "h",
     zeta: str = "zeta",
     C: str = "C",
-) -> KernelBinding:
+) -> BoundKernel:
     """Construct a kernel to compute the physical vertical position `z` from ROMS vertical coordinates.
 
     Args:
@@ -71,7 +71,7 @@ def construct_compute_z_kernel(
             C_declaration,
         ],
     )
-    return KernelBinding(
+    return BoundKernel(
         kernel,
         particle_property_bindings={
             "z": z,
@@ -95,7 +95,7 @@ def construct_compute_zidx_kernel(
     h: str = "h",
     zeta: str = "zeta",
     C: str = "C",
-) -> KernelBinding:
+) -> BoundKernel:
     """Construct a kernel to compute the ROMS vertical index `zidx` from physical vertical position `z`.
 
     Args:
@@ -119,7 +119,7 @@ def construct_compute_zidx_kernel(
             C_declaration,
         ],
     )
-    return KernelBinding(
+    return BoundKernel(
         kernel,
         particle_property_bindings={
             "z": z,

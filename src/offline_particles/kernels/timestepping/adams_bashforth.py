@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from .._kernels import KernelBinding, ParticleKernel, ParticlePropertyDeclaration
+from .._kernels import BoundKernel, ParticleKernel, ParticlePropertyDeclaration
 from ..common_inputs import DT_DECLARATION, STATUS_DECLARATION
 from ._adams_bashforth import (
     ab2_bump_status,
@@ -20,7 +20,7 @@ dprop_1_declaration = ParticlePropertyDeclaration("dprop_1", np.float64)
 dprop_2_declaration = ParticlePropertyDeclaration("dprop_2", np.float64)
 
 
-def construct_ab2_update_kernel(prop: str, dprop_0: str, dprop_1) -> KernelBinding:
+def construct_ab2_update_kernel(prop: str, dprop_0: str, dprop_1) -> BoundKernel:
     """Construct an Adams-Bashforth 2 update kernel for a given property.
 
     Args:
@@ -29,7 +29,7 @@ def construct_ab2_update_kernel(prop: str, dprop_0: str, dprop_1) -> KernelBindi
         dprop_1: Binding of the property tendency at the previous timestep.
 
     Returns:
-        KernelBinding implementing the AB2 update.
+        BoundKernel implementing the AB2 update.
     """
 
     kernel = ParticleKernel(
@@ -42,7 +42,7 @@ def construct_ab2_update_kernel(prop: str, dprop_0: str, dprop_1) -> KernelBindi
         ],
         scalars=[DT_DECLARATION],
     )
-    return KernelBinding(
+    return BoundKernel(
         kernel,
         particle_property_bindings={
             "prop": prop,
@@ -52,25 +52,25 @@ def construct_ab2_update_kernel(prop: str, dprop_0: str, dprop_1) -> KernelBindi
     )
 
 
-def construct_ab2_bump_status_kernel() -> KernelBinding:
+def construct_ab2_bump_status_kernel() -> BoundKernel:
     """Construct an Adams-Bashforth 2 bump status kernel.
 
     Returns:
-        KernelBinding implementing the AB2 bump status.
+        BoundKernel implementing the AB2 bump status.
     """
 
     kernel = ParticleKernel(
         ab2_bump_status,
         particle_properties=[STATUS_DECLARATION],
     )
-    return KernelBinding(kernel)
+    return BoundKernel(kernel)
 
 
-def construct_ab2_initialisation_kernel() -> KernelBinding:
+def construct_ab2_initialisation_kernel() -> BoundKernel:
     """Construct an Adams-Bashforth 2 initialisation kernel.
 
     Returns:
-        KernelBinding implementing the AB2 initialisation.
+        BoundKernel implementing the AB2 initialisation.
     """
 
     kernel = ParticleKernel(
@@ -79,10 +79,10 @@ def construct_ab2_initialisation_kernel() -> KernelBinding:
             STATUS_DECLARATION,
         ],
     )
-    return KernelBinding(kernel)
+    return BoundKernel(kernel)
 
 
-def construct_ab3_update_kernel(prop: str, dprop_0: str, dprop_1: str, dprop_2: str) -> KernelBinding:
+def construct_ab3_update_kernel(prop: str, dprop_0: str, dprop_1: str, dprop_2: str) -> BoundKernel:
     """Construct an Adams-Bashforth 3 update kernel for a given property.
 
     Args:
@@ -92,7 +92,7 @@ def construct_ab3_update_kernel(prop: str, dprop_0: str, dprop_1: str, dprop_2: 
         dprop_2: Binding of the property tendency at two timesteps ago.
 
     Returns:
-        KernelBinding implementing the AB3 update.
+        BoundKernel implementing the AB3 update.
     """
     kernel = ParticleKernel(
         ab3_update,
@@ -105,7 +105,7 @@ def construct_ab3_update_kernel(prop: str, dprop_0: str, dprop_1: str, dprop_2: 
         ],
         scalars=[DT_DECLARATION],
     )
-    return KernelBinding(
+    return BoundKernel(
         kernel,
         particle_property_bindings={
             "prop": prop,
@@ -116,25 +116,25 @@ def construct_ab3_update_kernel(prop: str, dprop_0: str, dprop_1: str, dprop_2: 
     )
 
 
-def construct_ab3_bump_status_kernel() -> KernelBinding:
+def construct_ab3_bump_status_kernel() -> BoundKernel:
     """Construct an Adams-Bashforth 3 bump status kernel.
 
     Returns:
-        KernelBinding implementing the AB3 bump status.
+        BoundKernel implementing the AB3 bump status.
     """
 
     kernel = ParticleKernel(
         ab3_bump_status,
         particle_properties=[STATUS_DECLARATION],
     )
-    return KernelBinding(kernel)
+    return BoundKernel(kernel)
 
 
-def construct_ab3_initialisation_kernel() -> KernelBinding:
+def construct_ab3_initialisation_kernel() -> BoundKernel:
     """Construct an Adams-Bashforth 3 initialisation kernel.
 
     Returns:
-        KernelBinding implementing the AB3 initialisation.
+        BoundKernel implementing the AB3 initialisation.
     """
 
     kernel = ParticleKernel(
@@ -143,4 +143,4 @@ def construct_ab3_initialisation_kernel() -> KernelBinding:
             STATUS_DECLARATION,
         ],
     )
-    return KernelBinding(kernel)
+    return BoundKernel(kernel)

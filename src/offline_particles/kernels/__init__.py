@@ -10,7 +10,7 @@ from ._kernels import (
     get_required_particle_properties,
 )
 from .status import Status, is_active, is_inactive
-from .validation import validation_kernel_binding
+from .validation import validation_bound_kernel
 
 __all__ = [
     "common_inputs",
@@ -27,5 +27,5 @@ __all__ = [
     "Status",
     "is_active",
     "is_inactive",
-    "validation_kernel_binding",
+    "validation_bound_kernel",
 ]

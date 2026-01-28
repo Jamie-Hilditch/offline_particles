@@ -1,6 +1,6 @@
 import numpy as np
 
-from .._kernels import KernelBinding, ParticleKernel, ScalarDeclaration
+from .._kernels import BoundKernel, ParticleKernel, ScalarDeclaration
 from ..common_inputs import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
 from ._validation import domain_bounds, finite_indices
 
@@ -42,12 +42,12 @@ domain_bounds_kernel = ParticleKernel(
 validation_kernel = ParticleKernel.chain(finite_indices_kernel, domain_bounds_kernel)
 
 
-# kernel bindings
-def construct_finite_indices_kernel() -> KernelBinding:
-    """Construct the finite indices validation kernel binding.
+# bound kernels
+def construct_finite_indices_kernel() -> BoundKernel:
+    """Construct the finite indices validation bound kernel.
 
     Returns:
-        KernelBinding implementing the finite indices validation.
+        BoundKernel implementing the finite indices validation.
     """
     return finite_indices_kernel.bind()
 
@@ -59,8 +59,8 @@ def construct_domain_bounds_kernel(
     yidx_max: str = "yidx_max",
     xidx_min: str = "xidx_min",
     xidx_max: str = "xidx_max",
-) -> KernelBinding:
-    """Construct the domain bounds validation kernel binding.
+) -> BoundKernel:
+    """Construct the domain bounds validation bound kernel.
 
     Args:
         zidx_min: Binding for the minimum valid z-index scalar (default "zidx_min").
@@ -71,7 +71,7 @@ def construct_domain_bounds_kernel(
         xidx_max: Binding for the maximum valid x-index scalar (default "xidx_max").
 
     Returns:
-        KernelBinding implementing the domain bounds validation.
+        BoundKernel implementing the domain bounds validation.
     """
     return domain_bounds_kernel.bind(
         scalars={
@@ -92,8 +92,8 @@ def construct_validation_kernel(
     yidx_max: str = "yidx_max",
     xidx_min: str = "xidx_min",
     xidx_max: str = "xidx_max",
-) -> KernelBinding:
-    """Construct the full validation kernel binding.
+) -> BoundKernel:
+    """Construct the full validation bound kernel.
 
     Args:
         zidx_min: Binding for the minimum valid z-index scalar (default "zidx_min").
@@ -104,7 +104,7 @@ def construct_validation_kernel(
         xidx_max: Binding for the maximum valid x-index scalar (default "xidx_max").
 
     Returns:
-        KernelBinding implementing particle validation.
+        BoundKernel implementing particle validation.
     """
     return validation_kernel.bind(
         scalars={

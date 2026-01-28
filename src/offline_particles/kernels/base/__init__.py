@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from .._kernels import KernelBinding, ParticleKernel, ParticlePropertyDeclaration
+from .._kernels import BoundKernel, ParticleKernel, ParticlePropertyDeclaration
 from ._base import (
     add_property,
     copy_property,
@@ -18,7 +18,7 @@ def construct_copy_property_kernel(
     source: str,
     destination: str,
     dtype: SupportedDTypes = np.float64,
-) -> KernelBinding:
+) -> BoundKernel:
     """Construct a kernel to copy a particle property from source to destination.
 
     Args:
@@ -37,7 +37,7 @@ def construct_copy_property_kernel(
             destination_declaration,
         ],
     )
-    return KernelBinding(
+    return BoundKernel(
         kernel,
         particle_property_bindings={
             "source": source,
@@ -50,7 +50,7 @@ def construct_add_property_kernel(
     source: str,
     destination: str,
     dtype: SupportedDTypes = np.float64,
-) -> KernelBinding:
+) -> BoundKernel:
     """Construct a kernel to add particle property source to destination.
 
     Args:
@@ -69,7 +69,7 @@ def construct_add_property_kernel(
             destination_declaration,
         ],
     )
-    return KernelBinding(
+    return BoundKernel(
         kernel,
         particle_property_bindings={
             "source": source,
@@ -82,7 +82,7 @@ def construct_subtract_property_kernel(
     source: str,
     destination: str,
     dtype: SupportedDTypes = np.float64,
-) -> KernelBinding:
+) -> BoundKernel:
     """Construct a kernel to subtract particle property source from destination.
 
     Args:
@@ -101,7 +101,7 @@ def construct_subtract_property_kernel(
             destination_declaration,
         ],
     )
-    return KernelBinding(
+    return BoundKernel(
         kernel,
         particle_property_bindings={
             "source": source,
@@ -114,7 +114,7 @@ def construct_multiply_property_kernel(
     source: str,
     destination: str,
     dtype: SupportedDTypes = np.float64,
-) -> KernelBinding:
+) -> BoundKernel:
     """Construct a kernel to multiply particle property destination by source.
 
     Args:
@@ -133,7 +133,7 @@ def construct_multiply_property_kernel(
             destination_declaration,
         ],
     )
-    return KernelBinding(
+    return BoundKernel(
         kernel,
         particle_property_bindings={
             "source": source,
@@ -146,7 +146,7 @@ def construct_divide_property_kernel(
     source: str,
     destination: str,
     dtype: np.float32 | np.float64 = np.float64,
-) -> KernelBinding:
+) -> BoundKernel:
     """Construct a kernel to divide particle property destination by source.
 
     Args:
@@ -165,7 +165,7 @@ def construct_divide_property_kernel(
             destination_declaration,
         ],
     )
-    return KernelBinding(
+    return BoundKernel(
         kernel,
         particle_property_bindings={
             "source": source,

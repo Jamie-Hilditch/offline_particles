@@ -5,7 +5,7 @@ from typing import Literal
 import numpy as np
 
 from ...spatial_arrays import ACTIVE_STAGGERS, INACTIVE_STAGGERS
-from .._kernels import FieldDataDeclaration, KernelBinding, ParticleKernel, ParticlePropertyDeclaration
+from .._kernels import BoundKernel, FieldDataDeclaration, ParticleKernel, ParticlePropertyDeclaration
 from ..common_inputs import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
 from ._linear import (
     bilinear_interpolation_accumulation_kernel_function,
@@ -143,10 +143,10 @@ def _trilinear_interpolation_accumulation_kernel() -> ParticleKernel:
     )
 
 
-# some KernelBinding factories
+# some BoundKernel factories
 def construct_linear_interpolation_kernel(
     idx: Literal["zidx", "xidx", "yidx"], output: str, field: str, accumulate: bool = False
-) -> KernelBinding:
+) -> BoundKernel:
     """Linear interpolation kernel.
 
     Parameters
@@ -166,7 +166,7 @@ def construct_linear_interpolation_kernel(
         kernel = _linear_interpolation_accumulation_kernel(field_data_declarations_1d[idx])
     else:
         kernel = _linear_interpolation_kernel(field_data_declarations_1d[idx])
-    return KernelBinding(
+    return BoundKernel(
         kernel,
         particle_property_bindings={
             "idx": idx,
@@ -178,7 +178,7 @@ def construct_linear_interpolation_kernel(
     )
 
 
-def construct_vertical_interpolation_kernel(output: str, field: str, accumulate: bool = False) -> KernelBinding:
+def construct_vertical_interpolation_kernel(output: str, field: str, accumulate: bool = False) -> BoundKernel:
     """Vertical linear interpolation kernel.
 
     A linear interpolation kernel with `idx` bound to `zidx` and `output`
@@ -198,7 +198,7 @@ def construct_vertical_interpolation_kernel(output: str, field: str, accumulate:
 
 def construct_bilinear_interpolation_kernel(
     indices: tuple[str, str], output: str, field: str, accumulate: bool = False
-) -> KernelBinding:
+) -> BoundKernel:
     """Bilinear interpolation kernel.
 
     Parameters
@@ -219,7 +219,7 @@ def construct_bilinear_interpolation_kernel(
         kernel = _bilinear_interpolation_accumulation_kernel(field_data_declarations_2d[indices])
     else:
         kernel = _bilinear_interpolation_kernel(field_data_declarations_2d[indices])
-    return KernelBinding(
+    return BoundKernel(
         kernel,
         particle_property_bindings={
             "idx_0": indices[0],
@@ -232,7 +232,7 @@ def construct_bilinear_interpolation_kernel(
     )
 
 
-def construct_horizontal_interpolation_kernel(output: str, field: str, accumulate: bool = False) -> KernelBinding:
+def construct_horizontal_interpolation_kernel(output: str, field: str, accumulate: bool = False) -> BoundKernel:
     """Horizontal bilinear interpolation kernel.
 
     A bilinear interpolation kernel with `idx_0` and `idx_1` bound to `yidx` and `xidx` respectively,
@@ -250,7 +250,7 @@ def construct_horizontal_interpolation_kernel(output: str, field: str, accumulat
     return construct_bilinear_interpolation_kernel(("yidx", "xidx"), output, field, accumulate)
 
 
-def construct_trilinear_interpolation_kernel(output: str, field: str, accumulate: bool = False) -> KernelBinding:
+def construct_trilinear_interpolation_kernel(output: str, field: str, accumulate: bool = False) -> BoundKernel:
     """Trilinear interpolation kernel.
 
     Parameters
@@ -266,7 +266,7 @@ def construct_trilinear_interpolation_kernel(output: str, field: str, accumulate
         kernel = _trilinear_interpolation_accumulation_kernel()
     else:
         kernel = _trilinear_interpolation_kernel()
-    return KernelBinding(
+    return BoundKernel(
         kernel,
         particle_property_bindings={
             "output": output,

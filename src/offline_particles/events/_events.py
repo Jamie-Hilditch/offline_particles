@@ -6,7 +6,7 @@ from typing import Callable, Iterable, Mapping
 
 import numpy as np
 
-from ..kernels import KernelBinding
+from ..kernels import BoundKernel
 from ..particles import ParticlesView
 
 
@@ -36,11 +36,11 @@ class Event:
     function is called. They are stored as a mapping from ParticleSet name to the kernel.
     """
 
-    def __init__(self, name: str, func: EventFunction, **kernels: Iterable[KernelBinding]) -> None:
+    def __init__(self, name: str, func: EventFunction, **kernels: Iterable[BoundKernel]) -> None:
         """Initialize the event."""
         self._name = name
         self._func = func
-        self._kernels: dict[str, tuple[KernelBinding]] = {name: tuple(kernels) for name, kernels in kernels.items()}
+        self._kernels: dict[str, tuple[BoundKernel]] = {name: tuple(kernels) for name, kernels in kernels.items()}
 
     def __call__(self, state: SimulationState) -> None:
         """Invoke the event function."""
@@ -52,7 +52,7 @@ class Event:
         return self._name
 
     @property
-    def kernels(self) -> Mapping[str, tuple[KernelBinding, ...]]:
+    def kernels(self) -> Mapping[str, tuple[BoundKernel, ...]]:
         """The kernels associated with this event."""
         return types.MappingProxyType(self._kernels)
 

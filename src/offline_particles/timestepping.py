@@ -7,7 +7,7 @@ from typing import Iterator
 import numpy as np
 import numpy.typing as npt
 
-from .kernels import KernelBinding
+from .kernels import BoundKernel
 from .kernels.timestepping import construct_ab3_initialisation_kernel
 from .launcher import Launcher, ScalarSource, Time_info, Tinfo
 from .particles import Particles
@@ -163,15 +163,15 @@ class Timestepper(abc.ABC):
         self._pre_step_kernels = []
         self._post_step_kernels = []
 
-    def add_initialisation_kernels(self, *kernels: KernelBinding) -> None:
+    def add_initialisation_kernels(self, *kernels: BoundKernel) -> None:
         """Add kernels to be launched during initialisation."""
         self._initialisation_kernels.extend(kernels)
 
-    def add_pre_step_kernels(self, *kernels: KernelBinding) -> None:
+    def add_pre_step_kernels(self, *kernels: BoundKernel) -> None:
         """Add kernels to be launched before each timestep."""
         self._pre_step_kernels.extend(kernels)
 
-    def add_post_step_kernels(self, *kernels: KernelBinding) -> None:
+    def add_post_step_kernels(self, *kernels: BoundKernel) -> None:
         """Add kernels to be launched after each timestep."""
         self._post_step_kernels.extend(kernels)
 
@@ -181,22 +181,22 @@ class Timestepper(abc.ABC):
         return self._index_padding
 
     @property
-    def initialisation_kernels(self) -> list[KernelBinding]:
+    def initialisation_kernels(self) -> list[BoundKernel]:
         """The initialisation kernels used by this timestepper."""
         return self._initialisation_kernels
 
     @property
-    def pre_step_kernels(self) -> list[KernelBinding]:
+    def pre_step_kernels(self) -> list[BoundKernel]:
         """The pre-step kernels used by this timestepper."""
         return self._pre_step_kernels
 
     @property
-    def post_step_kernels(self) -> list[KernelBinding]:
+    def post_step_kernels(self) -> list[BoundKernel]:
         """The post-step kernels used by this timestepper."""
         return self._post_step_kernels
 
     @property
-    def kernels(self) -> Iterator[KernelBinding]:
+    def kernels(self) -> Iterator[BoundKernel]:
         """Get the kernels used by this timestepper."""
         return itertools.chain(
             self._initialisation_kernels,
@@ -249,15 +249,15 @@ class RK2Timestepper(Timestepper):
         self._alpha = alpha
         self._index_padding = index_padding
 
-    def add_rk_step_1_kernels(self, *kernels: KernelBinding) -> None:
+    def add_rk_step_1_kernels(self, *kernels: BoundKernel) -> None:
         """Add kernel to be launched during first rk step."""
         self._rk_step_1_kernels.extend(kernels)
 
-    def add_rk_step_2_kernels(self, *kernels: KernelBinding) -> None:
+    def add_rk_step_2_kernels(self, *kernels: BoundKernel) -> None:
         """Add kernel to be launched during second rk step."""
         self._rk_step_2_kernels.extend(kernels)
 
-    def add_rk_update_kernels(self, *kernels: KernelBinding) -> None:
+    def add_rk_update_kernels(self, *kernels: BoundKernel) -> None:
         """Add kernel to be launched during rk update step."""
         self._rk_update_kernels.extend(kernels)
 
@@ -267,7 +267,7 @@ class RK2Timestepper(Timestepper):
         return self._alpha
 
     @property
-    def kernels(self) -> Iterator[KernelBinding]:
+    def kernels(self) -> Iterator[BoundKernel]:
         """Get the kernels used by this timestepper."""
         return itertools.chain(
             super().kernels,
@@ -312,12 +312,12 @@ class ABTimestepper(Timestepper):
         # Add AB3 initialisation kernel
         self.add_initialisation_kernels(construct_ab3_initialisation_kernel())
 
-    def add_ab_kernels(self, *kernels: KernelBinding) -> None:
+    def add_ab_kernels(self, *kernels: BoundKernel) -> None:
         """Add kernels to be launched during Adams-Bashforth step."""
         self._ab_kernels.extend(kernels)
 
     @property
-    def kernels(self) -> Iterator[KernelBinding]:
+    def kernels(self) -> Iterator[BoundKernel]:
         """Get the kernels used by this timestepper."""
         return itertools.chain(super().kernels, self._ab_kernels)
 
