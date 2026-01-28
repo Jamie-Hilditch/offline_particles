@@ -29,10 +29,10 @@ class Event:
     """A simulation event.
 
     An event consists of a single function that acts on the simulation state,
-    along with any number of associated particle kernels that are launched by the
+    along with any number of associated bound kernels that are launched by the
     scheduler prior to the invokation of the event function.
 
-    Particle kernels are used to prepare or modify particle data before the event
+    Bound kernels are used to prepare or modify particle data before the event
     function is called. They are stored as a mapping from ParticleSet name to the kernel.
     """
 
