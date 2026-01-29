@@ -59,7 +59,7 @@ class FieldDataDeclaration(KernelInputDeclaration):
         y_staggers: Iterable[Stagger] = ALL_STAGGERS,
         x_staggers: Iterable[Stagger] = ALL_STAGGERS,
     ) -> None:
-        super().__init__(name, dtype)
+        KernelInputDeclaration.__init__(self, name, dtype)
         object.__setattr__(self, "z_staggers", frozenset(Stagger(s) for s in z_staggers))
         object.__setattr__(self, "y_staggers", frozenset(Stagger(s) for s in y_staggers))
         object.__setattr__(self, "x_staggers", frozenset(Stagger(s) for s in x_staggers))
