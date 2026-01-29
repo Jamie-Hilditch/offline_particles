@@ -12,7 +12,10 @@ import numpy.typing as npt
 from ..fields import Field, FieldData
 from ..spatial_arrays import ALL_STAGGERS, Stagger
 
-type KernelFunction = Callable[[Mapping[str, npt.NDArray], Mapping[str, np.generic], Mapping[str, FieldData]], None]
+type ParticlePropertiesType = Mapping[str, npt.NDArray]
+type ScalarsType = Mapping[str, np.generic]
+type FieldDataType = Mapping[str, FieldData]
+type KernelFunction = Callable[[ParticlePropertiesType, ScalarsType, FieldDataType], None]
 
 
 @dataclasses.dataclass(frozen=True, slots=True, init=False)

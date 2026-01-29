@@ -1,7 +1,8 @@
 """Core utilities for writing kernel functions."""
 
 ctypedef fused prop_t:
-    """Types supported for particle properties."""
+    # Supported property types.
+
     # floats
     float
     double
@@ -21,6 +22,6 @@ ctypedef fused prop_t:
     unsigned long long
 
 ctypedef fused float_t:
-    """Supported floating point types."""
+    # Supported floating point types.
     float
     double

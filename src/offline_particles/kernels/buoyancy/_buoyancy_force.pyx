@@ -2,9 +2,9 @@
 
 from cython.parallel cimport prange
 
-from ..._core.inputs cimport unpack_field_data_3d
-from ..._core.interpolation.linear cimport trilinear_interpolation
-from ...status cimport STATUS
+from .._core.inputs cimport unpack_field_data_3d
+from .._core.interpolation.linear cimport trilinear_interpolation
+from ..status cimport STATUS
 
 cdef void _buoyancy_force_accumulation(particle_properties, scalars, field_data):
     """Add buoyancy force to particles assuming Boussinesq approximation."""

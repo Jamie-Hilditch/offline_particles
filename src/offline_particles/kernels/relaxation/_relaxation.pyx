@@ -3,7 +3,7 @@
 from cython.parallel cimport prange
 from libc.math cimport fabs
 
-from ...status cimport STATUS
+from ..status cimport STATUS
 
 cdef void _linear_damping_accumulation(particle_properties, scalars):
     """Apply linear damping to particle property."""

@@ -29,7 +29,7 @@ cdef void _finite_indices(particle_properties):
         if not isfinite(zidx[i]) or not isfinite(yidx[i]) or not isfinite(xidx[i]):
             status[i] = STATUS.NONFINITE
 
-cdef void _domain_bounds(particle_properties):
+cdef void _domain_bounds(particle_properties, scalars):
     """
     Sets status[i] = STATUS.OUT_OF_DOMAIN if either horizontal index is out of bounds.
     Sets status[i] = STATUS.BELOW_BOTTOM if vertical index is less than min.
@@ -78,8 +78,8 @@ cpdef finite_indices(particle_properties, scalars, field_data):
     """
     _finite_indices(particle_properties)
 
-cpdef domain_bounds(particles, scalars, field_data):
+cpdef domain_bounds(particle_properties, scalars, field_data):
     """
     Check particle indices are within domain bounds.
     """
-    _domain_bounds(particles_properties)
+    _domain_bounds(particle_properties, scalars)
