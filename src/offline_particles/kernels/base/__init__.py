@@ -3,6 +3,7 @@
 import numpy as np
 
 from .._kernels import BoundKernel, ParticleKernel, ParticlePropertyDeclaration
+from ..common_inputs import STATUS_DECLARATION
 from ._base import (
     add_property,
     copy_property,
@@ -33,6 +34,7 @@ def construct_copy_property_kernel(
     kernel = ParticleKernel(
         copy_property,
         particle_properties=[
+            STATUS_DECLARATION,
             source_declaration,
             destination_declaration,
         ],
@@ -65,6 +67,7 @@ def construct_add_property_kernel(
     kernel = ParticleKernel(
         add_property,
         particle_properties=[
+            STATUS_DECLARATION,
             source_declaration,
             destination_declaration,
         ],
@@ -97,6 +100,7 @@ def construct_subtract_property_kernel(
     kernel = ParticleKernel(
         subtract_property,
         particle_properties=[
+            STATUS_DECLARATION,
             source_declaration,
             destination_declaration,
         ],
@@ -129,6 +133,7 @@ def construct_multiply_property_kernel(
     kernel = ParticleKernel(
         multiply_property,
         particle_properties=[
+            STATUS_DECLARATION,
             source_declaration,
             destination_declaration,
         ],
@@ -161,6 +166,7 @@ def construct_divide_property_kernel(
     kernel = ParticleKernel(
         divide_property,
         particle_properties=[
+            STATUS_DECLARATION,
             source_declaration,
             destination_declaration,
         ],
