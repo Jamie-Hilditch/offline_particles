@@ -385,7 +385,7 @@ def get_required_particle_property_dtypes(*bound_kernels: BoundKernel) -> Mappin
         bound_kernels: The bound kernels to get the required particle properties from.
 
     Returns:
-        A mapping of required particle property names to their declarations.
+        A mapping of required particle property names to their dtypes.
 
     Raises:
         ValueError: If there are conflicting dtype declarations for the same particle property name.
@@ -396,10 +396,10 @@ def get_required_particle_property_dtypes(*bound_kernels: BoundKernel) -> Mappin
             binding = kb.particle_property_bindings[name]
             particle_property = kb.kernel.particle_properties[name]
             if binding in required:
-                if required[binding].dtype != particle_property.dtype:
+                if required[binding] != particle_property.dtype:
                     raise ValueError(
                         f"Conflicting dtype declarations for particle property '{binding}': "
-                        f"{required[binding].dtype} vs {particle_property.dtype}"
+                        f"{required[binding]} vs {particle_property.dtype}"
                     )
             else:
                 required[binding] = particle_property.dtype
