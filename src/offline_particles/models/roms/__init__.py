@@ -1,7 +1,6 @@
 """Offline particles simulations using ROMS output."""
 
 # import ROMS kernels
-from ...kernels import BoundKernel
 from ...kernels.base import construct_add_property_kernel
 from ...kernels.buoyancy import construct_buoyancy_force_accumulation_kernel
 from ...kernels.interpolation import construct_trilinear_interpolation_kernel
@@ -135,9 +134,6 @@ def roms_ab3_timestepper(
     # finally add the status bump kernel
     ab_kernels.append(construct_ab3_bump_status_kernel())
 
-    # combine kernels
-    ab_kernel = BoundKernel.chain(*tendency_kernels, *ab_kernels)
-
     # post step kernel to update zidx after advection
     post_step_kernels = [construct_compute_zidx_kernel()]
 
@@ -148,6 +144,6 @@ def roms_ab3_timestepper(
         index_padding=index_padding,
     )
     timestepper.add_pre_step_kernels(*pre_step_kernels)
-    timestepper.add_ab_kernels(ab_kernel)
+    timestepper.add_ab_kernels(*tendency_kernels, *ab_kernels)
     timestepper.add_post_step_kernels(*post_step_kernels)
     return timestepper
