@@ -48,8 +48,8 @@ class Output:
             # default value for dtype
             if dtype is None:
                 dtype = np.float64
-            # create particle property declaration
-            particle_property = ParticlePropertyDeclaration(particle_property_name, np.dtype(dtype))
+            particle_property_dtype = np.dtype(dtype)
+        particle_property = ParticlePropertyDeclaration(particle_property_name, particle_property_dtype)
 
         object.__setattr__(self, "particle_set", particle_set)
         object.__setattr__(self, "particle_property", particle_property)
