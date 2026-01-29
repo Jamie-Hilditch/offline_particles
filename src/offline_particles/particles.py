@@ -6,8 +6,6 @@ from typing import Mapping
 import numpy as np
 import numpy.typing as npt
 
-from .kernels import ParticlePropertyDeclaration
-
 
 class _FrozenArrayMapping:
     """A mapping-like object that holds equi-shaped arrays and prevents modification."""
@@ -78,7 +76,7 @@ class _FrozenArrayMapping:
 class Particles(_FrozenArrayMapping):
     __slots__ = ("_length",)
 
-    def __init__(self, nparticles: int, **bound_properties: ParticlePropertyDeclaration) -> None:
+    def __init__(self, nparticles: int, **bound_property_dtypes: np.dtype) -> None:
         """Initialize the Particles object.
 
         Args:
@@ -86,7 +84,7 @@ class Particles(_FrozenArrayMapping):
             **properties: Particle property declarations.
         """
         object.__setattr__(self, "_length", nparticles)
-        arrays = {binding: np.zeros((nparticles,), dtype=decl.dtype) for binding, decl in bound_properties.items()}
+        arrays = {binding: np.zeros((nparticles,), dtype=dtype) for binding, dtype in bound_property_dtypes.items()}
 
         super().__init__(**arrays)
 

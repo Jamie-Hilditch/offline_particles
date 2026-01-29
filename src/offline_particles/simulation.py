@@ -16,7 +16,7 @@ from .events import (
     TimeScheduler,
 )
 from .fieldset import Fieldset
-from .kernels import BoundKernel, get_required_particle_properties
+from .kernels import BoundKernel, get_required_particle_property_dtypes
 from .launcher import Launcher, Tinfo
 from .output import AbstractOutputWriter, AbstractOutputWriterBuilder
 from .particles import Particles, ParticlesView
@@ -91,8 +91,8 @@ class Simulation:
                 kernels.extend(event.kernels.get(name, ()))
 
             # then merge required particle properties from all kernels
-            particle_properties = get_required_particle_properties(*kernels)
-            self._particles[name] = Particles(nparticles, **particle_properties)
+            particle_property_dtypes = get_required_particle_property_dtypes(*kernels)
+            self._particles[name] = Particles(nparticles, **particle_property_dtypes)
             self._particles_view[name] = ParticlesView(self._particles[name])
 
         # store the current wall time
@@ -480,16 +480,16 @@ class Simulation:
         particles = self._particles[name]
 
         # check required particle properties are available
-        required_properties = get_required_particle_properties(kernel)
-        for binding, decl in required_properties.items():
+        required_property_dtypes = get_required_particle_property_dtypes(kernel)
+        for binding, dtype in required_property_dtypes.items():
             if binding not in particles.arrays:
                 raise ValueError(
                     f"Particle property '{binding}' required by kernel is not available in the simulation."
                 )
-            if particles.arrays[binding].dtype != decl.dtype:
+            if particles.arrays[binding].dtype != dtype:
                 raise TypeError(
                     f"Particle property '{binding}' has dtype {particles.arrays[binding].dtype}, "
-                    f"but kernel declares dtype {decl.dtype}."
+                    f"but kernel declares dtype {dtype}."
                 )
         self._launcher.launch_kernel(kernel, particles, self.tinfo)
 

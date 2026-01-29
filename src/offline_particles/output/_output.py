@@ -10,7 +10,7 @@ import numpy as np
 import numpy.typing as npt
 
 from ..events import Event, SimulationState
-from ..kernels import BoundKernel, ParticlePropertyDeclaration, get_required_particle_properties
+from ..kernels import BoundKernel, ParticlePropertyDeclaration, get_required_particle_property_dtypes
 
 
 @dataclasses.dataclass(frozen=True, slots=True, init=False)
@@ -32,16 +32,16 @@ class Output:
     ) -> None:
         """Initialize the Output."""
 
-        kernel_particle_properties = get_required_particle_properties(*kernels)
+        kernel_particle_property_dtypes = get_required_particle_property_dtypes(*kernels)
 
         # case 1: the particle property is already defined by the kernels
-        if particle_property_name in kernel_particle_properties:
-            particle_property = kernel_particle_properties[particle_property_name]
+        if particle_property_name in kernel_particle_property_dtypes:
+            particle_property_dtype = kernel_particle_property_dtypes[particle_property_name]
             # Check dtype compatibility
-            if dtype is not None and np.dtype(dtype) != particle_property.dtype:
+            if dtype is not None and np.dtype(dtype) != particle_property_dtype:
                 raise ValueError(
                     f"Output particle property '{particle_property_name}' has dtype "
-                    f"{dtype}, but a different dtype {particle_property.dtype} is required by the kernels."
+                    f"{dtype}, but a different dtype {particle_property_dtype} is required by the kernels."
                 )
         # case 2: the particle property not required by kernels
         else:
@@ -57,11 +57,11 @@ class Output:
         object.__setattr__(self, "attrs", dict(attrs))
 
     @property
-    def required_properties(self) -> Mapping[str, ParticlePropertyDeclaration]:
-        """Get the particle properties required by the output."""
-        required_properties = {self.particle_property.name: self.particle_property}
-        required_properties.update(get_required_particle_properties(*self.kernels))
-        return types.MappingProxyType(required_properties)
+    def required_property_dtypes(self) -> Mapping[str, np.dtype]:
+        """Get the particle properties dtypes required by the output."""
+        required_property_dtypes = {self.particle_property.name: self.particle_property.dtype}
+        required_property_dtypes.update(get_required_particle_property_dtypes(*self.kernels))
+        return types.MappingProxyType(required_property_dtypes)
 
 
 class AbstractOutputWriter(abc.ABC):
