@@ -89,12 +89,12 @@ class ZarrOutputWriter(AbstractOutputWriter):
         zarr_output_array = self._outputs[key]
         output = zarr_output_array.output
         array = zarr_output_array.array
-        field = output.particle_field
+        property_name = output.particle_property.name
 
         # write output
         time_size, particle_size = array.shape
         array.resize((time_size + 1, particle_size))
-        array[-1, :] = state.particles[output.particle_set][field]
+        array[-1, :] = state.particles[output.particle_set][property_name]
 
     def finalise_write_round(self, state: SimulationState) -> None:
         """Confirm that all outputs have been written for the current round and then increments the count."""
