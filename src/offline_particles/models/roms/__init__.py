@@ -34,6 +34,8 @@ def roms_ab3_timestepper(
     u: str = "u",
     v: str = "v",
     w: str = "w",
+    dx: str = "dx",
+    dy: str = "dy",
     h: str = "h",
     zeta: str = "zeta",
     C: str = "C",
@@ -56,6 +58,8 @@ def roms_ab3_timestepper(
         u: Binding for the u velocity field (default "u").
         v: Binding for the v velocity field (default "v").
         w: Binding for the w velocity field (default "w"). Only used if `vertical_velocity` is True.
+        dx: Binding for the x grid spacing field (default "dx").
+        dy: Binding for the y grid spacing field (default "dy").
         h: Binding for the bathymetry field (default "h").
         zeta: Binding for the free surface field (default "zeta").
         C: Binding for the vertical stretching function field (default "C").
@@ -94,8 +98,8 @@ def roms_ab3_timestepper(
     # horizontal advection
     tendency_kernels.extend(
         [
-            construct_horizontal_idx_tendency_kernel_from_velocity_field("_dxidx0", u),
-            construct_horizontal_idx_tendency_kernel_from_velocity_field("_dyidx0", v),
+            construct_horizontal_idx_tendency_kernel_from_velocity_field("_dxidx0", u, dx),
+            construct_horizontal_idx_tendency_kernel_from_velocity_field("_dyidx0", v, dy),
         ]
     )
 
