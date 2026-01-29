@@ -10,6 +10,7 @@ from ...kernels.relaxation import (
     construct_quadratic_damping_accumulation_kernel,
 )
 from ...kernels.roms import (
+    construct_compute_z_kernel,
     construct_compute_zidx_kernel,
     construct_horizontal_idx_tendency_kernel_from_velocity_field,
 )
@@ -19,6 +20,8 @@ from ...timestepping import ABTimestepper
 
 __all__ = [
     "roms_ab3_timestepper",
+    "construct_compute_zidx_kernel",
+    "construct_compute_z_kernel",
 ]
 
 
