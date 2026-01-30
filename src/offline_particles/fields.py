@@ -2,6 +2,7 @@
 
 import abc
 import collections
+import logging
 from typing import Any
 
 import dask.array as da
@@ -10,6 +11,8 @@ import numpy as np
 import numpy.typing as npt
 
 from .spatial_arrays import BBox, ChunkedDaskArray, NumpyArray, SpatialArray, Stagger
+
+logger = logging.getLogger(__name__)
 
 FieldData = collections.namedtuple("FieldData", ["array", "offsets"])
 
@@ -466,6 +469,7 @@ class TimeDependentField(Field):
 
         # load delta
         if not self._cached_delta_valid:
+            logger.debug("Calculating delta for TimeDependentField at time index %d with bbox %s", It, repr(bbox))
             next_data, _ = self._next_time_slice.get_data_subset(bbox)
             np.subtract(next_data, previous_data, out=self._delta)
             self._cached_delta_valid = True

@@ -14,10 +14,8 @@ from ...common_inputs import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARAT
 from .vertical_coordinate import compute_z_kernel_function, compute_zidx_kernel_function
 
 __all__ = [
-    "compute_z_kernel_function",
-    "compute_zidx_kernel_function",
-    "COMPUTE_Z_KERNEL",
-    "COMPUTE_ZIDX_KERNEL",
+    "construct_compute_z_kernel_function",
+    "construct_compute_zidx_kernel_function",
 ]
 
 z_declaration = ParticlePropertyDeclaration("z", np.float64)
