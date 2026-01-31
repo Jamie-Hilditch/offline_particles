@@ -4,6 +4,7 @@ import dataclasses
 import itertools
 import time
 import types
+import warnings
 from typing import Mapping, overload
 
 import numpy as np
@@ -46,6 +47,8 @@ class Simulation:
         iteration_scheduler: IterationScheduler,
         time_scheduler: TimeScheduler,
         output_writers: Mapping[str, AbstractOutputWriter],
+        *,
+        bbox_cache_size: int = 100,
     ) -> None:
         """Initialize the Simulation.
 
@@ -59,7 +62,7 @@ class Simulation:
         self._output_writers = output_writers
 
         # create launcher and register kernel data functions
-        self._launcher = Launcher(fieldset)
+        self._launcher = Launcher(fieldset, cache_size=bbox_cache_size)
         self._launcher.register_scalar_data_sources_from_object(clock)
         for event in self._iteration_scheduler.events:
             self._launcher.register_scalar_data_sources_from_object(event)
@@ -80,6 +83,8 @@ class Simulation:
         self._particles = {}
         self._particles_view = {}
 
+        # build particles
+        kernel_count = 0
         for pset in particle_sets:
             name = pset.name
             nparticles = pset.nparticles
@@ -89,11 +94,21 @@ class Simulation:
                 kernels.extend(event.kernels.get(name, ()))
             for event in self._time_scheduler.events:
                 kernels.extend(event.kernels.get(name, ()))
+            kernel_count += len(kernels)
 
             # then merge required particle properties from all kernels
             particle_property_dtypes = get_required_particle_property_dtypes(*kernels)
             self._particles[name] = Particles(nparticles, **particle_property_dtypes)
             self._particles_view[name] = ParticlesView(self._particles[name])
+
+        # print a warning if kernel count is larger that cache size
+        if kernel_count > bbox_cache_size:
+            warnings.warn(
+                f"Number of kernels ({kernel_count}) "
+                f"exceeds bbox cache size ({bbox_cache_size}). "
+                "Consider increasing the cache size for better performance.",
+                RuntimeWarning,
+            )
 
         # store the current wall time
         self._wall_time_start = time.perf_counter_ns()
