@@ -48,7 +48,7 @@ class Simulation:
         time_scheduler: TimeScheduler,
         output_writers: Mapping[str, AbstractOutputWriter],
         *,
-        bbox_cache_size: int = 100,
+        bbox_history_size: int = 100,
     ) -> None:
         """Initialize the Simulation.
 
@@ -62,7 +62,7 @@ class Simulation:
         self._output_writers = output_writers
 
         # create launcher and register kernel data functions
-        self._launcher = Launcher(fieldset, cache_size=bbox_cache_size)
+        self._launcher = Launcher(fieldset, history_size=bbox_history_size)
         self._launcher.register_scalar_data_sources_from_object(clock)
         for event in self._iteration_scheduler.events:
             self._launcher.register_scalar_data_sources_from_object(event)
@@ -101,12 +101,12 @@ class Simulation:
             self._particles[name] = Particles(nparticles, **particle_property_dtypes)
             self._particles_view[name] = ParticlesView(self._particles[name])
 
-        # print a warning if kernel count is larger that cache size
-        if kernel_count > bbox_cache_size:
+        # print a warning if kernel count is larger that history size
+        if kernel_count > bbox_history_size:
             warnings.warn(
                 f"Number of kernels ({kernel_count}) "
-                f"exceeds bbox cache size ({bbox_cache_size}). "
-                "Consider increasing the cache size for better performance.",
+                f"exceeds bbox history size ({bbox_history_size}). "
+                "Consider increasing the history size for better performance.",
                 RuntimeWarning,
             )
 

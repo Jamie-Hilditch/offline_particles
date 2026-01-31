@@ -55,7 +55,7 @@ type ScalarProvider = Callable[[Tinfo], np.generic]
 class Launcher:
     """Class to launch bound kernels."""
 
-    def __init__(self, fieldset: Fieldset, cache_size: int) -> None:
+    def __init__(self, fieldset: Fieldset, history_size: int) -> None:
         super().__init__()
 
         self._scalar_data_sources: dict[str, ScalarProvider] = {}
@@ -63,14 +63,14 @@ class Launcher:
         self._index_padding = 0
 
         # bbox cache
-        if cache_size <= 0:
-            raise ValueError("cache_size must be positive")
-        self._zmin_cache = collections.deque(maxlen=cache_size)
-        self._zmax_cache = collections.deque(maxlen=cache_size)
-        self._ymin_cache = collections.deque(maxlen=cache_size)
-        self._ymax_cache = collections.deque(maxlen=cache_size)
-        self._xmin_cache = collections.deque(maxlen=cache_size)
-        self._xmax_cache = collections.deque(maxlen=cache_size)
+        if history_size <= 0:
+            raise ValueError("history_size must be positive")
+        self._zmin_history = collections.deque(maxlen=history_size)
+        self._zmax_history = collections.deque(maxlen=history_size)
+        self._ymin_history = collections.deque(maxlen=history_size)
+        self._ymax_history = collections.deque(maxlen=history_size)
+        self._xmin_history = collections.deque(maxlen=history_size)
+        self._xmax_history = collections.deque(maxlen=history_size)
 
         # register constants attached to fieldset as scalar data sources
         for name, value in self._fieldset.constants.items():
@@ -146,20 +146,20 @@ class Launcher:
         xmin = x_indices.min(initial=np.inf) - self._index_padding
         xmax = x_indices.max(initial=-np.inf) + self._index_padding
 
-        self._zmin_cache.append(zmin)
-        self._zmax_cache.append(zmax)
-        self._ymin_cache.append(ymin)
-        self._ymax_cache.append(ymax)
-        self._xmin_cache.append(xmin)
-        self._xmax_cache.append(xmax)
+        self._zmin_history.append(zmin)
+        self._zmax_history.append(zmax)
+        self._ymin_history.append(ymin)
+        self._ymax_history.append(ymax)
+        self._xmin_history.append(xmin)
+        self._xmax_history.append(xmax)
 
         return BBox(
-            zmin=min(self._zmin_cache),
-            zmax=max(self._zmax_cache),
-            ymin=min(self._ymin_cache),
-            ymax=max(self._ymax_cache),
-            xmin=min(self._xmin_cache),
-            xmax=max(self._xmax_cache),
+            zmin=min(self._zmin_history),
+            zmax=max(self._zmax_history),
+            ymin=min(self._ymin_history),
+            ymax=max(self._ymax_history),
+            xmin=min(self._xmin_history),
+            xmax=max(self._xmax_history),
         )
 
     def get_field_data(self, name: str, time_index: float, bbox: BBox) -> FieldData:
