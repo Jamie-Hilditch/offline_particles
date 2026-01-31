@@ -26,6 +26,8 @@ from .timestepping import Clock, Timestepper
 type T = np.float64 | np.datetime64
 type D = np.float64 | np.timedelta64
 
+BBOX_HISTORY_SIZE_DEFAULT = 256
+
 
 @dataclasses.dataclass
 class ParticleSet:
@@ -48,7 +50,7 @@ class Simulation:
         time_scheduler: TimeScheduler,
         output_writers: Mapping[str, AbstractOutputWriter],
         *,
-        bbox_history_size: int = 100,
+        bbox_history_size: int = BBOX_HISTORY_SIZE_DEFAULT,
     ) -> None:
         """Initialize the Simulation.
 
