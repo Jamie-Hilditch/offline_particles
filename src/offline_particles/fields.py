@@ -469,7 +469,12 @@ class TimeDependentField(Field):
 
         # load delta
         if not self._cached_delta_valid:
-            logger.debug("Calculating delta for TimeDependentField at time index %d with bbox %s", It, repr(bbox))
+            logger.debug(
+                "Calculating delta for TimeDependentField at time index %d with bbox %s and offsets %s",
+                It,
+                repr(bbox),
+                repr(offsets),
+            )
             next_data, _ = self._next_time_slice.get_data_subset(bbox)
             np.subtract(next_data, previous_data, out=self._delta)
             self._cached_delta_valid = True
