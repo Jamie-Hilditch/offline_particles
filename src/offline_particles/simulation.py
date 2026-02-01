@@ -26,7 +26,7 @@ from .timestepping import Clock, Timestepper
 type T = np.float64 | np.datetime64
 type D = np.float64 | np.timedelta64
 
-BBOX_HISTORY_SIZE_DEFAULT = 256
+DEFAULT_BBOX_HISTORY_SIZE = 256
 
 
 @dataclasses.dataclass
@@ -50,7 +50,7 @@ class Simulation:
         time_scheduler: TimeScheduler,
         output_writers: Mapping[str, AbstractOutputWriter],
         *,
-        bbox_history_size: int = BBOX_HISTORY_SIZE_DEFAULT,
+        bbox_history_size: int = DEFAULT_BBOX_HISTORY_SIZE,
     ) -> None:
         """Initialize the Simulation.
 
