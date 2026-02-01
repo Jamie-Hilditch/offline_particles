@@ -299,6 +299,10 @@ class TimeDependentField(Field):
         self._cached_delta_valid = False
         self._cached_offsets = (np.nan,) * self.nspatial_dims
 
+        # output cache
+        self._output_valid = False
+        self._prior_ft_output: np.float64 = np.nan  # ft when output was computed
+
         # time index
         if self._data.shape[0] < 2:
             raise ValueError("TimeDependentField requires at least 2 time steps.")
@@ -317,6 +321,7 @@ class TimeDependentField(Field):
         self._delta = np.empty(shape=shape, dtype=self._data.dtype)
         self._cached_delta_valid = False
         self._output = np.empty(shape=shape, dtype=self._output_dtype)
+        self._output_valid = False
 
     @property
     def data(self) -> da.Array | npt.NDArray:
@@ -390,7 +395,9 @@ class TimeDependentField(Field):
             self.y_stagger,
             self.x_stagger,
         )
+        # loading new data invalidates cached delta and output
         self._cached_delta_valid = False
+        self._output_valid = False
 
     def decrement_time(self) -> None:
         """Decrement the time index, creating the previous spatial arrays."""
@@ -405,7 +412,9 @@ class TimeDependentField(Field):
             self.y_stagger,
             self.x_stagger,
         )
+        # loading new data invalidates cached delta and output
         self._cached_delta_valid = False
+        self._output_valid = False
 
     def set_time_index(self, It: int) -> None:
         """Set the time index, adjusting the spatial arrays."""
@@ -432,7 +441,9 @@ class TimeDependentField(Field):
             self.y_stagger,
             self.x_stagger,
         )
+        # loading new data invalidates cached delta and output
         self._cached_delta_valid = False
+        self._output_valid = False
 
     def get_field_data(self, time_index: float, bbox: BBox) -> FieldData:
         """Get the field data at a given time index.
@@ -455,13 +466,19 @@ class TimeDependentField(Field):
         # first make sure we're at the right time index
         self.set_time_index(It)
 
-        # load the previous time subset
+        # if ft has changed output is invalid
+        if ft != self._prior_ft_output:
+            self._output_valid = False
+
+        # get the previous time subset
+        # note this is cached if the required chunks have not changed
         previous_data, offsets = self._previous_time_slice.get_data_subset(bbox)
 
         # check offsets match
         if offsets != self._cached_offsets:
             self._cached_offsets = offsets
             self._cached_delta_valid = False
+            self._output_valid = False
 
         # check array shapes match
         if self._array_shape != previous_data.shape:
@@ -479,12 +496,16 @@ class TimeDependentField(Field):
             np.subtract(next_data, previous_data, out=self._delta)
             self._cached_delta_valid = True
 
-        # interpolate in time
-        ft = self._data_dtype.type(ft)
+        # perform interpolation if needed
+        if not self._output_valid:
+            # store when this output was computed
+            self._prior_ft_output = ft
+            self._output_valid = True
 
-        # perform interpolation - note we ravel arrays for numba
-        # all these arrays are contiguous so ravel generates 1D views
-        _perform_interpolation(previous_data.ravel(), self._delta.ravel(), ft, self._output.ravel())
+            # perform interpolation in time - note we ravel arrays for numba
+            # all these arrays are contiguous so ravel generates 1D views
+            ft = self._data_dtype.type(ft)
+            _perform_interpolation(previous_data.ravel(), self._delta.ravel(), ft, self._output.ravel())
 
         return FieldData(self._output, offsets)
 
