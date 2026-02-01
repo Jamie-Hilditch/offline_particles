@@ -487,9 +487,8 @@ class TimeDependentField(Field):
         # load delta
         if not self._cached_delta_valid:
             logger.debug(
-                "Calculating delta for TimeDependentField at time index %d with bbox %s and offsets %s",
+                "Calculating delta at time index %d with offsets %s",
                 It,
-                repr(bbox),
                 repr(offsets),
             )
             next_data, _ = self._next_time_slice.get_data_subset(bbox)
@@ -498,14 +497,14 @@ class TimeDependentField(Field):
 
         # perform interpolation if needed
         if not self._output_valid:
+            # perform interpolation in time - note we ravel arrays for numba
+            # all these arrays are contiguous so ravel generates 1D views
+            _ft = self._data_dtype.type(ft)
+            _perform_interpolation(previous_data.ravel(), self._delta.ravel(), _ft, self._output.ravel())
+
             # store when this output was computed
             self._prior_ft_output = ft
             self._output_valid = True
-
-            # perform interpolation in time - note we ravel arrays for numba
-            # all these arrays are contiguous so ravel generates 1D views
-            ft = self._data_dtype.type(ft)
-            _perform_interpolation(previous_data.ravel(), self._delta.ravel(), ft, self._output.ravel())
 
         return FieldData(self._output, offsets)
 
