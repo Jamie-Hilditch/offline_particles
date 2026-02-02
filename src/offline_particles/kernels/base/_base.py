@@ -68,7 +68,7 @@ def _divide_property(
         destination[i] /= source[i]
 
 
-def copy_property(particle_properties: ParticlePropertiesType, fields: FieldDataType, scalars: ScalarsType) -> None:
+def copy_property(particle_properties: ParticlePropertiesType, scalars: ScalarsType, fields: FieldDataType) -> None:
     _copy_property(
         particle_properties["status"],
         particle_properties["source"],
@@ -76,7 +76,7 @@ def copy_property(particle_properties: ParticlePropertiesType, fields: FieldData
     )
 
 
-def add_property(particle_properties: ParticlePropertiesType, fields: FieldDataType, scalars: ScalarsType) -> None:
+def add_property(particle_properties: ParticlePropertiesType, scalars: ScalarsType, fields: FieldDataType) -> None:
     _add_property(
         particle_properties["status"],
         particle_properties["source"],
@@ -84,7 +84,7 @@ def add_property(particle_properties: ParticlePropertiesType, fields: FieldDataT
     )
 
 
-def subtract_property(particle_properties: ParticlePropertiesType, fields: FieldDataType, scalars: ScalarsType) -> None:
+def subtract_property(particle_properties: ParticlePropertiesType, scalars: ScalarsType, fields: FieldDataType) -> None:
     _subtract_property(
         particle_properties["status"],
         particle_properties["source"],
@@ -92,7 +92,7 @@ def subtract_property(particle_properties: ParticlePropertiesType, fields: Field
     )
 
 
-def multiply_property(particle_properties: ParticlePropertiesType, fields: FieldDataType, scalars: ScalarsType) -> None:
+def multiply_property(particle_properties: ParticlePropertiesType, scalars: ScalarsType, fields: FieldDataType) -> None:
     _multiply_property(
         particle_properties["status"],
         particle_properties["source"],
@@ -100,7 +100,7 @@ def multiply_property(particle_properties: ParticlePropertiesType, fields: Field
     )
 
 
-def divide_property(particle_properties: ParticlePropertiesType, fields: FieldDataType, scalars: ScalarsType) -> None:
+def divide_property(particle_properties: ParticlePropertiesType, scalars: ScalarsType, fields: FieldDataType) -> None:
     _divide_property(
         particle_properties["status"],
         particle_properties["source"],

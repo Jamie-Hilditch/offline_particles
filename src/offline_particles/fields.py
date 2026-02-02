@@ -1,7 +1,7 @@
 """Submodule for handling fields in offline particle simulations."""
 
 import abc
-import collections
+import dataclasses
 import logging
 from typing import Any
 
@@ -14,7 +14,14 @@ from .spatial_arrays import BBox, ChunkedDaskArray, NumpyArray, SpatialArray, St
 
 logger = logging.getLogger(__name__)
 
-FieldData = collections.namedtuple("FieldData", ["array", "offsets"])
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class FieldData:
+    array: npt.NDArray
+    offsets: tuple[float, ...]
+
+    def __repr__(self) -> str:
+        return f"FieldData(array(shape={self.array.shape}, dtype={self.array.dtype}), offsets={self.offsets})"
 
 
 class Field(abc.ABC):
