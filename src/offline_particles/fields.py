@@ -540,12 +540,13 @@ class TimeDependentField(Field):
         return cls(data, z_stagger, y_stagger, x_stagger, factory, attrs=attrs)
 
 
-type T = np.floating
+type Tin = np.floating
+type Tout = np.floating
 
 
 @numba.njit(parallel=True, fastmath=True, nogil=True)
 def _perform_interpolation(
-    previous: npt.NDArray[T], delta: npt.NDArray[T], ft: T, output: npt.NDArray[np.float64]
+    previous: npt.NDArray[Tin], delta: npt.NDArray[Tin], ft: Tin, output: npt.NDArray[Tout]
 ) -> None:
     """Perform linear interpolation in time."""
     n = previous.size

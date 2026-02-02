@@ -1,9 +1,8 @@
 """Submodule handling loading and data access for arrays of spatial data."""
 
 import abc
-import collections
+import dataclasses
 import enum
-import itertools
 import logging
 
 import dask.array as da
@@ -11,8 +10,6 @@ import numpy as np
 import numpy.typing as npt
 
 logger = logging.getLogger(__name__)
-
-BBox = collections.namedtuple("BBox", ("zmin", "zmax", "ymin", "ymax", "xmin", "xmax"))
 
 
 @enum.unique
@@ -75,6 +72,27 @@ ON_FACE_STAGGERS = frozenset({s for s in Stagger if s.on_face})
 ACTIVE_STAGGERS = frozenset({s for s in Stagger if s.is_active})
 INVARIANT_STAGGERS = frozenset({Stagger.INVARIANT})
 INACTIVE_STAGGERS = frozenset({s for s in Stagger if not s.is_active})
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class BBox:
+    """Bounding box defined by min and max indices in each dimension."""
+
+    zmin: float
+    zmax: float
+    ymin: float
+    ymax: float
+    xmin: float
+    xmax: float
+
+    @property
+    def by_dimension(self) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float]]:
+        """Bounding box organized by dimension."""
+        return (
+            (self.zmin, self.zmax),
+            (self.ymin, self.ymax),
+            (self.xmin, self.xmax),
+        )
 
 
 class SpatialArray(abc.ABC):
@@ -245,6 +263,10 @@ class ChunkedDaskArray(SpatialArray):
         x_stagger: Stagger,
     ) -> None:
         super().__init__(z_stagger, y_stagger, x_stagger)
+        if data.ndim != sum(self.dmask):
+            raise ValueError(
+                f"Data array has {data.ndim} dimensions but {sum(self.dmask)} active dimensions were specified."
+            )
         self._data = data
         self._ndim = self._data.ndim
         self._shape = self._data.shape
@@ -285,8 +307,9 @@ class ChunkedDaskArray(SpatialArray):
             This accounts for both the grid staggering and any subsetting of the data array.
         """
         # loop through active dimensions and compute new bounds
-        batched_bbox = itertools.batched(bounding_box, 2)
-        active_bbox = tuple(dim_bounds for dim_bounds, is_active in zip(batched_bbox, self.dmask) if is_active)
+        active_bbox = tuple(
+            dim_bounds for dim_bounds, is_active in zip(bounding_box.by_dimension, self.dmask) if is_active
+        )
         active_offsets = self.active_offsets
         new_bounds = tuple(
             _compute_new_bounds(db, offset, bounds)

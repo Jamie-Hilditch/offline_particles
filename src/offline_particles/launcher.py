@@ -3,11 +3,14 @@
 import collections
 from typing import Callable, TypeVar
 
+import numba
 import numpy as np
+import numpy.typing as npt
 
 from .fields import FieldData
 from .fieldset import Fieldset
-from .kernels import BoundKernel, is_active
+from .kernels import BoundKernel
+from .kernels.status import INACTIVE_FLAG
 from .particles import Particles
 from .spatial_arrays import BBox
 
@@ -131,21 +134,15 @@ class Launcher:
         particles: Particles,
     ) -> BBox:
         """Construct a bounding box around the given particles with index padding."""
-        idx = is_active(particles["status"])
+        # compute bounds of active particles
+        zmin, zmax, ymin, ymax, xmin, xmax = _compute_particle_bounds(
+            particles["status"],
+            particles["zidx"],
+            particles["yidx"],
+            particles["xidx"],
+        )
 
-        z_indices = particles["zidx"][idx]
-        y_indices = particles["yidx"][idx]
-        x_indices = particles["xidx"][idx]
-
-        zmin = z_indices.min(initial=np.inf) - self._index_padding
-        zmax = z_indices.max(initial=-np.inf) + self._index_padding
-
-        ymin = y_indices.min(initial=np.inf) - self._index_padding
-        ymax = y_indices.max(initial=-np.inf) + self._index_padding
-
-        xmin = x_indices.min(initial=np.inf) - self._index_padding
-        xmax = x_indices.max(initial=-np.inf) + self._index_padding
-
+        # update history
         self._zmin_history.append(zmin)
         self._zmax_history.append(zmax)
         self._ymin_history.append(ymin)
@@ -154,12 +151,12 @@ class Launcher:
         self._xmax_history.append(xmax)
 
         return BBox(
-            zmin=min(self._zmin_history),
-            zmax=max(self._zmax_history),
-            ymin=min(self._ymin_history),
-            ymax=max(self._ymax_history),
-            xmin=min(self._xmin_history),
-            xmax=max(self._xmax_history),
+            zmin=min(self._zmin_history) - self._index_padding,
+            zmax=max(self._zmax_history) + self._index_padding,
+            ymin=min(self._ymin_history) - self._index_padding,
+            ymax=max(self._ymax_history) + self._index_padding,
+            xmin=min(self._xmin_history) - self._index_padding,
+            xmax=max(self._xmax_history) + self._index_padding,
         )
 
     def get_field_data(self, name: str, time_index: float, bbox: BBox) -> FieldData:
@@ -195,3 +192,42 @@ class Launcher:
         }
         # call the kernel
         bound_kernel.kernel(particle_properties, scalars, field_data)
+
+
+@numba.njit(fastmath=True, nogil=True)
+def _compute_particle_bounds(
+    status: npt.NDArray[np.uint8],
+    zidx: npt.NDArray[np.float64],
+    yidx: npt.NDArray[np.float64],
+    xidx: npt.NDArray[np.float64],
+) -> tuple[float, float, float, float, float, float]:
+    """Compute the bounding box of active particles."""
+    zmin = np.inf
+    zmax = -np.inf
+    ymin = np.inf
+    ymax = -np.inf
+    xmin = np.inf
+    xmax = -np.inf
+
+    for i in range(status.size):
+        if status[i] & INACTIVE_FLAG:  # inactive
+            continue
+
+        z = zidx[i]
+        y = yidx[i]
+        x = xidx[i]
+
+        if z < zmin:
+            zmin = z
+        if z > zmax:
+            zmax = z
+        if y < ymin:
+            ymin = y
+        if y > ymax:
+            ymax = y
+        if x < xmin:
+            xmin = x
+        if x > xmax:
+            xmax = x
+
+    return zmin, zmax, ymin, ymax, xmin, xmax
