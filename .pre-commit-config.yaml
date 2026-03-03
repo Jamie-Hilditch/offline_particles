@@ -12,3 +12,11 @@ repos:
     rev: v0.18.1
     hooks:
     -   id: cython-lint
+- repo: local
+  hooks:
+    - id: pytest
+      name: pytest
+      entry: uv run pytest
+      language: system
+      pass_filenames: false
+      stages: [pre-push]
