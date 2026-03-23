@@ -47,7 +47,12 @@ class Clock:
                 time_unit = np.float64(1.0)
             else:
                 raise ValueError("time_unit must be specified for dimensional time.")
+
+        # time unit must be positive and then sign of dt determines clock direction
+        if time_unit <= 0:
+            raise ValueError("time_unit must be positive.")
         self._time_unit = time_unit
+        self._forward_in_time = dt > 0
 
         # now set the timestep which has the same type as time_unit
         self.set_dt(dt)
@@ -81,6 +86,11 @@ class Clock:
 
     def set_dt(self, dt: D) -> None:
         """Set the time step."""
+        # validate sign of dt
+        if self._forward_in_time and dt <= 0:
+            raise ValueError("dt must be positive for forward-in-time integration.")
+        if not self._forward_in_time and dt >= 0:
+            raise ValueError("dt must be negative for backward-in-time integration.")
         # convert dt to timestep_type
         try:
             self._normalised_dt = np.float64(dt / self._time_unit)  # type: ignore[operator]
@@ -142,7 +152,7 @@ class Clock:
     @property
     def forward_in_time(self) -> np.bool:
         """Whether the clock is advancing time forwards."""
-        return self._normalised_dt > 0
+        return self._forward_in_time > 0
 
     def advance_time(self) -> None:
         """Advance the current time by dt and update the time index."""
