@@ -49,7 +49,7 @@ class Clock:
                 raise ValueError("time_unit must be specified for dimensional time.")
 
         # time unit must be positive and then sign of dt determines clock direction
-        if time_unit <= 0:
+        if time_unit <= time_unit * 0:
             raise ValueError("time_unit must be positive.")
         self._time_unit = time_unit
         self._forward_in_time = dt > 0 * dt

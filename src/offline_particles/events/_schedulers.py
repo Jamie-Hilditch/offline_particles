@@ -106,9 +106,9 @@ class TimeScheduler:
             event (Event): The event to be triggered.
         """
         # validate dt
-        if self._forward_in_time and dt <= 0:
+        if self._forward_in_time and dt <= dt * 0:
             raise ValueError("dt must be positive when forward_in_time is True.")
-        if not self._forward_in_time and dt >= 0:
+        if not self._forward_in_time and dt >= dt * 0:
             raise ValueError("dt must be negative when forward_in_time is False.")
         # schedule the first occurrence of the event
         self._schedule_event(first, dt, event)
