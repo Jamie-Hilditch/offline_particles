@@ -49,7 +49,7 @@ class Clock:
                 raise ValueError("time_unit must be specified for dimensional time.")
 
         # time unit must be positive and then sign of dt determines clock direction
-        if time_unit <= time_unit * 0:
+        if not (time_unit > time_unit * 0):
             raise ValueError("time_unit must be positive.")
         self._time_unit = time_unit
         self._forward_in_time = dt > 0 * dt
@@ -87,9 +87,9 @@ class Clock:
     def set_dt(self, dt: D) -> None:
         """Set the time step."""
         # validate sign of dt using zero of the same type/unit as dt
-        if self._forward_in_time and dt <= dt * 0:
+        if self._forward_in_time and not (dt > dt * 0):
             raise ValueError("dt must be positive for forward-in-time integration.")
-        if not self._forward_in_time and dt >= dt * 0:
+        if not self._forward_in_time and not (dt < dt * 0):
             raise ValueError("dt must be negative for backward-in-time integration.")
         # convert dt to timestep_type
         try:
