@@ -86,10 +86,11 @@ class Clock:
 
     def set_dt(self, dt: D) -> None:
         """Set the time step."""
-        # validate sign of dt
-        if self._forward_in_time and dt <= 0:
+        # validate sign of dt using zero of the same type/unit as dt
+        zero_dt = dt * 0
+        if self._forward_in_time and dt <= zero_dt:
             raise ValueError("dt must be positive for forward-in-time integration.")
-        if not self._forward_in_time and dt >= 0:
+        if not self._forward_in_time and dt >= zero_dt:
             raise ValueError("dt must be negative for backward-in-time integration.")
         # convert dt to timestep_type
         try:
