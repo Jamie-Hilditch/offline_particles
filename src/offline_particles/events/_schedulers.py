@@ -74,8 +74,8 @@ class IterationScheduler:
 class TimeScheduler:
     """A scheduler that triggers events every dt."""
 
-    def __init__(self, *, forward: bool = True) -> None:
-        self._forward = forward
+    def __init__(self, *, forward_in_time: bool = True) -> None:
+        self._forward_in_time = forward_in_time
 
         self._next_time = None
         self._events: dict[T, list[tuple[D, Event]]] = dict()
@@ -105,6 +105,11 @@ class TimeScheduler:
             dt (D): The time interval between events.
             event (Event): The event to be triggered.
         """
+        # validate dt
+        if self._forward_in_time and not (dt > dt * 0):
+            raise ValueError("dt must be positive when forward_in_time is True.")
+        if not self._forward_in_time and not (dt < dt * 0):
+            raise ValueError("dt must be negative when forward_in_time is False.")
         self._schedule_event(first, dt, event)
         self.set_next()
 
@@ -113,7 +118,7 @@ class TimeScheduler:
         if not self._events:
             self._next_time = None
             return
-        if self._forward:
+        if self._forward_in_time:
             self._next_time = min(self._events.keys())
         else:
             self._next_time = max(self._events.keys())
@@ -129,7 +134,16 @@ class TimeScheduler:
         """
         triggered_events: list[Event] = []
 
-        while (nt := self._next_time) is not None and (nt <= time if self._forward else nt >= time):
+        while True:
+            nt = self._next_time
+            # break conditions
+            if nt is None:
+                break
+            if self._forward_in_time and nt > time:
+                break
+            if not self._forward_in_time and nt < time:
+                break
+            # trigger events and reschedule
             for dt, event in self._events.pop(nt, []):
                 triggered_events.append(event)
                 # Reschedule the event for its next occurrence

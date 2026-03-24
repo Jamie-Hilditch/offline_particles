@@ -531,7 +531,7 @@ class SimulationBuilder:
 
         # events
         self._iteration_scheduler = IterationScheduler()
-        self._time_scheduler = TimeScheduler()
+        self._time_scheduler = TimeScheduler(forward_in_time=self._clock.forward_in_time)
 
         # output writers
         self._output_writers: dict[str, tuple[AbstractOutputWriterBuilder, dict[str, ...]]] = dict()
