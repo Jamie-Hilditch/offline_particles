@@ -23,7 +23,7 @@ def _activate_released_particles(
     for i in numba.prange(status.shape[0]):  # ty: ignore[not-iterable]
         if status[i] != _PRE_RELEASE:
             continue
-        if (dt > 0 and release_time[i] <= time) or (dt < 0 and release_time[i] > time):
+        if (dt > 0 and time >= release_time[i]) or (dt < 0 and time <= release_time[i]):
             status[i] = _NORMAL
 
 
@@ -37,7 +37,7 @@ def _deactivate_retired_particles(
     for i in numba.prange(status.shape[0]):  # ty: ignore[not-iterable]
         if status[i] & INACTIVE_FLAG:
             continue
-        if (dt > 0 and retirement_time[i] <= time) or (dt < 0 and retirement_time[i] > time):
+        if (dt > 0 and time >= retirement_time[i]) or (dt < 0 and time <= retirement_time[i]):
             status[i] = _POST_RETIREMENT
 
 
