@@ -3,7 +3,7 @@
 import numpy as np
 
 from .._kernels import BoundKernel, ParticleKernel, ParticlePropertyDeclaration
-from ..common_inputs import STATUS_DECLARATION, construct_time_declaration
+from ..common_inputs import DT_DECLARATION, STATUS_DECLARATION, construct_time_declaration
 from ._timed_activation import (
     activate_released_particles,
     deactivate_retired_particles,
@@ -37,6 +37,7 @@ def construct_activate_released_particles_kernel(
         ],
         scalars=[
             construct_time_declaration(dtype),
+            DT_DECLARATION,
         ],
     )
     return BoundKernel(
@@ -67,6 +68,7 @@ def construct_deactivate_retired_particles_kernel(
         ],
         scalars=[
             construct_time_declaration(dtype),
+            DT_DECLARATION,
         ],
     )
     return BoundKernel(
