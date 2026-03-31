@@ -5,17 +5,22 @@ import numpy as np
 from .._kernels import BoundKernel, ParticleKernel, ParticlePropertyDeclaration
 from ..common_inputs import STATUS_DECLARATION, construct_time_declaration
 from ._timed_activation import (
-    active_released_particles,
+    activate_released_particles,
     deactivate_retired_particles,
 )
+
+__all__ = [
+    "construct_activate_released_particles_kernel",
+    "construct_deactivate_retired_particles_kernel",
+]
 
 type SupportedDTypes = type[np.float64] | type[np.datetime64]
 
 
-def construct_active_released_particles_kernel(
+def construct_activate_released_particles_kernel(
     release_time: str = "release_time", dtype: SupportedDTypes = np.float64
 ) -> BoundKernel:
-    """Construct a kernel to active particles at a given release time.
+    """Construct a kernel to activate particles at a given release time.
 
     Args:
         release_time: Binding for the release time particle property (default "release_time").
@@ -25,7 +30,7 @@ def construct_active_released_particles_kernel(
     release_time_declaration = ParticlePropertyDeclaration("release_time", np.dtype(dtype))
 
     kernel = ParticleKernel(
-        active_released_particles,
+        activate_released_particles,
         particle_properties=[
             STATUS_DECLARATION,
             release_time_declaration,

@@ -33,7 +33,7 @@ def _deactivate_retired_particles(
 
 
 # kernel functions
-def active_released_particles(
+def activate_released_particles(
     particle_properties: ParticlePropertiesType, scalars: ScalarsType, fields: FieldDataType
 ) -> None:
     _activate_released_particles(
