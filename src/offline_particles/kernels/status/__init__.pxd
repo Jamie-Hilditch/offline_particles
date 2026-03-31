@@ -14,3 +14,7 @@ cdef enum STATUS:
     # Reserved for multistep initialization
     MULTISTEP_1 = 10
     MULTISTEP_2 = 11
+
+    # timed releases and retirements
+    PRE_RELEASE = 20 | INACTIVE
+    POST_RETIREMENT = 21 | INACTIVE

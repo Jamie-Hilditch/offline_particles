@@ -1,6 +1,6 @@
 """Submodule defining particle kernels."""
 
-from . import common_inputs, roms, status, timestepping, validation
+from . import common_inputs, roms, status, timed_activation, timestepping, validation
 from ._kernels import (
     BoundKernel,
     FieldDataDeclaration,
@@ -17,6 +17,7 @@ __all__ = [
     "common_inputs",
     "roms",
     "status",
+    "timed_activation",
     "timestepping",
     "validation",
     "BoundKernel",

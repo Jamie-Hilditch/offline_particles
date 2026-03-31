@@ -52,7 +52,7 @@ class Clock:
         if not (time_unit > time_unit * 0):
             raise ValueError("time_unit must be positive.")
         self._time_unit = time_unit
-        self._forward_in_time = dt > 0 * dt
+        self._forward_in_time: bool = dt > 0 * dt
 
         # now set the timestep which has the same type as time_unit
         self.set_dt(dt)
