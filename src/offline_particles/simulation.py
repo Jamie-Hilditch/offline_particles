@@ -205,7 +205,7 @@ class Simulation:
         return self._launcher.index_padding
 
     @property
-    def forward_in_time(self) -> np.bool:
+    def forward_in_time(self) -> bool:
         """Check if the simulation is running forward in time.
 
         Returns:
