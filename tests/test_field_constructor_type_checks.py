@@ -7,7 +7,6 @@ import pytest
 from offline_particles.fields import StaticField, TimeDependentField
 from offline_particles.spatial_arrays import ChunkedDaskArray, Stagger
 
-
 STAGGER_ARGS = ("center", "center", "center")
 
 
@@ -116,7 +115,10 @@ class TestStaticFieldFromArraylike:
 
 class TestTimeDependentFieldFromArraylike:
     def test_accepts_list(self) -> None:
-        data = [[[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]], [[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]]]
+        data = [
+            [[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]],
+            [[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]],
+        ]
         field = TimeDependentField.from_arraylike(data, *STAGGER_ARGS)
         assert isinstance(field, TimeDependentField)
 
