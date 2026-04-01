@@ -10,8 +10,8 @@ from offline_particles.events import (
     IterationSchedulerProtocol,
     RecurringIterationScheduler,
     RecurringTimeScheduler,
-    TimeSchedulerProtocol,
     SimulationState,
+    TimeSchedulerProtocol,
 )
 
 
