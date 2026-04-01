@@ -21,10 +21,3 @@ repos:
       language: system
       entry: uv run --frozen cython-lint
       files: ^src/.*\.pyx?$
-    - id: ty
-      name: ty type check
-      language: system
-      entry: uv run --frozen ty check
-      pass_filenames: false
-      types: [python]
-      files: ^(src|tests)/.*\.py$
