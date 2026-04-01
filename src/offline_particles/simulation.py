@@ -666,10 +666,14 @@ class SimulationBuilder:
         if (n is None) == (dt is None):
             raise ValueError("Exactly one of n or dt must be specified.")
         if n is not None:
-            self.every_n(n, event, first=first)  # type: ignore[arg-type]
+            if first is not None and not isinstance(first, int):
+                raise TypeError(f"'first' must be an integer when 'n' is specified, got {type(first).__name__}.")
+            self.every_n(n, event, first=first)
         else:
             assert dt is not None
-            self.every_dt(dt, event, first=first)  # type: ignore[arg-type]
+            if first is not None and isinstance(first, int):
+                raise TypeError(f"'first' must be a time value when 'dt' is specified, got {type(first).__name__}.")
+            self.every_dt(dt, event, first=first)
 
     def add_event(self, event: Event, *, at_iteration: int | None = None, at_time: T | None = None) -> None:
         """Add a one-shot event to the simulation.
@@ -730,13 +734,14 @@ class SimulationBuilder:
         nparticles = {pset.name: pset.nparticles for pset in self._particle_sets}
         for name, (builder, kwargs) in self._output_writers.items():
             output_writers[name] = builder.build(nparticles, time_type)
-            events = output_writers[name].create_events()
-            for event in events:
-                n = kwargs.get("n")
-                dt = kwargs.get("dt")
-                if n is not None or dt is not None:
+            writer_events = output_writers[name].create_events()
+            n = kwargs.get("n")
+            dt = kwargs.get("dt")
+            if n is not None or dt is not None:
+                for event in writer_events:
                     self.add_recurring_event(event, n=n, dt=dt, first=kwargs.get("first"))
-                else:
+            else:
+                for event in writer_events:
                     self.add_event(event, at_iteration=kwargs.get("at_iteration"), at_time=kwargs.get("at_time"))
         output_writers = types.MappingProxyType(output_writers)
 
