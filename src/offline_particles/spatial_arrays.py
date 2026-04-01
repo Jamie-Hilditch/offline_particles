@@ -263,6 +263,8 @@ class ChunkedDaskArray(SpatialArray):
         x_stagger: Stagger,
     ) -> None:
         super().__init__(z_stagger, y_stagger, x_stagger)
+        if not isinstance(data, da.Array):
+            raise TypeError(f"Expected a Dask array, got {type(data).__name__}")
         if data.ndim != sum(self.dmask):
             raise ValueError(
                 f"Data array has {data.ndim} dimensions but {sum(self.dmask)} active dimensions were specified."
