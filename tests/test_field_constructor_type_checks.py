@@ -112,6 +112,12 @@ class TestStaticFieldFromArraylike:
         assert isinstance(field, StaticField)
         assert field.dtype == np.float64
 
+    def test_warns_on_dask_array(self) -> None:
+        data = da.ones((4, 5, 6), dtype=np.float64, chunks=(4, 5, 6))
+        with pytest.warns(UserWarning, match="dask.array.Array"):
+            field = StaticField.from_arraylike(data, *STAGGER_ARGS)
+        assert isinstance(field, StaticField)
+
 
 class TestTimeDependentFieldFromArraylike:
     def test_accepts_list(self) -> None:
@@ -132,3 +138,9 @@ class TestTimeDependentFieldFromArraylike:
         field = TimeDependentField.from_arraylike(data, "invariant", "center", "center")
         assert isinstance(field, TimeDependentField)
         assert field.dtype == np.float64
+
+    def test_warns_on_dask_array(self) -> None:
+        data = da.ones((3, 4, 5, 6), dtype=np.float64, chunks=(1, 4, 5, 6))
+        with pytest.warns(UserWarning, match="dask.array.Array"):
+            field = TimeDependentField.from_arraylike(data, *STAGGER_ARGS)
+        assert isinstance(field, TimeDependentField)

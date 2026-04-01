@@ -3,6 +3,7 @@
 import abc
 import dataclasses
 import logging
+import warnings
 from typing import Any
 
 import dask.array as da
@@ -279,7 +280,20 @@ class StaticField(Field):
         *,
         attrs: dict[str, Any] | None = None,
     ) -> "StaticField":
-        """Create a StaticField by converting the input to a NumPy array."""
+        """Create a StaticField by converting the input to a NumPy array.
+
+        Notes
+        -----
+        This method eagerly materializes the input into a NumPy array using
+        :func:`numpy.asarray`. For Dask arrays, prefer :meth:`StaticField.from_dask`
+        to avoid triggering an unexpected compute.
+        """
+        if isinstance(data, da.Array):
+            warnings.warn(
+                "StaticField.from_arraylike received a dask.array.Array and will eagerly compute it. "
+                "Use StaticField.from_dask for Dask arrays.",
+                stacklevel=2,
+            )
         return cls.from_numpy(np.asarray(data), z_stagger, y_stagger, x_stagger, attrs=attrs)
 
 
@@ -577,7 +591,20 @@ class TimeDependentField(Field):
         *,
         attrs: dict[str, Any] | None = None,
     ) -> "TimeDependentField":
-        """Create a TimeDependentField by converting the input to a NumPy array."""
+        """Create a TimeDependentField by converting the input to a NumPy array.
+
+        Notes
+        -----
+        This method eagerly materializes the input into a NumPy array using
+        :func:`numpy.asarray`. For Dask arrays, prefer :meth:`TimeDependentField.from_dask`
+        to avoid triggering an unexpected compute.
+        """
+        if isinstance(data, da.Array):
+            warnings.warn(
+                "TimeDependentField.from_arraylike received a dask.array.Array and will eagerly compute it. "
+                "Use TimeDependentField.from_dask for Dask arrays.",
+                stacklevel=2,
+            )
         return cls.from_numpy(np.asarray(data), z_stagger, y_stagger, x_stagger, attrs=attrs)
 
 
