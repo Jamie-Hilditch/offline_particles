@@ -411,15 +411,13 @@ class Simulation:
 
     def _invoke_events(self) -> None:
         """Invoke any scheduled events at the current time or iteration."""
-        iteration_events = itertools.chain(
+        events_to_be_invoked = itertools.chain(
             self._recurring_iteration_scheduler(self.iteration),
             self._at_iteration_scheduler(self.iteration),
-        )
-        time_events = itertools.chain(
             self._recurring_time_scheduler(self.time),
             self._at_time_scheduler(self.time),
         )
-        for event in itertools.chain(iteration_events, time_events):
+        for event in events_to_be_invoked:
             # launch kernels
             for name, particles in self._particles.items():
                 kernels = event.kernels.get(name, ())
