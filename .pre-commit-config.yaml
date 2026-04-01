@@ -5,19 +5,22 @@ repos:
   hooks:
     # Run the linter.
     - id: ruff-check
+      files: ^(src|tests)/
       args: [ --fix ]
     # Run the formatter.
     - id: ruff-format
+      files: ^(src|tests)/
 - repo: https://github.com/MarcoGorelli/cython-lint
   rev: v0.18.1
   hooks:
     - id: cython-lint
+      files: ^src/.*\.pyx?$
 - repo: local
   hooks:
     - id: ty
       name: ty type check
-      language: python
+      language: system
       entry: ty check
       pass_filenames: false
       types: [python]
-      additional_dependencies: ["ty>=0.0.8"]
+      files: ^(src|tests)/.*\.py$
