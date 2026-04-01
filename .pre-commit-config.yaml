@@ -11,13 +11,13 @@ repos:
 - repo: https://github.com/MarcoGorelli/cython-lint
   rev: v0.18.1
   hooks:
-  - id: cython-lint
+    - id: cython-lint
 - repo: local
   hooks:
-  - id: ty
-    name: ty type check
-    language: python
-    entry: ty check
-    pass_filenames: false
-    types: [python]
-    additional_dependencies: ["ty>=0.0.8"]
+    - id: ty
+      name: ty type check
+      language: python
+      entry: ty check
+      pass_filenames: false
+      types: [python]
+      additional_dependencies: ["ty>=0.0.8"]
