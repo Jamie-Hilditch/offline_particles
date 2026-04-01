@@ -1,0 +1,46 @@
+name: CI
+on: [ push, pull_request ]
+permissions:
+  contents: read
+jobs:
+  ty:
+    name: ty type check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: Install dev dependencies
+        run: uv sync --group dev
+      - name: Run ty check
+        run: uv run ty check
+
+  cython-lint:
+    name: cython-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: Install dev dependencies
+        run: uv sync --group dev
+      - name: Run cython-lint
+        run: uv run cython-lint .
+
+  test:
+    name: pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: Install project with dev dependencies
+        run: uv sync --group dev
+      - name: Run pytest
+        run: uv run pytest
