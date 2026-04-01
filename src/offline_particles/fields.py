@@ -238,6 +238,8 @@ class StaticField(Field):
         attrs: dict[str, Any] | None = None,
     ) -> "StaticField":
         """Create a StaticField from a NumPy array."""
+        if not isinstance(data, np.ndarray):
+            raise TypeError(f"Expected a NumPy array, got {type(data).__name__}")
         spatial_array = NumpyArray(
             data=data,
             z_stagger=Stagger(z_stagger),
@@ -257,6 +259,8 @@ class StaticField(Field):
         attrs: dict[str, Any] | None = None,
     ) -> "StaticField":
         """Create a StaticField from a chunked Dask array."""
+        if not isinstance(data, da.Array):
+            raise TypeError(f"Expected a Dask array, got {type(data).__name__}")
         spatial_array = ChunkedDaskArray(
             data=data,
             z_stagger=Stagger(z_stagger),
@@ -264,6 +268,19 @@ class StaticField(Field):
             x_stagger=Stagger(x_stagger),
         )
         return cls(data=spatial_array, attrs=attrs)
+
+    @classmethod
+    def from_arraylike(
+        cls,
+        data: npt.ArrayLike,
+        z_stagger: Stagger | str,
+        y_stagger: Stagger | str,
+        x_stagger: Stagger | str,
+        *,
+        attrs: dict[str, Any] | None = None,
+    ) -> "StaticField":
+        """Create a StaticField by converting the input to a NumPy array."""
+        return cls.from_numpy(np.asarray(data), z_stagger, y_stagger, x_stagger, attrs=attrs)
 
 
 type SpatialArrayFactory = type[NumpyArray] | type[ChunkedDaskArray]
@@ -526,6 +543,8 @@ class TimeDependentField(Field):
         attrs: dict[str, Any] | None = None,
     ) -> "TimeDependentField":
         """Create a TimeDependentField from a NumPy array."""
+        if not isinstance(data, np.ndarray):
+            raise TypeError(f"Expected a NumPy array, got {type(data).__name__}")
         return cls(data, z_stagger, y_stagger, x_stagger, NumpyArray, attrs=attrs)
 
     @classmethod
@@ -540,11 +559,26 @@ class TimeDependentField(Field):
         attrs: dict[str, Any] | None = None,
     ) -> "TimeDependentField":
         """Create a TimeDependentField from a chunked Dask array."""
+        if not isinstance(data, da.Array):
+            raise TypeError(f"Expected a Dask array, got {type(data).__name__}")
         if preload_space:
             factory = NumpyArray
         else:
             factory = ChunkedDaskArray
         return cls(data, z_stagger, y_stagger, x_stagger, factory, attrs=attrs)
+
+    @classmethod
+    def from_arraylike(
+        cls,
+        data: npt.ArrayLike,
+        z_stagger: Stagger | str,
+        y_stagger: Stagger | str,
+        x_stagger: Stagger | str,
+        *,
+        attrs: dict[str, Any] | None = None,
+    ) -> "TimeDependentField":
+        """Create a TimeDependentField by converting the input to a NumPy array."""
+        return cls.from_numpy(np.asarray(data), z_stagger, y_stagger, x_stagger, attrs=attrs)
 
 
 type Tin = np.floating
