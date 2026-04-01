@@ -667,17 +667,14 @@ class SimulationBuilder:
             event: The event to add.
             n: The number of iterations between event triggers.
             dt: The time interval between event triggers.
-            first: The first iteration or time to trigger the event (defaults to 0 / clock time).
+            first: When using ``n``, the first iteration (``int``) to trigger the event (defaults to 0).
+                When using ``dt``, the first time (``T``) to trigger the event (defaults to the current clock time).
         """
         if (n is None) == (dt is None):
             raise ValueError("Exactly one of n or dt must be specified.")
         if n is not None:
-            if first is not None and not isinstance(first, int):
-                raise TypeError(f"'first' must be an integer when 'n' is specified, got {type(first).__name__}.")
-            self.every_n(n, event, first=first)
+            self.every_n(n, event, first=first)  # type: ignore[arg-type]
         else:
-            if first is not None and isinstance(first, int):
-                raise TypeError(f"'first' must be a time value when 'dt' is specified, got {type(first).__name__}.")
             self.every_dt(dt, event, first=first)  # type: ignore[arg-type]
 
     def add_event(self, event: Event, *, at_iteration: int | None = None, at_time: T | None = None) -> None:
