@@ -79,6 +79,12 @@ class AbstractOutputWriter(abc.ABC):
         """The outputs declared for this writer."""
         pass
 
+    @property
+    @abc.abstractmethod
+    def static_outputs(self) -> Mapping[str, Output]:
+        """The static (time-independent) outputs declared for this writer."""
+        pass
+
     @abc.abstractmethod
     def write_time(self, state: SimulationState) -> None:
         """Write the current simulation time.
@@ -103,6 +109,16 @@ class AbstractOutputWriter(abc.ABC):
         """Confirm that all outputs have been written for the current round."""
         pass
 
+    @abc.abstractmethod
+    def write_static_output(self, key: str, state: SimulationState) -> None:
+        """Write a static (time-independent) output variable once.
+
+        Args:
+            key: The identifier of the static output variable to write.
+            state: The current simulation state.
+        """
+        pass
+
     def event_name(self, output_name: str) -> str:
         """Generate an event name for an output.
 
@@ -112,10 +128,10 @@ class AbstractOutputWriter(abc.ABC):
         return f"{self.name}:{output_name}"
 
     def create_events(self) -> list[Event]:
-        """Create events for writing output.
+        """Create recurring events for writing time-dependent output.
 
         Returns:
-            A list of events for writing output.
+            A list of recurring events for writing time-dependent output.
         """
 
         events = []
@@ -136,6 +152,22 @@ class AbstractOutputWriter(abc.ABC):
 
         return events
 
+    def create_static_events(self) -> list[Event]:
+        """Create one-shot events for writing static (time-independent) outputs.
+
+        These events are intended to be registered once at iteration 0,
+        after particle initialisation.
+
+        Returns:
+            A list of one-shot events for writing static outputs.
+        """
+        events = []
+        for key, output in self.static_outputs.items():
+            event_func = functools.partial(self.write_static_output, key)
+            event = Event(self.event_name(f"static:{key}"), event_func, **{output.particle_set: output.kernels})
+            events.append(event)
+        return events
+
 
 class AbstractOutputWriterBuilder(abc.ABC):
     """Abstract base class for output writer builders."""
@@ -150,6 +182,12 @@ class AbstractOutputWriterBuilder(abc.ABC):
     @abc.abstractmethod
     def outputs(self) -> Mapping[str, Output]:
         """The outputs declared for this writer."""
+        pass
+
+    @property
+    @abc.abstractmethod
+    def static_outputs(self) -> Mapping[str, Output]:
+        """The static (time-independent) outputs declared for this writer."""
         pass
 
     @abc.abstractmethod
@@ -169,6 +207,26 @@ class AbstractOutputWriterBuilder(abc.ABC):
 
         Args:
             key: The identifier of the output to remove.
+        """
+        pass
+
+    @abc.abstractmethod
+    def add_static_output(self, key: str, output: Output, **kwargs: Any) -> None:
+        """Add a static (time-independent) output to the writer.
+
+        Args:
+            key: The identifier for the static output.
+            output: The output to add.
+            **kwargs: Additional keyword arguments.
+        """
+        pass
+
+    @abc.abstractmethod
+    def remove_static_output(self, key: str) -> None:
+        """Remove a static output from the writer.
+
+        Args:
+            key: The identifier of the static output to remove.
         """
         pass
 

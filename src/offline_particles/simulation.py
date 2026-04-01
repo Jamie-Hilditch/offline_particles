@@ -733,6 +733,9 @@ class SimulationBuilder:
             output_writers[name] = builder.build(nparticles, time_type)
             for event in output_writers[name].create_events():
                 self.add_recurring_event(event, n=kwargs.get("n"), dt=kwargs.get("dt"), first=kwargs.get("first"))
+            # register static output events once at iteration 0
+            for event in output_writers[name].create_static_events():
+                self.at_iteration(0, event)
         output_writers = types.MappingProxyType(output_writers)
 
         return Simulation(
