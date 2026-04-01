@@ -127,7 +127,7 @@ class AbstractOutputWriter(abc.ABC):
         """
         return f"{self.name}:{output_name}"
 
-    def create_events(self) -> list[Event]:
+    def create_output_events(self) -> list[Event]:
         """Create recurring events for writing time-dependent output.
 
         Returns:
@@ -152,7 +152,7 @@ class AbstractOutputWriter(abc.ABC):
 
         return events
 
-    def create_static_events(self) -> list[Event]:
+    def create_static_output_events(self) -> list[Event]:
         """Create one-shot events for writing static (time-independent) outputs.
 
         These events are intended to be registered once at iteration 0,
