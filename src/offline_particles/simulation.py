@@ -658,7 +658,9 @@ class SimulationBuilder:
 
         self._at_time_scheduler.register_event(time, event)
 
-    def add_recurring_event(self, event: Event, *, n: int | None = None, dt: D | None = None, first: int | T | None = None) -> None:
+    def add_recurring_event(
+        self, event: Event, *, n: int | None = None, dt: D | None = None, first: int | T | None = None
+    ) -> None:
         """Add a recurring event to the simulation.
 
         Exactly one of ``n`` or ``dt`` must be specified.
