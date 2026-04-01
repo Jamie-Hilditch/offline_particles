@@ -5,7 +5,7 @@ import itertools
 import time
 import types
 import warnings
-from typing import Mapping, overload
+from typing import Iterable, Mapping
 
 import numpy as np
 import numpy.typing as npt
@@ -72,12 +72,7 @@ class Simulation:
         # create launcher and register kernel data functions
         self._launcher = Launcher(fieldset, history_size=bbox_history_size)
         self._launcher.register_scalar_data_sources_from_object(clock)
-        for event in itertools.chain(
-            self._recurring_iteration_scheduler.events,
-            self._at_iteration_scheduler.events,
-            self._recurring_time_scheduler.events,
-            self._at_time_scheduler.events,
-        ):
+        for event in self.events:
             self._launcher.register_scalar_data_sources_from_object(event)
 
         # check particle set names are unique
@@ -101,12 +96,7 @@ class Simulation:
             nparticles = pset.nparticles
             # gather kernels
             kernels = list(pset.timestepper.kernels)
-            for event in itertools.chain(
-                self._recurring_iteration_scheduler.events,
-                self._at_iteration_scheduler.events,
-                self._recurring_time_scheduler.events,
-                self._at_time_scheduler.events,
-            ):
+            for event in self.events:
                 kernels.extend(event.kernels.get(name, ()))
             kernel_count += len(kernels)
 
@@ -378,6 +368,16 @@ class Simulation:
         return self._at_time_scheduler
 
     @property
+    def events(self) -> Iterable[Event]:
+        """All events registered across all schedulers."""
+        return itertools.chain(
+            self._recurring_iteration_scheduler.events,
+            self._at_iteration_scheduler.events,
+            self._recurring_time_scheduler.events,
+            self._at_time_scheduler.events,
+        )
+
+    @property
     def state(self) -> SimulationState:
         """Get the current simulation state.
 
@@ -576,6 +576,16 @@ class SimulationBuilder:
         # output writers
         self._output_writers: dict[str, tuple[AbstractOutputWriterBuilder, dict[str, ...]]] = dict()
 
+    @property
+    def events(self) -> Iterable[Event]:
+        """All events registered across all schedulers."""
+        return itertools.chain(
+            self._recurring_iteration_scheduler.events,
+            self._at_iteration_scheduler.events,
+            self._recurring_time_scheduler.events,
+            self._at_time_scheduler.events,
+        )
+
     def every_n(self, n: int, event: Event, *, first: int | None = None) -> None:
         """Add an event that triggers every n iterations.
 
@@ -642,43 +652,41 @@ class SimulationBuilder:
 
         self._at_time_scheduler.register_event(time, event)
 
-    @overload
-    def add_event(self, event: Event, *, n: int, first: int | None) -> None: ...
+    def add_recurring_event(self, event: Event, *, n: int | None = None, dt: D | None = None, first: int | T | None = None) -> None:
+        """Add a recurring event to the simulation.
 
-    @overload
-    def add_event(self, event: Event, *, dt: D, first: T | None) -> None: ...
-
-    @overload
-    def add_event(self, event: Event, *, at_iteration: int) -> None: ...
-
-    @overload
-    def add_event(self, event: Event, *, at_time: T) -> None: ...
-
-    def add_event(self, event: Event, *, n=None, dt=None, first=None, at_iteration=None, at_time=None) -> None:
-        """Add an event to the simulation.
+        Exactly one of ``n`` or ``dt`` must be specified.
 
         Args:
             event: The event to add.
-            n: The number of iterations between event triggers (recurring).
-            dt: The time interval between event triggers (recurring).
-            first: The first iteration or time to trigger the event (used with n or dt).
+            n: The number of iterations between event triggers.
+            dt: The time interval between event triggers.
+            first: The first iteration or time to trigger the event (defaults to 0 / clock time).
+        """
+        if (n is None) == (dt is None):
+            raise ValueError("Exactly one of n or dt must be specified.")
+        if n is not None:
+            self.every_n(n, event, first=first)  # type: ignore[arg-type]
+        else:
+            assert dt is not None
+            self.every_dt(dt, event, first=first)  # type: ignore[arg-type]
+
+    def add_event(self, event: Event, *, at_iteration: int | None = None, at_time: T | None = None) -> None:
+        """Add a one-shot event to the simulation.
+
+        Exactly one of ``at_iteration`` or ``at_time`` must be specified.
+
+        Args:
+            event: The event to add.
             at_iteration: The specific iteration to trigger the event once.
             at_time: The specific time to trigger the event once.
         """
-        scheduling_options = [n, dt, at_iteration, at_time]
-        n_set = sum(opt is not None for opt in scheduling_options)
-        if n_set != 1:
-            raise ValueError("Exactly one of n, dt, at_iteration, or at_time must be specified.")
-        if first is not None and (n is None and dt is None):
-            raise ValueError("'first' can only be used with 'n' or 'dt'.")
-
-        if n is not None:
-            self.every_n(n, event, first=first)
-        elif dt is not None:
-            self.every_dt(dt, event, first=first)
-        elif at_iteration is not None:
+        if (at_iteration is None) == (at_time is None):
+            raise ValueError("Exactly one of at_iteration or at_time must be specified.")
+        if at_iteration is not None:
             self.at_iteration(at_iteration, event)
         else:
+            assert at_time is not None
             self.at_time(at_time, event)
 
     def add_output_writer(
@@ -724,7 +732,12 @@ class SimulationBuilder:
             output_writers[name] = builder.build(nparticles, time_type)
             events = output_writers[name].create_events()
             for event in events:
-                self.add_event(event, **kwargs)
+                n = kwargs.get("n")
+                dt = kwargs.get("dt")
+                if n is not None or dt is not None:
+                    self.add_recurring_event(event, n=n, dt=dt, first=kwargs.get("first"))
+                else:
+                    self.add_event(event, at_iteration=kwargs.get("at_iteration"), at_time=kwargs.get("at_time"))
         output_writers = types.MappingProxyType(output_writers)
 
         return Simulation(
