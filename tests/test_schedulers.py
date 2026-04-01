@@ -11,8 +11,8 @@ from offline_particles.events import (
     RecurringIterationScheduler,
     RecurringTimeScheduler,
     TimeSchedulerProtocol,
+    SimulationState,
 )
-from offline_particles.events._events import SimulationState
 
 
 def _make_event(name: str = "test") -> Event:
