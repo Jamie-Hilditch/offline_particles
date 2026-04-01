@@ -59,7 +59,15 @@ class Simulation:
         """Initialize the Simulation.
 
         Args:
-            builder: The SimulationBuilder used to configure the simulation.
+            clock: The Clock governing simulation time and iteration.
+            fieldset: The Fieldset providing velocity and other field data.
+            particle_sets: List of ParticleSet instances defining particle groups.
+            recurring_iteration_scheduler: Scheduler that fires events every N iterations.
+            recurring_time_scheduler: Scheduler that fires events every dt in time.
+            at_iteration_scheduler: Scheduler that fires events once at a specific iteration.
+            at_time_scheduler: Scheduler that fires events once at a specific time.
+            output_writers: Mapping of output writer instances keyed by name.
+            bbox_history_size: Number of bounding-box snapshots to retain for the launcher.
         """
         self._clock = clock
         self._fieldset = fieldset
