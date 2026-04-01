@@ -13,7 +13,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dev dependencies
-        run: uv sync --group dev
+        run: uv sync --frozen --group dev
       - name: Run ty check
         run: uv run ty check
 
@@ -27,7 +27,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dev dependencies
-        run: uv sync --group dev
+        run: uv sync --frozen --group dev
       - name: Run cython-lint
         run: uv run cython-lint .
 
@@ -41,6 +41,6 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install project with dev dependencies
-        run: uv sync --group dev
+        run: uv sync --frozen --group dev
       - name: Run pytest
         run: uv run pytest
