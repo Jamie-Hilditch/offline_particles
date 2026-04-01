@@ -14,11 +14,9 @@ from .events import (
     AtIterationScheduler,
     AtTimeScheduler,
     Event,
-    IterationSchedulerProtocol,
     RecurringIterationScheduler,
     RecurringTimeScheduler,
     SimulationState,
-    TimeSchedulerProtocol,
 )
 from .fieldset import Fieldset
 from .kernels import BoundKernel, get_required_particle_property_dtypes
@@ -71,25 +69,16 @@ class Simulation:
         self._at_time_scheduler = at_time_scheduler
         self._output_writers = output_writers
 
-        # all iteration and time schedulers
-        self._iteration_schedulers: list[IterationSchedulerProtocol] = [
-            self._recurring_iteration_scheduler,
-            self._at_iteration_scheduler,
-        ]
-        self._time_schedulers: list[TimeSchedulerProtocol] = [
-            self._recurring_time_scheduler,
-            self._at_time_scheduler,
-        ]
-
         # create launcher and register kernel data functions
         self._launcher = Launcher(fieldset, history_size=bbox_history_size)
         self._launcher.register_scalar_data_sources_from_object(clock)
-        for scheduler in self._iteration_schedulers:
-            for event in scheduler.events:
-                self._launcher.register_scalar_data_sources_from_object(event)
-        for scheduler in self._time_schedulers:
-            for event in scheduler.events:
-                self._launcher.register_scalar_data_sources_from_object(event)
+        for event in itertools.chain(
+            self._recurring_iteration_scheduler.events,
+            self._at_iteration_scheduler.events,
+            self._recurring_time_scheduler.events,
+            self._at_time_scheduler.events,
+        ):
+            self._launcher.register_scalar_data_sources_from_object(event)
 
         # check particle set names are unique
         particle_set_names = [pset.name for pset in particle_sets]
@@ -112,12 +101,13 @@ class Simulation:
             nparticles = pset.nparticles
             # gather kernels
             kernels = list(pset.timestepper.kernels)
-            for scheduler in self._iteration_schedulers:
-                for event in scheduler.events:
-                    kernels.extend(event.kernels.get(name, ()))
-            for scheduler in self._time_schedulers:
-                for event in scheduler.events:
-                    kernels.extend(event.kernels.get(name, ()))
+            for event in itertools.chain(
+                self._recurring_iteration_scheduler.events,
+                self._at_iteration_scheduler.events,
+                self._recurring_time_scheduler.events,
+                self._at_time_scheduler.events,
+            ):
+                kernels.extend(event.kernels.get(name, ()))
             kernel_count += len(kernels)
 
             # then merge required particle properties from all kernels
