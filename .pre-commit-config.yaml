@@ -20,4 +20,4 @@ repos:
       name: cython-lint
       language: system
       entry: uv run --frozen cython-lint
-      files: ^src/.*\.pyx?$
+      files: ^src/.*\.(pyx|pxd)$
