@@ -11,10 +11,14 @@ import numpy as np
 import numpy.typing as npt
 
 from .events import (
+    AtIterationScheduler,
+    AtTimeScheduler,
     Event,
-    IterationScheduler,
+    IterationSchedulerProtocol,
+    RecurringIterationScheduler,
+    RecurringTimeScheduler,
     SimulationState,
-    TimeScheduler,
+    TimeSchedulerProtocol,
 )
 from .fieldset import Fieldset
 from .kernels import BoundKernel, get_required_particle_property_dtypes
@@ -46,8 +50,10 @@ class Simulation:
         clock: Clock,
         fieldset: Fieldset,
         particle_sets: list[ParticleSet],
-        iteration_scheduler: IterationScheduler,
-        time_scheduler: TimeScheduler,
+        recurring_iteration_scheduler: RecurringIterationScheduler,
+        recurring_time_scheduler: RecurringTimeScheduler,
+        at_iteration_scheduler: AtIterationScheduler,
+        at_time_scheduler: AtTimeScheduler,
         output_writers: Mapping[str, AbstractOutputWriter],
         *,
         bbox_history_size: int = DEFAULT_BBOX_HISTORY_SIZE,
@@ -59,17 +65,31 @@ class Simulation:
         """
         self._clock = clock
         self._fieldset = fieldset
-        self._iteration_scheduler = iteration_scheduler
-        self._time_scheduler = time_scheduler
+        self._recurring_iteration_scheduler = recurring_iteration_scheduler
+        self._recurring_time_scheduler = recurring_time_scheduler
+        self._at_iteration_scheduler = at_iteration_scheduler
+        self._at_time_scheduler = at_time_scheduler
         self._output_writers = output_writers
+
+        # all iteration and time schedulers
+        self._iteration_schedulers: list[IterationSchedulerProtocol] = [
+            self._recurring_iteration_scheduler,
+            self._at_iteration_scheduler,
+        ]
+        self._time_schedulers: list[TimeSchedulerProtocol] = [
+            self._recurring_time_scheduler,
+            self._at_time_scheduler,
+        ]
 
         # create launcher and register kernel data functions
         self._launcher = Launcher(fieldset, history_size=bbox_history_size)
         self._launcher.register_scalar_data_sources_from_object(clock)
-        for event in self._iteration_scheduler.events:
-            self._launcher.register_scalar_data_sources_from_object(event)
-        for event in self._time_scheduler.events:
-            self._launcher.register_scalar_data_sources_from_object(event)
+        for scheduler in self._iteration_schedulers:
+            for event in scheduler.events:
+                self._launcher.register_scalar_data_sources_from_object(event)
+        for scheduler in self._time_schedulers:
+            for event in scheduler.events:
+                self._launcher.register_scalar_data_sources_from_object(event)
 
         # check particle set names are unique
         particle_set_names = [pset.name for pset in particle_sets]
@@ -92,10 +112,12 @@ class Simulation:
             nparticles = pset.nparticles
             # gather kernels
             kernels = list(pset.timestepper.kernels)
-            for event in self._iteration_scheduler.events:
-                kernels.extend(event.kernels.get(name, ()))
-            for event in self._time_scheduler.events:
-                kernels.extend(event.kernels.get(name, ()))
+            for scheduler in self._iteration_schedulers:
+                for event in scheduler.events:
+                    kernels.extend(event.kernels.get(name, ()))
+            for scheduler in self._time_schedulers:
+                for event in scheduler.events:
+                    kernels.extend(event.kernels.get(name, ()))
             kernel_count += len(kernels)
 
             # then merge required particle properties from all kernels
@@ -330,22 +352,40 @@ class Simulation:
         return types.MappingProxyType(self._particles_view)
 
     @property
-    def iteration_scheduler(self) -> IterationScheduler:
-        """Get the iteration scheduler used in the simulation.
+    def recurring_iteration_scheduler(self) -> RecurringIterationScheduler:
+        """Get the recurring iteration scheduler used in the simulation.
 
         Returns:
-            IterationScheduler: The iteration scheduler instance.
+            RecurringIterationScheduler: The recurring iteration scheduler instance.
         """
-        return self._iteration_scheduler
+        return self._recurring_iteration_scheduler
 
     @property
-    def time_scheduler(self) -> TimeScheduler:
-        """Get the time scheduler used in the simulation.
+    def recurring_time_scheduler(self) -> RecurringTimeScheduler:
+        """Get the recurring time scheduler used in the simulation.
 
         Returns:
-            TimeScheduler: The time scheduler instance.
+            RecurringTimeScheduler: The recurring time scheduler instance.
         """
-        return self._time_scheduler
+        return self._recurring_time_scheduler
+
+    @property
+    def at_iteration_scheduler(self) -> AtIterationScheduler:
+        """Get the one-shot iteration scheduler used in the simulation.
+
+        Returns:
+            AtIterationScheduler: The one-shot iteration scheduler instance.
+        """
+        return self._at_iteration_scheduler
+
+    @property
+    def at_time_scheduler(self) -> AtTimeScheduler:
+        """Get the one-shot time scheduler used in the simulation.
+
+        Returns:
+            AtTimeScheduler: The one-shot time scheduler instance.
+        """
+        return self._at_time_scheduler
 
     @property
     def state(self) -> SimulationState:
@@ -381,7 +421,15 @@ class Simulation:
 
     def _invoke_events(self) -> None:
         """Invoke any scheduled events at the current time or iteration."""
-        for event in itertools.chain(self._iteration_scheduler(self.iteration), self._time_scheduler(self.time)):
+        iteration_events = itertools.chain(
+            self._recurring_iteration_scheduler(self.iteration),
+            self._at_iteration_scheduler(self.iteration),
+        )
+        time_events = itertools.chain(
+            self._recurring_time_scheduler(self.time),
+            self._at_time_scheduler(self.time),
+        )
+        for event in itertools.chain(iteration_events, time_events):
             # launch kernels
             for name, particles in self._particles.items():
                 kernels = event.kernels.get(name, ())
@@ -530,8 +578,10 @@ class SimulationBuilder:
         self._particle_sets = list(particle_sets)
 
         # events
-        self._iteration_scheduler = IterationScheduler()
-        self._time_scheduler = TimeScheduler(forward_in_time=self._clock.forward_in_time)
+        self._recurring_iteration_scheduler = RecurringIterationScheduler()
+        self._recurring_time_scheduler = RecurringTimeScheduler(forward_in_time=self._clock.forward_in_time)
+        self._at_iteration_scheduler = AtIterationScheduler()
+        self._at_time_scheduler = AtTimeScheduler(forward_in_time=self._clock.forward_in_time)
 
         # output writers
         self._output_writers: dict[str, tuple[AbstractOutputWriterBuilder, dict[str, ...]]] = dict()
@@ -548,7 +598,7 @@ class SimulationBuilder:
             raise ValueError("n must be a positive integer.")
         if first is None:
             first = 0
-        self._iteration_scheduler.register_event(first, n, event)
+        self._recurring_iteration_scheduler.register_event(first, n, event)
 
     def every_dt(self, dt: D, event: Event, *, first: T | None = None) -> None:
         """Add an event that triggers every dt time units.
@@ -575,7 +625,32 @@ class SimulationBuilder:
                 f"Incompatible first type {type(first)} for timestepper time type {type(clock_time)}"
             ) from e
 
-        self._time_scheduler.register_event(first, dt, event)
+        self._recurring_time_scheduler.register_event(first, dt, event)
+
+    def at_iteration(self, iteration: int, event: Event) -> None:
+        """Add an event that triggers once at the given iteration.
+
+        Args:
+            iteration (int): The iteration at which to trigger the event.
+            event (Event): The event to be triggered.
+        """
+        self._at_iteration_scheduler.register_event(iteration, event)
+
+    def at_time(self, time: T, event: Event) -> None:
+        """Add an event that triggers once at the given time.
+
+        Args:
+            time (T): The time at which to trigger the event.
+            event (Event): The event to be triggered.
+        """
+        # check time is compatible with clock time
+        clock_time = self._clock.time
+        try:
+            _ = time < clock_time  # type: ignore
+        except TypeError as e:
+            raise TypeError(f"Incompatible time type {type(time)} for timestepper time type {type(clock_time)}") from e
+
+        self._at_time_scheduler.register_event(time, event)
 
     @overload
     def add_event(self, event: Event, *, n: int, first: int | None) -> None: ...
@@ -583,23 +658,38 @@ class SimulationBuilder:
     @overload
     def add_event(self, event: Event, *, dt: D, first: T | None) -> None: ...
 
-    def add_event(self, event: Event, *, n=None, dt=None, first=None) -> None:
+    @overload
+    def add_event(self, event: Event, *, at_iteration: int) -> None: ...
+
+    @overload
+    def add_event(self, event: Event, *, at_time: T) -> None: ...
+
+    def add_event(self, event: Event, *, n=None, dt=None, first=None, at_iteration=None, at_time=None) -> None:
         """Add an event to the simulation.
 
         Args:
             event: The event to add.
-            n: The number of iterations between event triggers.
-            dt: The time interval between event triggers.
-            first: The first iteration or time to trigger the event.
+            n: The number of iterations between event triggers (recurring).
+            dt: The time interval between event triggers (recurring).
+            first: The first iteration or time to trigger the event (used with n or dt).
+            at_iteration: The specific iteration to trigger the event once.
+            at_time: The specific time to trigger the event once.
         """
-        if n is not None and dt is not None:
-            raise ValueError("Cannot specify both n and dt.")
-        elif n is not None and dt is None:
+        scheduling_options = [n, dt, at_iteration, at_time]
+        n_set = sum(opt is not None for opt in scheduling_options)
+        if n_set != 1:
+            raise ValueError("Exactly one of n, dt, at_iteration, or at_time must be specified.")
+        if first is not None and (n is None and dt is None):
+            raise ValueError("'first' can only be used with 'n' or 'dt'.")
+
+        if n is not None:
             self.every_n(n, event, first=first)
-        elif n is None and dt is not None:
+        elif dt is not None:
             self.every_dt(dt, event, first=first)
+        elif at_iteration is not None:
+            self.at_iteration(at_iteration, event)
         else:
-            raise ValueError("Either n or dt must be specified.")
+            self.at_time(at_time, event)
 
     def add_output_writer(
         self,
@@ -608,11 +698,18 @@ class SimulationBuilder:
         n: int | None = None,
         dt: D | None = None,
         first: int | T | None = None,
+        at_iteration: int | None = None,
+        at_time: T | None = None,
     ) -> None:
         """Add an output writer to the simulation.
 
         Args:
-            writer: The output writer instance.
+            builder: The output writer builder instance.
+            n: The number of iterations between output writes (recurring).
+            dt: The time interval between output writes (recurring).
+            first: The first iteration or time to write output (used with n or dt).
+            at_iteration: The specific iteration to write output once.
+            at_time: The specific time to write output once.
         """
         name = builder.name
         if name in self._output_writers:
@@ -622,6 +719,8 @@ class SimulationBuilder:
             "n": n,
             "dt": dt,
             "first": first,
+            "at_iteration": at_iteration,
+            "at_time": at_time,
         }
         self._output_writers[name] = (builder, kwargs)
 
@@ -642,7 +741,9 @@ class SimulationBuilder:
             clock=self._clock,
             fieldset=self._fieldset,
             particle_sets=self._particle_sets,
-            iteration_scheduler=self._iteration_scheduler,
-            time_scheduler=self._time_scheduler,
+            recurring_iteration_scheduler=self._recurring_iteration_scheduler,
+            recurring_time_scheduler=self._recurring_time_scheduler,
+            at_iteration_scheduler=self._at_iteration_scheduler,
+            at_time_scheduler=self._at_time_scheduler,
             output_writers=output_writers,
         )
