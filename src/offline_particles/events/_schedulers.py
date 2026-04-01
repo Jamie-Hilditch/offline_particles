@@ -1,6 +1,6 @@
 """Submodule for event schedulers."""
 
-from typing import Iterable
+from typing import Iterable, Protocol, runtime_checkable
 
 import numpy as np
 
@@ -10,7 +10,35 @@ type T = np.float64 | np.datetime64
 type D = np.float64 | np.timedelta64
 
 
-class IterationScheduler:
+@runtime_checkable
+class IterationSchedulerProtocol(Protocol):
+    """Protocol for iteration-based event schedulers."""
+
+    @property
+    def events(self) -> Iterable[Event]:
+        """All registered events."""
+        ...
+
+    def __call__(self, iteration: int) -> list[Event]:
+        """Get the events to trigger at the given iteration."""
+        ...
+
+
+@runtime_checkable
+class TimeSchedulerProtocol(Protocol):
+    """Protocol for time-based event schedulers."""
+
+    @property
+    def events(self) -> Iterable[Event]:
+        """All registered events."""
+        ...
+
+    def __call__(self, time: T) -> list[Event]:
+        """Get the events to trigger at the given time."""
+        ...
+
+
+class RecurringIterationScheduler:
     """A scheduler that triggers events every N iterations."""
 
     def __init__(self) -> None:
@@ -71,7 +99,7 @@ class IterationScheduler:
         return triggered_events
 
 
-class TimeScheduler:
+class RecurringTimeScheduler:
     """A scheduler that triggers events every dt."""
 
     def __init__(self, *, forward_in_time: bool = True) -> None:
@@ -151,4 +179,133 @@ class TimeScheduler:
                 self._schedule_event(next_occurrence, dt, event)
 
             self.set_next()
+        return triggered_events
+
+
+class AtIterationScheduler:
+    """A scheduler that triggers events once at a specific iteration."""
+
+    def __init__(self) -> None:
+        self._next = None
+        self._events: dict[int, list[Event]] = dict()
+
+    def _schedule_event(self, iteration: int, event: Event) -> None:
+        if iteration not in self._events:
+            self._events[iteration] = []
+        self._events[iteration].append(event)
+
+    @property
+    def next(self) -> int | None:
+        """The next iteration at which an event is scheduled."""
+        return self._next
+
+    @property
+    def events(self) -> Iterable[Event]:
+        """All registered events."""
+        for event_list in self._events.values():
+            for event in event_list:
+                yield event
+
+    def register_event(self, iteration: int, event: Event) -> None:
+        """Register an event to be triggered once at the given iteration.
+
+        Args:
+            iteration (int): The iteration at which to trigger the event.
+            event (Event): The event to be triggered.
+        """
+        self._schedule_event(iteration, event)
+        self.set_next()
+
+    def set_next(self) -> None:
+        """Set the next iteration to check for events."""
+        self._next = min(self._events.keys()) if self._events else None
+
+    def __call__(self, iteration: int) -> list[Event]:
+        """Get the events to trigger at the given iteration.
+
+        Args:
+            iteration (int): The current iteration.
+
+        Returns:
+            list[Event]: The list of events to trigger.
+        """
+        triggered_events: list[Event] = []
+
+        while self._next is not None and self._next <= iteration:
+            # Events are not rescheduled — they fire once and are removed
+            triggered_events.extend(self._events.pop(self._next, []))
+            self.set_next()
+
+        return triggered_events
+
+
+class AtTimeScheduler:
+    """A scheduler that triggers events once at a specific time."""
+
+    def __init__(self, *, forward_in_time: bool = True) -> None:
+        self._forward_in_time = forward_in_time
+        self._next_time = None
+        self._events: dict[T, list[Event]] = dict()
+
+    def _schedule_event(self, time: T, event: Event) -> None:
+        if time not in self._events:
+            self._events[time] = []
+        self._events[time].append(event)
+
+    @property
+    def next_time(self) -> T | None:
+        """The next time at which an event is scheduled."""
+        return self._next_time
+
+    @property
+    def events(self) -> Iterable[Event]:
+        """All registered events."""
+        for event_list in self._events.values():
+            for event in event_list:
+                yield event
+
+    def register_event(self, time: T, event: Event) -> None:
+        """Register an event to be triggered once at the given time.
+
+        Args:
+            time (T): The time at which to trigger the event.
+            event (Event): The event to be triggered.
+        """
+        self._schedule_event(time, event)
+        self.set_next()
+
+    def set_next(self) -> None:
+        """Set the next time to check for events."""
+        if not self._events:
+            self._next_time = None
+            return
+        if self._forward_in_time:
+            self._next_time = min(self._events.keys())
+        else:
+            self._next_time = max(self._events.keys())
+
+    def __call__(self, time: T) -> list[Event]:
+        """Get the events to trigger at the given time.
+
+        Args:
+            time (T): The current time.
+
+        Returns:
+            list[Event]: The list of events to trigger.
+        """
+        triggered_events: list[Event] = []
+
+        while True:
+            nt = self._next_time
+            # break conditions
+            if nt is None:
+                break
+            if self._forward_in_time and nt > time:
+                break
+            if not self._forward_in_time and nt < time:
+                break
+            # Events are not rescheduled — they fire once and are removed
+            triggered_events.extend(self._events.pop(nt, []))
+            self.set_next()
+
         return triggered_events
