@@ -670,10 +670,9 @@ class SimulationBuilder:
                 raise TypeError(f"'first' must be an integer when 'n' is specified, got {type(first).__name__}.")
             self.every_n(n, event, first=first)
         else:
-            assert dt is not None
             if first is not None and isinstance(first, int):
                 raise TypeError(f"'first' must be a time value when 'dt' is specified, got {type(first).__name__}.")
-            self.every_dt(dt, event, first=first)
+            self.every_dt(dt, event, first=first)  # type: ignore[arg-type]
 
     def add_event(self, event: Event, *, at_iteration: int | None = None, at_time: T | None = None) -> None:
         """Add a one-shot event to the simulation.
@@ -690,8 +689,7 @@ class SimulationBuilder:
         if at_iteration is not None:
             self.at_iteration(at_iteration, event)
         else:
-            assert at_time is not None
-            self.at_time(at_time, event)
+            self.at_time(at_time, event)  # type: ignore[arg-type]
 
     def add_output_writer(
         self,
@@ -700,8 +698,6 @@ class SimulationBuilder:
         n: int | None = None,
         dt: D | None = None,
         first: int | T | None = None,
-        at_iteration: int | None = None,
-        at_time: T | None = None,
     ) -> None:
         """Add an output writer to the simulation.
 
@@ -710,8 +706,6 @@ class SimulationBuilder:
             n: The number of iterations between output writes (recurring).
             dt: The time interval between output writes (recurring).
             first: The first iteration or time to write output (used with n or dt).
-            at_iteration: The specific iteration to write output once.
-            at_time: The specific time to write output once.
         """
         name = builder.name
         if name in self._output_writers:
@@ -721,8 +715,6 @@ class SimulationBuilder:
             "n": n,
             "dt": dt,
             "first": first,
-            "at_iteration": at_iteration,
-            "at_time": at_time,
         }
         self._output_writers[name] = (builder, kwargs)
 
@@ -734,15 +726,8 @@ class SimulationBuilder:
         nparticles = {pset.name: pset.nparticles for pset in self._particle_sets}
         for name, (builder, kwargs) in self._output_writers.items():
             output_writers[name] = builder.build(nparticles, time_type)
-            writer_events = output_writers[name].create_events()
-            n = kwargs.get("n")
-            dt = kwargs.get("dt")
-            if n is not None or dt is not None:
-                for event in writer_events:
-                    self.add_recurring_event(event, n=n, dt=dt, first=kwargs.get("first"))
-            else:
-                for event in writer_events:
-                    self.add_event(event, at_iteration=kwargs.get("at_iteration"), at_time=kwargs.get("at_time"))
+            for event in output_writers[name].create_events():
+                self.add_recurring_event(event, n=kwargs.get("n"), dt=kwargs.get("dt"), first=kwargs.get("first"))
         output_writers = types.MappingProxyType(output_writers)
 
         return Simulation(
