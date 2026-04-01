@@ -209,6 +209,8 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
 
         if key in self._outputs:
             raise KeyError(f"Output variable with key '{key}' already exists.")
+        if key in self._static_outputs:
+            raise KeyError(f"Output key '{key}' is already used by a static output.")
 
         self._outputs[key] = ZarrOutputDefinition(output, array_kwargs)
 
@@ -236,6 +238,8 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
 
         if key in self._static_outputs:
             raise KeyError(f"Static output variable with key '{key}' already exists.")
+        if key in self._outputs:
+            raise KeyError(f"Output key '{key}' is already used by a time-dependent output.")
 
         self._static_outputs[key] = ZarrOutputDefinition(output, array_kwargs)
 
@@ -267,7 +271,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         outputs = {}
         for key, zod in self._outputs.items():
             output = zod.output
-            kwargs = zod.kwargs
+            kwargs = zod.kwargs.copy()
 
             # get nparticles for this particle set
             if output.particle_set not in nparticles:
@@ -285,7 +289,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         static_outputs = {}
         for key, zod in self._static_outputs.items():
             output = zod.output
-            kwargs = zod.kwargs
+            kwargs = zod.kwargs.copy()
 
             # get nparticles for this particle set
             if output.particle_set not in nparticles:
@@ -337,7 +341,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
 
         # set shape and chunks (1D: particles only)
         shape = (nparticles,)
-        chunks = (min(self._chunksize, nparticles),)
+        chunks = (max(1, min(self._chunksize, nparticles)),)
 
         # create array
         array = zarr.create_array(

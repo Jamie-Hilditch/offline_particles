@@ -1,16 +1,13 @@
 """Tests for static (time-independent) output support."""
 
-import functools
-
 import numpy as np
 import pytest
 import zarr
 import zarr.storage
 
-from offline_particles.events import Event, SimulationState
-from offline_particles.output import Output, ZarrOutputBuilder, ZarrOutputWriter
+from offline_particles.events import SimulationState
+from offline_particles.output import Output, ZarrOutputBuilder
 from offline_particles.particles import Particles, ParticlesView
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -100,6 +97,20 @@ class TestZarrOutputBuilderStaticOutputs:
         assert "density" not in builder.outputs
         assert "x" not in builder.static_outputs
 
+    def test_add_output_clashes_with_static_raises(self) -> None:
+        store = zarr.storage.MemoryStore()
+        builder = _make_builder(store)
+        builder.add_static_output("density", _make_output("xidx"))
+        with pytest.raises(KeyError, match="density"):
+            builder.add_output("density", _make_output("yidx"))
+
+    def test_add_static_output_clashes_with_output_raises(self) -> None:
+        store = zarr.storage.MemoryStore()
+        builder = _make_builder(store)
+        builder.add_output("density", _make_output("xidx"))
+        with pytest.raises(KeyError, match="density"):
+            builder.add_static_output("density", _make_output("yidx"))
+
 
 # ---------------------------------------------------------------------------
 # ZarrOutputWriter static output arrays
@@ -112,7 +123,7 @@ class TestZarrOutputWriterStaticOutputArrays:
         builder = _make_builder(store)
         builder.add_static_output("density", _make_output("xidx"))
 
-        writer = builder.build({"particles": 5})
+        builder.build({"particles": 5})
 
         # The static output array should be 1D with shape (nparticles,)
         group = zarr.open_group(store, mode="r")
@@ -125,7 +136,7 @@ class TestZarrOutputWriterStaticOutputArrays:
         builder = _make_builder(store)
         builder.add_output("x", _make_output("xidx"))
 
-        writer = builder.build({"particles": 5})
+        builder.build({"particles": 5})
 
         group = zarr.open_group(store, mode="r")
         assert "x" in group
@@ -205,32 +216,32 @@ class TestZarrOutputWriterWriteStaticOutput:
 # ---------------------------------------------------------------------------
 
 
-class TestCreateStaticEvents:
-    def test_create_static_events_empty_when_no_static_outputs(self) -> None:
+class TestCreateStaticOutputEvents:
+    def test_create_static_output_events_empty_when_no_static_outputs(self) -> None:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
         writer = builder.build({"particles": 5})
-        events = writer.create_static_events()
+        events = writer.create_static_output_events()
         assert events == []
 
-    def test_create_static_events_returns_one_event_per_output(self) -> None:
+    def test_create_static_output_events_returns_one_event_per_output(self) -> None:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
         builder.add_static_output("density", _make_output("xidx"))
         builder.add_static_output("release_time", _make_output("yidx"))
 
         writer = builder.build({"particles": 5})
-        events = writer.create_static_events()
+        events = writer.create_static_output_events()
 
         assert len(events) == 2
 
-    def test_create_static_events_event_names(self) -> None:
+    def test_create_static_output_events_event_names(self) -> None:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
         builder.add_static_output("density", _make_output("xidx"))
 
         writer = builder.build({"particles": 5})
-        events = writer.create_static_events()
+        events = writer.create_static_output_events()
 
         assert len(events) == 1
         assert events[0].name == "test_writer:static:density"
@@ -241,7 +252,7 @@ class TestCreateStaticEvents:
         builder.add_static_output("density", _make_output("xidx"))
 
         writer = builder.build({"particles": 5})
-        events = writer.create_static_events()
+        events = writer.create_static_output_events()
 
         values = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
         state = _make_state(5, {"xidx": values, "yidx": np.zeros(5)})
@@ -252,15 +263,15 @@ class TestCreateStaticEvents:
         group = zarr.open_group(store, mode="r")
         np.testing.assert_array_equal(group["density"][:], values)
 
-    def test_create_events_does_not_include_static_events(self) -> None:
+    def test_create_output_events_does_not_include_static_events(self) -> None:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
         builder.add_output("x", _make_output("xidx"))
         builder.add_static_output("density", _make_output("yidx"))
 
         writer = builder.build({"particles": 5})
-        recurring_events = writer.create_events()
-        static_events = writer.create_static_events()
+        recurring_events = writer.create_output_events()
+        static_events = writer.create_static_output_events()
 
         recurring_names = {e.name for e in recurring_events}
         static_names = {e.name for e in static_events}
@@ -275,7 +286,7 @@ class TestCreateStaticEvents:
         builder = _make_builder(store)
         builder.add_static_output("density", _make_output("xidx"))
 
-        writer = builder.build({"particles": 5})
+        builder.build({"particles": 5})
 
         group = zarr.open_group(store, mode="r")
         dim_names = group["density"].metadata.dimension_names
