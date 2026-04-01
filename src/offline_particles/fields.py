@@ -269,6 +269,19 @@ class StaticField(Field):
         )
         return cls(data=spatial_array, attrs=attrs)
 
+    @classmethod
+    def from_arraylike(
+        cls,
+        data: npt.ArrayLike,
+        z_stagger: Stagger | str,
+        y_stagger: Stagger | str,
+        x_stagger: Stagger | str,
+        *,
+        attrs: dict[str, Any] | None = None,
+    ) -> "StaticField":
+        """Create a StaticField by converting the input to a NumPy array."""
+        return cls.from_numpy(np.asarray(data), z_stagger, y_stagger, x_stagger, attrs=attrs)
+
 
 type SpatialArrayFactory = type[NumpyArray] | type[ChunkedDaskArray]
 
@@ -553,6 +566,19 @@ class TimeDependentField(Field):
         else:
             factory = ChunkedDaskArray
         return cls(data, z_stagger, y_stagger, x_stagger, factory, attrs=attrs)
+
+    @classmethod
+    def from_arraylike(
+        cls,
+        data: npt.ArrayLike,
+        z_stagger: Stagger | str,
+        y_stagger: Stagger | str,
+        x_stagger: Stagger | str,
+        *,
+        attrs: dict[str, Any] | None = None,
+    ) -> "TimeDependentField":
+        """Create a TimeDependentField by converting the input to a NumPy array."""
+        return cls.from_numpy(np.asarray(data), z_stagger, y_stagger, x_stagger, attrs=attrs)
 
 
 type Tin = np.floating
