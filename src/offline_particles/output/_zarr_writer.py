@@ -107,6 +107,8 @@ class ZarrOutputWriter(AbstractOutputWriter):
     def write_static_output(self, key: str, state: SimulationState) -> None:
         """Write a static (time-independent) output variable once.
 
+        This is called at iteration 0, after particle initialisation.
+
         Args:
             key: The identifier of the static output variable to write.
             state: The current simulation state.
@@ -227,6 +229,8 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
 
     def add_static_output(self, key: str, output: Output, **kwargs) -> None:
         """Add a static (time-independent) output to the writer.
+
+        Static outputs are written once at iteration 0, after particle initialisation.
 
         Args:
             key: The identifier for the static output. Also used as the Zarr array name unless 'name' is given in kwargs.

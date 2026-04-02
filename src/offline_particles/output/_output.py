@@ -82,7 +82,10 @@ class AbstractOutputWriter(abc.ABC):
     @property
     @abc.abstractmethod
     def static_outputs(self) -> Mapping[str, Output]:
-        """The static (time-independent) outputs declared for this writer."""
+        """The static (time-independent) outputs declared for this writer.
+
+        Static outputs are written once at iteration 0, after particle initialisation.
+        """
         pass
 
     @abc.abstractmethod
@@ -112,6 +115,8 @@ class AbstractOutputWriter(abc.ABC):
     @abc.abstractmethod
     def write_static_output(self, key: str, state: SimulationState) -> None:
         """Write a static (time-independent) output variable once.
+
+        This is called at iteration 0, after particle initialisation.
 
         Args:
             key: The identifier of the static output variable to write.
@@ -187,7 +192,10 @@ class AbstractOutputWriterBuilder(abc.ABC):
     @property
     @abc.abstractmethod
     def static_outputs(self) -> Mapping[str, Output]:
-        """The static (time-independent) outputs declared for this writer."""
+        """The static (time-independent) outputs declared for this writer.
+
+        Static outputs are written once at iteration 0, after particle initialisation.
+        """
         pass
 
     @abc.abstractmethod
@@ -213,6 +221,8 @@ class AbstractOutputWriterBuilder(abc.ABC):
     @abc.abstractmethod
     def add_static_output(self, key: str, output: Output, **kwargs: Any) -> None:
         """Add a static (time-independent) output to the writer.
+
+        Static outputs are written once at iteration 0, after particle initialisation.
 
         Args:
             key: The identifier for the static output.

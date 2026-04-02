@@ -128,8 +128,10 @@ class TestZarrOutputWriterStaticOutputArrays:
         # The static output array should be 1D with shape (nparticles,)
         group = zarr.open_group(store, mode="r")
         assert "density" in group
-        assert group["density"].shape == (5,)
-        assert group["density"].ndim == 1
+        arr = group["density"]
+        assert isinstance(arr, zarr.Array)
+        assert arr.shape == (5,)
+        assert arr.ndim == 1
 
     def test_build_creates_2d_time_dependent_array(self) -> None:
         store = zarr.storage.MemoryStore()
@@ -140,8 +142,10 @@ class TestZarrOutputWriterStaticOutputArrays:
 
         group = zarr.open_group(store, mode="r")
         assert "x" in group
-        assert group["x"].shape == (0, 5)
-        assert group["x"].ndim == 2
+        arr = group["x"]
+        assert isinstance(arr, zarr.Array)
+        assert arr.shape == (0, 5)
+        assert arr.ndim == 2
 
     def test_static_outputs_property(self) -> None:
         store = zarr.storage.MemoryStore()
@@ -183,7 +187,9 @@ class TestZarrOutputWriterWriteStaticOutput:
         writer.write_static_output("density", state)
 
         group = zarr.open_group(store, mode="r")
-        np.testing.assert_array_equal(group["density"][:], values)
+        arr = group["density"]
+        assert isinstance(arr, zarr.Array)
+        np.testing.assert_array_equal(arr[:], values)
 
     def test_write_static_output_missing_key_raises(self) -> None:
         store = zarr.storage.MemoryStore()
@@ -208,7 +214,9 @@ class TestZarrOutputWriterWriteStaticOutput:
 
         group = zarr.open_group(store, mode="r")
         # time-dependent array should still be empty
-        assert group["x"].shape[0] == 0
+        x_arr = group["x"]
+        assert isinstance(x_arr, zarr.Array)
+        assert x_arr.shape[0] == 0
 
 
 # ---------------------------------------------------------------------------
@@ -261,7 +269,9 @@ class TestCreateStaticOutputEvents:
         events[0](state)
 
         group = zarr.open_group(store, mode="r")
-        np.testing.assert_array_equal(group["density"][:], values)
+        arr = group["density"]
+        assert isinstance(arr, zarr.Array)
+        np.testing.assert_array_equal(arr[:], values)
 
     def test_create_output_events_does_not_include_static_events(self) -> None:
         store = zarr.storage.MemoryStore()
@@ -289,5 +299,7 @@ class TestCreateStaticOutputEvents:
         builder.build({"particles": 5})
 
         group = zarr.open_group(store, mode="r")
-        dim_names = group["density"].metadata.dimension_names
+        density_arr = group["density"]
+        assert isinstance(density_arr, zarr.Array)
+        dim_names = getattr(density_arr.metadata, "dimension_names", None)
         assert dim_names == ("particles",)
