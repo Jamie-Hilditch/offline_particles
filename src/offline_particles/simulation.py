@@ -126,9 +126,12 @@ class Simulation:
         self._wall_time_start = time.perf_counter_ns()
 
         # stopping conditions
+        # Default: stop at the relevant extremum of the time array
         self._iteration_stop = None
         self._time_stop = None
         self._wall_time_stop = None
+        time_array = self._clock.time_array
+        self.set_time_stop(time_array[-1] if self._clock.forward_in_time else time_array[0])
 
     # getters
 
@@ -439,18 +442,13 @@ class Simulation:
 
     def run(self) -> None:
         """Run the particle simulation until a stopping condition is met."""
-        # The end of the time array is always a valid default stopping condition
-        time_array = self._clock.time_array
-        valid_time_array_stop = (
-            time_array[-1] >= self.time if self.forward_in_time else time_array[0] <= self.time
-        )
         # check we have at least one valid stopping condition
         valid_iteration_stop = self._iteration_stop is not None and self._iteration_stop > self.iteration
         valid_time_stop = self._time_stop is not None and (
             self._time_stop > self.time if self.forward_in_time else self._time_stop < self.time
         )
         valid_wall_time_stop = self._wall_time_stop is not None and self._wall_time_stop > self.wall_time
-        if not (valid_iteration_stop or valid_time_stop or valid_wall_time_stop or valid_time_array_stop):
+        if not (valid_iteration_stop or valid_time_stop or valid_wall_time_stop):
             raise ValueError("No valid stopping condition set for simulation.")
 
         # run initialisation kernels
@@ -468,12 +466,6 @@ class Simulation:
             ):
                 break
             if self._wall_time_stop is not None and self.wall_time >= self._wall_time_stop:
-                break
-            # Default stopping condition: end of the time array.
-            # Stop before attempting a step that would take the simulation out of bounds.
-            if self.forward_in_time and self.time + self.dt > time_array[-1]:  # type: ignore[operator]
-                break
-            if not self.forward_in_time and self.time + self.dt < time_array[0]:  # type: ignore[operator]
                 break
 
             # advance one timestep

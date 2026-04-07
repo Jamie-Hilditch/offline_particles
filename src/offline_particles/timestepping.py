@@ -38,6 +38,8 @@ class Clock:
         if np.any(time_array[1:] <= time_array[:-1]):  # type: ignore[operator]
             raise ValueError("time_array must be strictly increasing.")
         self._time_array = time_array
+        # precompute maximum searchsorted index: clamps idx so idx+1 is always valid
+        self._max_tidx = len(time_array) - 2
 
         # first set the time unit
         # this fixes the time types
@@ -80,11 +82,12 @@ class Clock:
 
         idx = np.searchsorted(time_array, time, side="right") - 1
         # Clamp idx so that idx+1 is always a valid index (handles time == time_array[-1])
-        idx = min(int(idx), len(time_array) - 2)
+        if idx > self._max_tidx:
+            idx = self._max_tidx
         t0 = time_array[idx]
         t1 = time_array[idx + 1]
         fraction = (time - t0) / (t1 - t0)
-        return np.float64(idx) + fraction
+        return idx + fraction
 
     def set_dt(self, dt: D) -> None:
         """Set the time step."""

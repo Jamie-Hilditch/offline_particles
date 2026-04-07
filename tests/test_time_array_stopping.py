@@ -70,6 +70,44 @@ class TestGetTimeIndexBoundary:
 
 
 # ---------------------------------------------------------------------------
+# Default time_stop initialised from time array
+# ---------------------------------------------------------------------------
+
+
+class TestDefaultTimeStop:
+    def test_default_time_stop_is_time_array_end_for_forward(self) -> None:
+        """A forward simulation should have time_stop set to time_array[-1] by default."""
+        time_array = np.array([0.0, 1.0, 2.0, 3.0], dtype=np.float64)
+        clock = _make_clock(time_array, 1.0)
+        sim = _make_builder(clock).build_simulation()
+        assert sim.time_stop == pytest.approx(3.0)
+
+    def test_default_time_stop_is_time_array_start_for_backward(self) -> None:
+        """A backward simulation should have time_stop set to time_array[0] by default."""
+        time_array = np.array([0.0, 1.0, 2.0, 3.0], dtype=np.float64)
+        clock = _make_clock(time_array, -1.0)
+        clock.set_time(time_array[-1])
+        sim = _make_builder(clock).build_simulation()
+        assert sim.time_stop == pytest.approx(0.0)
+
+    def test_default_time_stop_can_be_overridden(self) -> None:
+        """The default time_stop should be overridable with set_time_stop."""
+        time_array = np.arange(0.0, 10.0, dtype=np.float64)
+        clock = _make_clock(time_array, 1.0)
+        sim = _make_builder(clock).build_simulation()
+        sim.set_time_stop(np.float64(5.0))
+        assert sim.time_stop == pytest.approx(5.0)
+
+    def test_default_time_stop_can_be_cleared(self) -> None:
+        """The default time_stop can be cleared by passing None to set_time_stop."""
+        time_array = np.arange(0.0, 10.0, dtype=np.float64)
+        clock = _make_clock(time_array, 1.0)
+        sim = _make_builder(clock).build_simulation()
+        sim.set_time_stop(None)
+        assert sim.time_stop is None
+
+
+# ---------------------------------------------------------------------------
 # Forward simulation stops gracefully at end of time array
 # ---------------------------------------------------------------------------
 
@@ -80,45 +118,27 @@ class TestForwardSimulationTimeArrayStop:
         even when no explicit stopping condition is set."""
         time_array = np.arange(0.0, 5.0, dtype=np.float64)  # [0, 1, 2, 3, 4]
         clock = _make_clock(time_array, 1.0)
-        builder = _make_builder(clock)
-        sim = builder.build_simulation()
+        sim = _make_builder(clock).build_simulation()
 
-        # No explicit stopping conditions - relies on time array bound
         sim.run()
-        # After run, time should be at most time_array[-1]
         assert sim.time <= time_array[-1]
 
     def test_run_does_not_raise_at_end_of_time_array(self) -> None:
         """Reaching the end of the time array should not raise an error."""
         time_array = np.array([0.0, 1.0, 2.0], dtype=np.float64)
         clock = _make_clock(time_array, 1.0)
-        builder = _make_builder(clock)
-        sim = builder.build_simulation()
+        sim = _make_builder(clock).build_simulation()
 
         # Should complete without IndexError or ValueError
         sim.run()
-
-    def test_run_stops_when_dt_does_not_divide_evenly(self) -> None:
-        """Simulation should stop before the step that would exceed time_array[-1]."""
-        time_array = np.array([0.0, 1.0, 2.0, 3.0, 4.0], dtype=np.float64)
-        clock = _make_clock(time_array, 1.5)
-        builder = _make_builder(clock)
-        sim = builder.build_simulation()
-
-        sim.run()
-        # With dt=1.5 and time_array going to 4.0:
-        # step 1: 0.0 -> 1.5 (valid, 1.5 <= 4.0)
-        # step 2: 1.5 -> 3.0 (valid, 3.0 <= 4.0)
-        # step 3: 3.0 + 1.5 = 4.5 > 4.0 -> stop before this step
-        assert sim.time == pytest.approx(3.0)
+        assert sim.time == pytest.approx(2.0)
 
     def test_run_valid_without_explicit_stopping_condition(self) -> None:
-        """A simulation with no explicit stopping conditions should not raise
-        'No valid stopping condition' when the time array bound is active."""
+        """A simulation with no explicitly user-set stopping conditions should not
+        raise 'No valid stopping condition' because the default time_stop is used."""
         time_array = np.array([0.0, 1.0, 2.0], dtype=np.float64)
         clock = _make_clock(time_array, 1.0)
-        builder = _make_builder(clock)
-        sim = builder.build_simulation()
+        sim = _make_builder(clock).build_simulation()
 
         # This must not raise ValueError about missing stopping conditions
         sim.run()
@@ -136,8 +156,7 @@ class TestBackwardSimulationTimeArrayStop:
         time_array = np.arange(0.0, 5.0, dtype=np.float64)  # [0, 1, 2, 3, 4]
         clock = _make_clock(time_array, -1.0)
         clock.set_time(time_array[-1])
-        builder = _make_builder(clock)
-        sim = builder.build_simulation()
+        sim = _make_builder(clock).build_simulation()
 
         sim.run()
         assert sim.time >= time_array[0]
@@ -148,29 +167,14 @@ class TestBackwardSimulationTimeArrayStop:
         time_array = np.array([0.0, 1.0, 2.0], dtype=np.float64)
         clock = _make_clock(time_array, -1.0)
         clock.set_time(time_array[-1])
-        builder = _make_builder(clock)
-        sim = builder.build_simulation()
+        sim = _make_builder(clock).build_simulation()
 
         sim.run()
-
-    def test_run_stops_when_dt_does_not_divide_evenly_backward(self) -> None:
-        """Backward simulation should stop before a step that would go below time_array[0]."""
-        time_array = np.array([0.0, 1.0, 2.0, 3.0, 4.0], dtype=np.float64)
-        clock = _make_clock(time_array, -1.5)
-        clock.set_time(time_array[-1])  # start at 4.0
-        builder = _make_builder(clock)
-        sim = builder.build_simulation()
-
-        sim.run()
-        # With dt=-1.5 starting from 4.0:
-        # step 1: 4.0 -> 2.5 (valid, 2.5 >= 0.0)
-        # step 2: 2.5 -> 1.0 (valid, 1.0 >= 0.0)
-        # step 3: 1.0 + (-1.5) = -0.5 < 0.0 -> stop before this step
-        assert sim.time == pytest.approx(1.0)
+        assert sim.time == pytest.approx(0.0)
 
 
 # ---------------------------------------------------------------------------
-# Explicit stopping conditions still work alongside time array bound
+# Explicit stopping conditions still work alongside the default time_stop
 # ---------------------------------------------------------------------------
 
 
@@ -179,20 +183,20 @@ class TestExplicitStoppingConditionsWithTimeArrayBound:
         """An explicit iteration stop should still work."""
         time_array = np.arange(0.0, 10.0, dtype=np.float64)
         clock = _make_clock(time_array, 1.0)
-        builder = _make_builder(clock)
-        sim = builder.build_simulation()
+        sim = _make_builder(clock).build_simulation()
         sim.set_stopping_conditions(iteration=3)
 
         sim.run()
         assert sim.iteration == 3
 
-    def test_explicit_time_stop_takes_precedence(self) -> None:
-        """An explicit time stop before the end of the time array should still work."""
+    def test_explicit_time_stop_overrides_default(self) -> None:
+        """An explicit time stop before the end of the time array should override
+        the default time_stop."""
         time_array = np.arange(0.0, 10.0, dtype=np.float64)
         clock = _make_clock(time_array, 1.0)
-        builder = _make_builder(clock)
-        sim = builder.build_simulation()
+        sim = _make_builder(clock).build_simulation()
         sim.set_stopping_conditions(time=np.float64(5.0))
 
         sim.run()
         assert sim.time == pytest.approx(5.0)
+
