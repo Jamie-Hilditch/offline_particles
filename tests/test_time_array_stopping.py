@@ -36,9 +36,14 @@ def _make_builder(clock: Clock) -> SimulationBuilder:
 
 class TestGetTimeIndexBoundary:
     def test_time_at_last_element_returns_last_index(self) -> None:
-        """get_time_index should not raise an IndexError at time_array[-1]."""
+        """get_time_index should not raise an IndexError at time_array[-1].
+
+        Previously, searchsorted returned len(time_array) for time == time_array[-1],
+        causing an out-of-bounds access on time_array[idx + 1].
+        """
         time_array = np.array([0.0, 1.0, 2.0, 3.0], dtype=np.float64)
         clock = _make_clock(time_array, 0.5)
+        # This used to raise IndexError before the boundary fix
         idx = clock.get_time_index(np.float64(3.0))
         assert idx == pytest.approx(3.0)
 

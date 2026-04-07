@@ -442,7 +442,7 @@ class Simulation:
         # The end of the time array is always a valid default stopping condition
         time_array = self._clock.time_array
         valid_time_array_stop = (
-            time_array[-1] > self.time if self.forward_in_time else time_array[0] < self.time
+            time_array[-1] >= self.time if self.forward_in_time else time_array[0] <= self.time
         )
         # check we have at least one valid stopping condition
         valid_iteration_stop = self._iteration_stop is not None and self._iteration_stop > self.iteration
