@@ -79,10 +79,12 @@ class Clock:
             raise ValueError("Time is out of bounds of the time array.")
 
         idx = np.searchsorted(time_array, time, side="right") - 1
+        # Clamp idx so that idx+1 is always a valid index (handles time == time_array[-1])
+        idx = min(int(idx), len(time_array) - 2)
         t0 = time_array[idx]
         t1 = time_array[idx + 1]
         fraction = (time - t0) / (t1 - t0)
-        return idx + fraction
+        return np.float64(idx) + fraction
 
     def set_dt(self, dt: D) -> None:
         """Set the time step."""
