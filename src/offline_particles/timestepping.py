@@ -34,6 +34,11 @@ class Clock:
     ) -> None:
         super().__init__()
 
+        # validate time_array shape and length
+        if time_array.ndim != 1:
+            raise ValueError("time_array must be 1D.")
+        if len(time_array) < 2:
+            raise ValueError("time_array must have at least 2 elements.")
         # check time_array is strictly increasing
         if np.any(time_array[1:] <= time_array[:-1]):  # type: ignore[operator]
             raise ValueError("time_array must be strictly increasing.")
