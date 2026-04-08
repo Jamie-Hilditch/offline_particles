@@ -199,4 +199,3 @@ class TestExplicitStoppingConditionsWithTimeArrayBound:
 
         sim.run()
         assert sim.time == pytest.approx(5.0)
-
