@@ -65,7 +65,8 @@ class Clock:
         self.set_dt(dt)
 
         # initialise time, time_index and iteration
-        self.set_time(self._time_array[0])
+        # use first_time so backward clocks start at time_array[-1]
+        self.set_time(self.first_time)
         self.set_iteration(0)
 
     def get_time_index(self, time: T) -> np.float64:
