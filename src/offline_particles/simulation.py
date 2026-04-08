@@ -126,12 +126,11 @@ class Simulation:
         self._wall_time_start = time.perf_counter_ns()
 
         # stopping conditions
-        # Default: stop at the relevant extremum of the time array
+        # Default: stop at the chronological end of the time array
         self._iteration_stop = None
         self._time_stop = None
         self._wall_time_stop = None
-        time_array = self._clock.time_array
-        self.set_time_stop(time_array[-1] if self._clock.forward_in_time else time_array[0])
+        self.set_time_stop(self._clock.final_time)
 
     # getters
 

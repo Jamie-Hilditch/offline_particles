@@ -159,6 +159,16 @@ class Clock:
         """Whether the clock is advancing time forwards."""
         return self._forward_in_time
 
+    @property
+    def first_time(self) -> T:
+        """The chronological start of the simulation (time_array[0] if forward, time_array[-1] if backward)."""
+        return self._time_array[0] if self._forward_in_time else self._time_array[-1]
+
+    @property
+    def final_time(self) -> T:
+        """The chronological end of the simulation (time_array[-1] if forward, time_array[0] if backward)."""
+        return self._time_array[-1] if self._forward_in_time else self._time_array[0]
+
     def advance_time(self) -> None:
         """Advance the current time by dt and update the time index."""
         self._time += self.dt  # type: ignore[operator]
