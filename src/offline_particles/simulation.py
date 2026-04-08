@@ -126,9 +126,11 @@ class Simulation:
         self._wall_time_start = time.perf_counter_ns()
 
         # stopping conditions
+        # Default: stop at the chronological end of the time array
         self._iteration_stop = None
         self._time_stop = None
         self._wall_time_stop = None
+        self.set_time_stop(self._clock.final_time)
 
     # getters
 
@@ -297,11 +299,14 @@ class Simulation:
         Args:
             time: The time to stop the simulation at, or None to disable.
         """
-        # check time is compatible with current simulation time
-        try:
-            time < self.time  # type: ignore
-        except TypeError as e:
-            raise TypeError(f"Incompatible time type {type(time)} for simulation time type {type(self.time)}") from e
+        if time is not None:
+            # check time is compatible with current simulation time
+            try:
+                time < self.time  # type: ignore
+            except TypeError as e:
+                raise TypeError(
+                    f"Incompatible time type {type(time)} for simulation time type {type(self.time)}"
+                ) from e
         self._time_stop = time
 
     def set_wall_time_stop(self, wall_time: np.timedelta64 | None) -> None:

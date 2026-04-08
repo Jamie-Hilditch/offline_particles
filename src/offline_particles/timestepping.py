@@ -34,10 +34,17 @@ class Clock:
     ) -> None:
         super().__init__()
 
+        # validate time_array shape and length
+        if time_array.ndim != 1:
+            raise ValueError("time_array must be 1D.")
+        if len(time_array) < 2:
+            raise ValueError("time_array must have at least 2 elements.")
         # check time_array is strictly increasing
         if np.any(time_array[1:] <= time_array[:-1]):  # type: ignore[operator]
             raise ValueError("time_array must be strictly increasing.")
         self._time_array = time_array
+        # precompute maximum searchsorted index: clamps idx so idx+1 is always valid
+        self._max_tidx = len(time_array) - 2
 
         # first set the time unit
         # this fixes the time types
@@ -58,7 +65,8 @@ class Clock:
         self.set_dt(dt)
 
         # initialise time, time_index and iteration
-        self.set_time(self._time_array[0])
+        # use first_time so backward clocks start at time_array[-1]
+        self.set_time(self.first_time)
         self.set_iteration(0)
 
     def get_time_index(self, time: T) -> np.float64:
@@ -79,6 +87,9 @@ class Clock:
             raise ValueError("Time is out of bounds of the time array.")
 
         idx = np.searchsorted(time_array, time, side="right") - 1
+        # Clamp idx so that idx+1 is always a valid index (handles time == time_array[-1])
+        if idx > self._max_tidx:
+            idx = self._max_tidx
         t0 = time_array[idx]
         t1 = time_array[idx + 1]
         fraction = (time - t0) / (t1 - t0)
@@ -153,6 +164,16 @@ class Clock:
     def forward_in_time(self) -> bool:
         """Whether the clock is advancing time forwards."""
         return self._forward_in_time
+
+    @property
+    def first_time(self) -> T:
+        """The chronological start of the simulation (time_array[0] if forward, time_array[-1] if backward)."""
+        return self._time_array[0] if self._forward_in_time else self._time_array[-1]
+
+    @property
+    def final_time(self) -> T:
+        """The chronological end of the simulation (time_array[-1] if forward, time_array[0] if backward)."""
+        return self._time_array[-1] if self._forward_in_time else self._time_array[0]
 
     def advance_time(self) -> None:
         """Advance the current time by dt and update the time index."""
