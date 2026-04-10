@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from offline_particles.fieldset import Fieldset
 from offline_particles.fields import StaticField
+from offline_particles.fieldset import Fieldset
 
 
 def _make_static_field(z: int, y: int, x: int) -> StaticField:

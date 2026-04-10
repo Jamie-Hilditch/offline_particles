@@ -6,7 +6,6 @@ import pytest
 from offline_particles.events import Event, SimulationState
 from offline_particles.particles import Particles, ParticlesView
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

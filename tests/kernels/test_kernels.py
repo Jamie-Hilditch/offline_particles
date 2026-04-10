@@ -12,7 +12,6 @@ from offline_particles.kernels import (
 )
 from offline_particles.kernels._kernels import FieldDataDeclaration
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

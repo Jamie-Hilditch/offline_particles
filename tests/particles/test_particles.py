@@ -5,7 +5,6 @@ import pytest
 
 from offline_particles.particles import Particles, ParticlesView
 
-
 # ---------------------------------------------------------------------------
 # _FrozenArrayMapping (tested indirectly through Particles)
 # ---------------------------------------------------------------------------
