@@ -6,7 +6,7 @@ from offline_particles.kernels.status._status import STATUS_VALUES
 
 
 def _read_status_names_from_pxd() -> set[str]:
-    pxd_path = Path(__file__).resolve().parents[1] / "src" / "offline_particles" / "kernels" / "status" / "__init__.pxd"
+    pxd_path = Path(__file__).resolve().parents[2] / "src" / "offline_particles" / "kernels" / "status" / "__init__.pxd"
     names: set[str] = set()
     pattern = re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*=")
 
