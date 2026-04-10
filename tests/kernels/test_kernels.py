@@ -5,12 +5,12 @@ import pytest
 
 from offline_particles.kernels import (
     BoundKernel,
+    FieldDataDeclaration,
     ParticleKernel,
     ParticlePropertyDeclaration,
     ScalarDeclaration,
     get_required_particle_property_dtypes,
 )
-from offline_particles.kernels._kernels import FieldDataDeclaration
 
 # ---------------------------------------------------------------------------
 # Helpers
