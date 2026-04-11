@@ -720,12 +720,14 @@ def _parse_xarray_dims(
         If any of the stagger values are invalid.
     """
     # first convert to ArrayAxis and Stagger enums
-    dims = {dim: (ArrayAxis(axis), Stagger(stagger)) for dim, (axis, stagger) in dims.items()}
+    parsed_dims: dict[str, tuple[ArrayAxis, Stagger]] = {
+        dim: (ArrayAxis(axis), Stagger(stagger)) for dim, (axis, stagger) in dims.items()
+    }
 
     # extract the dimension names and staggers for each axis, ensuring no duplicates
-    z_dim = _extract_dim(ArrayAxis.Z, dims)
-    y_dim = _extract_dim(ArrayAxis.Y, dims)
-    x_dim = _extract_dim(ArrayAxis.X, dims)
+    z_dim = _extract_dim(ArrayAxis.Z, parsed_dims)
+    y_dim = _extract_dim(ArrayAxis.Y, parsed_dims)
+    x_dim = _extract_dim(ArrayAxis.X, parsed_dims)
 
     return z_dim, y_dim, x_dim
 
