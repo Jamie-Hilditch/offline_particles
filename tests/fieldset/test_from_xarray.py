@@ -63,7 +63,7 @@ class TestFromXarraySizeInference:
         assert fs.x_size == NX
 
     def test_infers_sizes_from_staggered_dims(self) -> None:
-        # xi_u has NX-1 points (INNER) – z_size should still be inferred as NX
+        # xi_u has NX-1 points (INNER) – x_size should still be inferred as NX
         ds = xr.Dataset(
             {
                 "u": xr.DataArray(

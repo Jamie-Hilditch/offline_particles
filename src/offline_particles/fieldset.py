@@ -390,8 +390,9 @@ def _infer_sizes_from_dataset(
                 )
             t_size = actual_size
         else:
-            stagger: Stagger | None = dimension.stagger  # type: ignore[assignment]
-            if stagger is None or stagger is Stagger.INVARIANT:
+            stagger = dimension.stagger
+            assert stagger is not None  # only TIME has stagger=None; we're in the else branch
+            if stagger is Stagger.INVARIANT:
                 continue
             centered = _staggered_to_centered_size(actual_size, stagger)
             direction: str = dimension.direction

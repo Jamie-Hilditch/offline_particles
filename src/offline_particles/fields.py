@@ -712,7 +712,9 @@ def field_from_dataarray(
                 f"direction '{direction}'.  Each direction may only appear once."
             )
         direction_to_dim[direction] = dim_name
-        direction_to_stagger[direction] = dim_spec.stagger  # type: ignore[assignment]
+        stagger = dim_spec.stagger
+        assert stagger is not None  # only TIME has stagger=None; we filtered TIME above
+        direction_to_stagger[direction] = stagger
 
     # Directions absent from this DataArray default to INVARIANT.
     z_stagger: Stagger = direction_to_stagger.get("Z", Stagger.INVARIANT)

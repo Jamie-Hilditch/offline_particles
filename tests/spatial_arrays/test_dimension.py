@@ -38,7 +38,7 @@ class TestDimensionBasicStructure:
             assert hasattr(Dimension, f"X_{stagger.name}")
 
     def test_unique_member_count(self) -> None:
-        # 1 TIME + 3 directions * 6 staggers = 19 unique members
+        # 1 TIME + 3 directions * len(Stagger) unique members
         assert len(list(Dimension)) == 1 + 3 * len(Stagger)
 
 
