@@ -74,6 +74,80 @@ INVARIANT_STAGGERS = frozenset({Stagger.INVARIANT})
 INACTIVE_STAGGERS = frozenset({s for s in Stagger if not s.is_active})
 
 
+def _build_dimension_enum() -> type:
+    """Dynamically build the ``Dimension`` enum.
+
+    Members are auto-generated for every combination of spatial direction
+    (``Z``, ``Y``, ``X``) and :class:`Stagger` value, plus a special ``TIME``
+    member.  Canonical names follow the pattern ``{DIRECTION}_{STAGGER}``
+    (e.g. ``Z_INNER``).  Each spatial direction also exposes aliases with
+    domain-specific prefixes:
+
+    * ``Z`` → ``DEPTH``  (e.g. ``DEPTH_INNER`` is an alias for ``Z_INNER``)
+    * ``Y`` → ``ETA``
+    * ``X`` → ``XI``
+    """
+    # Prepare an _EnumDict so that descriptors (properties) are stored as
+    # non-member attributes rather than being treated as enum values.
+    ns = enum.EnumMeta.__prepare__("Dimension", (enum.Enum,))
+
+    # TIME is special – it carries no Stagger.
+    ns["TIME"] = ("T", None)
+
+    # Spatial directions with their alias prefixes.
+    _direction_specs: list[tuple[str, list[str]]] = [
+        ("Z", ["DEPTH"]),
+        ("Y", ["ETA"]),
+        ("X", ["XI"]),
+    ]
+    for direction, alias_prefixes in _direction_specs:
+        for stagger in Stagger:
+            val = (direction, stagger)
+            # Canonical name, e.g. Z_INNER
+            ns[f"{direction}_{stagger.name}"] = val
+            # Alias names, e.g. DEPTH_INNER  (same value → alias in enum terms)
+            for alias in alias_prefixes:
+                ns[f"{alias}_{stagger.name}"] = val
+
+    # Add read-only properties.  Because ``property`` objects are descriptors
+    # (they have ``__get__``), the _EnumDict stores them as non-members.
+    ns["direction"] = property(
+        lambda self: self.value[0],
+        doc="Direction code: ``'T'``, ``'Z'``, ``'Y'``, or ``'X'``.",
+    )
+    ns["stagger"] = property(
+        lambda self: self.value[1],
+        doc="The :class:`Stagger` for spatial dimensions, or ``None`` for ``TIME``.",
+    )
+    ns["is_time"] = property(
+        lambda self: self.value[0] == "T",
+        doc="``True`` when this dimension represents the time axis.",
+    )
+    ns["is_spatial"] = property(
+        lambda self: self.value[0] != "T",
+        doc="``True`` when this dimension represents a spatial axis.",
+    )
+
+    return enum.EnumMeta("Dimension", (enum.Enum,), ns)
+
+
+#: Enum whose members represent a labelled axis of an ``xarray.DataArray`` together
+#: with its grid staggering.  Pass a mapping of ``{dim_name: Dimension.*}`` to
+#: :meth:`Fieldset.from_xarray` or :func:`field_from_dataarray`.
+#:
+#: Members
+#: -------
+#: ``TIME``
+#:     The time axis (no stagger).
+#: ``{Z|DEPTH}_{STAGGER}``
+#:     Vertical axis with the given stagger, e.g. ``Z_CENTER`` or ``DEPTH_INNER``.
+#: ``{Y|ETA}_{STAGGER}``
+#:     Meridional axis, e.g. ``Y_CENTER`` or ``ETA_RIGHT``.
+#: ``{X|XI}_{STAGGER}``
+#:     Zonal axis, e.g. ``X_CENTER`` or ``XI_OUTER``.
+Dimension = _build_dimension_enum()
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class BBox:
     """Bounding box defined by min and max indices in each dimension."""

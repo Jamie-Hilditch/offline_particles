@@ -1,11 +1,15 @@
 """Submodule for Fieldset, a collection of fields from a simulation."""
 
 import types
-from typing import Any, ItemsView, KeysView, Mapping, ValuesView
+from typing import TYPE_CHECKING, Any, ItemsView, KeysView, Mapping, ValuesView
 
 import numpy as np
 
-from .fields import Field
+from .fields import Field, field_from_dataarray
+from .spatial_arrays import Dimension, Stagger
+
+if TYPE_CHECKING:
+    import xarray as xr
 
 
 class Fieldset:
@@ -229,6 +233,113 @@ class Fieldset:
             + f"\n\t{constant_str}\n\t{field_str}\n)"
         )
 
+    @classmethod
+    def from_xarray(
+        cls,
+        ds: "xr.Dataset",
+        dim_map: Mapping[str, Dimension],
+        *,
+        t_size: int | None = None,
+        z_size: int | None = None,
+        y_size: int | None = None,
+        x_size: int | None = None,
+        constants: Mapping[str, Any] | None = None,
+        zidx_bounds: tuple[float, float] | None = None,
+        yidx_bounds: tuple[float, float] | None = None,
+        xidx_bounds: tuple[float, float] | None = None,
+    ) -> "Fieldset":
+        """Build a :class:`Fieldset` from an :class:`xarray.Dataset`.
+
+        Every data variable in the dataset is converted to a :class:`~offline_particles.fields.Field`
+        using :func:`~offline_particles.fields.field_from_dataarray`.  The
+        :class:`~offline_particles.spatial_arrays.Dimension` entries in *dim_map*
+        declare how each dataset dimension maps to the simulation axes (T, Z, Y, X)
+        and to a grid :class:`~offline_particles.spatial_arrays.Stagger`.
+
+        Parameters
+        ----------
+        ds:
+            The :class:`xarray.Dataset` to convert.
+        dim_map:
+            Mapping from dataset dimension names to
+            :class:`~offline_particles.spatial_arrays.Dimension` values.  All
+            dimensions that appear in any data variable of *ds* must be covered.
+        t_size:
+            Size of the time dimension.  Inferred from *ds* when ``None``.
+        z_size:
+            Size of the **centred** z dimension.  Inferred from *ds* when
+            ``None``; if the mapped z dimension is staggered, the centred size
+            is computed from the stagger relationship.
+        y_size:
+            Size of the **centred** y dimension.  Inferred from *ds* when ``None``.
+        x_size:
+            Size of the **centred** x dimension.  Inferred from *ds* when ``None``.
+        constants:
+            Optional extra constants to include in the :class:`Fieldset`.
+        zidx_bounds, yidx_bounds, xidx_bounds:
+            Custom index bounds passed through to
+            :class:`Fieldset.__init__`.  Defaults are ``(0, size - 1)`` for
+            each spatial direction.
+
+        Returns
+        -------
+        Fieldset
+            A :class:`Fieldset` containing one :class:`~offline_particles.fields.Field`
+            per data variable in *ds*.
+
+        Raises
+        ------
+        TypeError
+            If *ds* is not an :class:`xarray.Dataset`.
+        ValueError
+            If a required dimension size cannot be inferred and was not supplied,
+            or if *dim_map* is inconsistent (e.g. two dimensions map to the
+            same spatial direction in the same variable).
+        """
+        import xarray as xr
+
+        if not isinstance(ds, xr.Dataset):
+            raise TypeError(f"Expected an xarray Dataset, got {type(ds).__name__!r}.")
+
+        # Infer dimension sizes from the dataset where not explicitly provided.
+        inferred_t, inferred_z, inferred_y, inferred_x = _infer_sizes_from_dataset(ds, dim_map)
+
+        resolved_t = t_size if t_size is not None else inferred_t
+        resolved_z = z_size if z_size is not None else inferred_z
+        resolved_y = y_size if y_size is not None else inferred_y
+        resolved_x = x_size if x_size is not None else inferred_x
+
+        missing = [
+            name
+            for name, val in [("t_size", resolved_t), ("z_size", resolved_z), ("y_size", resolved_y), ("x_size", resolved_x)]
+            if val is None
+        ]
+        if missing:
+            raise ValueError(
+                f"Could not infer {missing!r} from the dataset and dim_map. "
+                "Please supply the missing size(s) explicitly."
+            )
+
+        assert resolved_t is not None and resolved_z is not None
+        assert resolved_y is not None and resolved_x is not None
+
+        fieldset = cls(
+            resolved_t,
+            resolved_z,
+            resolved_y,
+            resolved_x,
+            constants=constants,
+            zidx_bounds=zidx_bounds,
+            yidx_bounds=yidx_bounds,
+            xidx_bounds=xidx_bounds,
+        )
+
+        for var_name, data_array in ds.data_vars.items():
+            field = field_from_dataarray(data_array, dim_map)
+            fieldset.add_field(str(var_name), field)
+
+        return fieldset
+
 
 def _numpyify_constant(value: Any) -> np.generic:
     """Convert a value to a numpy scalar."""
@@ -239,3 +350,57 @@ def _numpyify_constant(value: Any) -> np.generic:
         return arr.item()
     except (ValueError, TypeError) as e:
         raise ValueError(f"Cannot convert value '{value}' to a numpy scalar.") from e
+
+
+def _staggered_to_centered_size(actual_size: int, stagger: Stagger) -> int:
+    """Return the centred-grid size that corresponds to *actual_size* on *stagger*."""
+    match stagger:
+        case Stagger.CENTER | Stagger.LEFT | Stagger.RIGHT:
+            return actual_size
+        case Stagger.INNER:
+            return actual_size + 1
+        case Stagger.OUTER:
+            return actual_size - 1
+        case _:
+            # INVARIANT or unknown – caller should not reach here
+            raise ValueError(f"Cannot compute centred size for stagger {stagger!r}.")
+
+
+def _infer_sizes_from_dataset(
+    ds: "xr.Dataset",
+    dim_map: Mapping[str, Dimension],
+) -> tuple[int | None, int | None, int | None, int | None]:
+    """Infer t_size, z_size, y_size, x_size from *ds* and *dim_map*.
+
+    Returns ``None`` for any direction not represented in *dim_map*.
+    """
+    t_size: int | None = None
+    spatial_sizes: dict[str, int | None] = {"Z": None, "Y": None, "X": None}
+
+    for dim_name, dimension in dim_map.items():
+        if dim_name not in ds.dims:
+            continue
+        actual_size: int = ds.sizes[dim_name]
+
+        if dimension.is_time:
+            if t_size is not None and t_size != actual_size:
+                raise ValueError(
+                    f"Conflicting time dimension sizes: {t_size} vs {actual_size} "
+                    f"(from dimension {dim_name!r})."
+                )
+            t_size = actual_size
+        else:
+            stagger: Stagger | None = dimension.stagger  # type: ignore[assignment]
+            if stagger is None or stagger is Stagger.INVARIANT:
+                continue
+            centered = _staggered_to_centered_size(actual_size, stagger)
+            direction: str = dimension.direction
+            existing = spatial_sizes[direction]
+            if existing is not None and existing != centered:
+                raise ValueError(
+                    f"Inconsistent centred sizes for direction '{direction}': "
+                    f"{existing} vs {centered} (from dimension {dim_name!r})."
+                )
+            spatial_sizes[direction] = centered
+
+    return t_size, spatial_sizes["Z"], spatial_sizes["Y"], spatial_sizes["X"]

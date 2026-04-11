@@ -4,14 +4,17 @@ import abc
 import dataclasses
 import logging
 import warnings
-from typing import Any
+from typing import TYPE_CHECKING, Any, Mapping
 
 import dask.array as da
 import numba
 import numpy as np
 import numpy.typing as npt
 
-from .spatial_arrays import BBox, ChunkedDaskArray, NumpyArray, SpatialArray, Stagger
+from .spatial_arrays import BBox, ChunkedDaskArray, Dimension, NumpyArray, SpatialArray, Stagger
+
+if TYPE_CHECKING:
+    import xarray as xr
 
 logger = logging.getLogger(__name__)
 
@@ -620,3 +623,134 @@ def _perform_interpolation(
     n = previous.size
     for i in numba.prange(n):  # ty: ignore[not-iterable]
         output[i] = previous[i] + ft * delta[i]
+
+
+def field_from_dataarray(
+    data_array: "xr.DataArray",
+    dim_map: Mapping[str, Dimension],
+    *,
+    preload_space: bool = False,
+    attrs: dict[str, Any] | None = None,
+) -> Field:
+    """Create a :class:`Field` from an :class:`xarray.DataArray`.
+
+    Parameters
+    ----------
+    data_array:
+        The DataArray to convert.
+    dim_map:
+        Mapping from DataArray dimension names to :class:`~offline_particles.spatial_arrays.Dimension`
+        enum values.  Every dimension that appears in *data_array* must have an
+        entry.  Entries for dimensions that are not present in *data_array* are
+        silently ignored; the corresponding spatial direction is treated as
+        :attr:`~offline_particles.spatial_arrays.Stagger.INVARIANT`.
+    preload_space:
+        For Dask-backed arrays only.  When ``True`` each spatial time-slice is
+        loaded into a :class:`~offline_particles.spatial_arrays.NumpyArray`
+        instead of a :class:`~offline_particles.spatial_arrays.ChunkedDaskArray`,
+        which preloads the data eagerly.  Default ``False``.
+    attrs:
+        Optional attribute dictionary to attach to the resulting
+        :class:`Field`.  When ``None`` the attributes are taken from
+        ``data_array.attrs``.
+
+    Returns
+    -------
+    Field
+        A :class:`StaticField` when *data_array* has no time dimension, or a
+        :class:`TimeDependentField` when a ``TIME`` dimension is present in
+        *dim_map* and in *data_array*.
+
+    Raises
+    ------
+    TypeError
+        If *data_array* is not an :class:`xarray.DataArray`.
+    ValueError
+        If *data_array* has dimensions that are absent from *dim_map*, or if
+        two dimensions in *data_array* map to the same spatial direction.
+    """
+    import xarray as xr
+
+    if not isinstance(data_array, xr.DataArray):
+        raise TypeError(f"Expected an xarray DataArray, got {type(data_array).__name__!r}.")
+
+    da_dims: tuple[str, ...] = tuple(data_array.dims)
+
+    # Every DataArray dimension must be covered by dim_map.
+    unmapped = set(da_dims) - set(dim_map)
+    if unmapped:
+        raise ValueError(
+            f"DataArray has dimension(s) {sorted(unmapped)!r} that are not present in dim_map. "
+            "Add an entry for each dimension to dim_map."
+        )
+
+    # Inherit attrs from the DataArray when none are provided explicitly.
+    if attrs is None:
+        attrs = dict(data_array.attrs)
+
+    # Determine which dimension corresponds to TIME (at most one allowed).
+    time_dim: str | None = None
+    for dim_name in da_dims:
+        if dim_map[dim_name].is_time:
+            if time_dim is not None:
+                raise ValueError(
+                    f"Multiple dimensions ({time_dim!r} and {dim_name!r}) are both mapped to TIME."
+                )
+            time_dim = dim_name
+
+    # Map each spatial direction to the corresponding DataArray dim and stagger.
+    direction_to_dim: dict[str, str] = {}
+    direction_to_stagger: dict[str, Stagger] = {}
+    for dim_name in da_dims:
+        dim_spec = dim_map[dim_name]
+        if dim_spec.is_time:
+            continue
+        direction: str = dim_spec.direction
+        if direction in direction_to_dim:
+            raise ValueError(
+                f"Dimensions {direction_to_dim[direction]!r} and {dim_name!r} both map to "
+                f"direction '{direction}'.  Each direction may only appear once."
+            )
+        direction_to_dim[direction] = dim_name
+        direction_to_stagger[direction] = dim_spec.stagger  # type: ignore[assignment]
+
+    # Directions absent from this DataArray default to INVARIANT.
+    z_stagger: Stagger = direction_to_stagger.get("Z", Stagger.INVARIANT)
+    y_stagger: Stagger = direction_to_stagger.get("Y", Stagger.INVARIANT)
+    x_stagger: Stagger = direction_to_stagger.get("X", Stagger.INVARIANT)
+
+    # Reorder dimensions to the canonical order: (T?, Z?, Y?, X?)
+    ordered_dims: list[str] = []
+    if time_dim is not None:
+        ordered_dims.append(time_dim)
+    for direction in ("Z", "Y", "X"):
+        if direction in direction_to_dim:
+            ordered_dims.append(direction_to_dim[direction])
+
+    data_array_transposed = data_array.transpose(*ordered_dims)
+
+    # Extract the underlying array, preserving Dask arrays where possible.
+    underlying: npt.NDArray | da.Array
+    if isinstance(data_array_transposed.data, da.Array):
+        underlying = data_array_transposed.data
+    else:
+        underlying = np.asarray(data_array_transposed)
+
+    # Build the appropriate Field subclass.
+    if time_dim is not None:
+        if isinstance(underlying, da.Array):
+            return TimeDependentField.from_dask(
+                underlying,
+                z_stagger,
+                y_stagger,
+                x_stagger,
+                preload_space=preload_space,
+                attrs=attrs,
+            )
+        else:
+            return TimeDependentField.from_numpy(underlying, z_stagger, y_stagger, x_stagger, attrs=attrs)
+    else:
+        if isinstance(underlying, da.Array):
+            return StaticField.from_dask(underlying, z_stagger, y_stagger, x_stagger, attrs=attrs)
+        else:
+            return StaticField.from_numpy(underlying, z_stagger, y_stagger, x_stagger, attrs=attrs)
