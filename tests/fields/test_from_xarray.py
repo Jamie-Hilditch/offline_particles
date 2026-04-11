@@ -63,10 +63,14 @@ class TestStaticFieldFromXarray:
         assert field.spatial_shape == (3, 4, 5)
 
     def test_aliases_resolve_correctly(self) -> None:
+        # "DEPTH" → ArrayAxis.Z, "LATITUDE" → ArrayAxis.Y, "LON" → ArrayAxis.X
         data = xr.DataArray(np.ones((3, 4, 5), dtype=np.float64), dims=["depth", "lat", "lon"])
         field = StaticField.from_xarray(data, depth=("DEPTH", "center"), lat=("LATITUDE", "center"), lon=("LON", "center"))
         assert isinstance(field, StaticField)
         assert field.spatial_shape == (3, 4, 5)
+        assert field.z_stagger.value == "center"  # DEPTH → Z
+        assert field.y_stagger.value == "center"  # LATITUDE → Y
+        assert field.x_stagger.value == "center"  # LON → X
 
     def test_validation_error_missing_dim(self) -> None:
         data = xr.DataArray(np.ones((3, 4, 5)), dims=["z", "y", "x"])
