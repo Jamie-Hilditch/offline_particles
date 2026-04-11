@@ -10,8 +10,9 @@ import dask.array as da
 import numba
 import numpy as np
 import numpy.typing as npt
+import xarray as xr
 
-from .spatial_arrays import BBox, ChunkedDaskArray, NumpyArray, SpatialArray, Stagger
+from .spatial_arrays import ArrayAxis, BBox, ChunkedDaskArray, NumpyArray, SpatialArray, Stagger
 
 logger = logging.getLogger(__name__)
 
@@ -295,6 +296,65 @@ class StaticField(Field):
                 stacklevel=2,
             )
         return cls.from_numpy(np.asarray(data), z_stagger, y_stagger, x_stagger, attrs=attrs)
+
+    @classmethod
+    def from_xarray(
+        cls,
+        data: xr.DataArray,
+        **dims: tuple[ArrayAxis | str, Stagger | str],
+    ) -> "StaticField":
+        """Create a StaticField from an xarray DataArray.
+
+        Parameters
+        ----------
+        data : xr.DataArray
+            The input xarray DataArray containing the field data.
+        **dims : dict[str, tuple[ArrayAxis | str, Stagger | str]]
+            Mapping of dimension names to tuples of (ArrayAxis, Stagger).
+
+        Returns
+        -------
+        StaticField
+            A StaticField instance created from the input xarray DataArray.
+
+        Notes
+        -----
+        The spatial dimension names in `spatial_dims` must match the corresponding dimensions in `data`.
+        """
+        # validate inputs
+        _validate_xarray_dims_match(data, dims)
+
+        # parse dims to get dimension names and staggers for each axis
+        z_dim, y_dim, x_dim = _parse_xarray_dims(dims)
+
+        # need to transpose data to z,y,x order, removing singleton dimensions as needed
+        dims_in_order = []
+        for dim_name, _ in (z_dim, y_dim, x_dim):
+            if dim_name is not None:
+                dims_in_order.append(dim_name)
+        data_in_order = data.transpose(*dims_in_order)
+
+        # squeeze invariant dimensions
+        squeeze_dims = [dim_name for dim_name, stagger in (z_dim, y_dim, x_dim) if stagger.is_invariant]
+        data_squeezed = data_in_order.squeeze(dim=squeeze_dims)
+
+        # create spatial array
+        if isinstance(data_squeezed.data, da.Array):
+            return cls.from_dask(
+                data=data_squeezed.data,
+                z_stagger=z_dim[1],
+                y_stagger=y_dim[1],
+                x_stagger=x_dim[1],
+                attrs=data.attrs,
+            )
+        else:
+            return cls.from_arraylike(
+                data=data_squeezed.data,
+                z_stagger=z_dim[1],
+                y_stagger=y_dim[1],
+                x_stagger=x_dim[1],
+                attrs=data.attrs,
+            )
 
 
 type SpatialArrayFactory = type[NumpyArray] | type[ChunkedDaskArray]
@@ -620,3 +680,80 @@ def _perform_interpolation(
     n = previous.size
     for i in numba.prange(n):  # ty: ignore[not-iterable]
         output[i] = previous[i] + ft * delta[i]
+
+
+def _validate_xarray_dims_match(data: xr.DataArray, dims: dict[str, tuple[ArrayAxis | str, Stagger | str]]) -> None:
+    """Validate that the specified dimension mappings match the xarray DataArray.
+
+    Parameters
+    ----------
+    data : xr.DataArray
+        The input xarray DataArray containing the field data.
+    dims : dict[str, tuple[ArrayAxis | str, Stagger | str]]
+        Mapping of dimension names to tuples of (ArrayAxis, Stagger).
+
+    Raises
+    ------
+    ValueError
+        If any of the specified dimensions are not present in the DataArray or vice versa.
+    """
+    # check exact correspondence between dims keys and data dimensions
+    data_dims_set = set(data.dims)
+    dims_keys_set = set(dims.keys())
+    if mismatch := (data_dims_set ^ dims_keys_set):
+        raise ValueError(f"Dimension names in dims must exactly match dimensions in data. Mismatch: {mismatch}")
+
+
+def _parse_xarray_dims(
+    dims: dict[str, tuple[ArrayAxis | str, Stagger | str]],
+) -> tuple[tuple[str | None, Stagger], tuple[str | None, Stagger], tuple[str | None, Stagger]]:
+    """Parse the dimension mappings and validate the stagger values.
+
+    Parameters
+    ----------
+    dims : dict[str, tuple[ArrayAxis | str, Stagger | str]]
+        Mapping of dimension names to tuples of (ArrayAxis, Stagger).
+
+    Raises
+    ------
+    ValueError
+        If any of the stagger values are invalid.
+    """
+    # first convert to ArrayAxis and Stagger enums
+    dims = {dim: (ArrayAxis(axis), Stagger(stagger)) for dim, (axis, stagger) in dims.items()}
+
+    # extract the dimension names and staggers for each axis, ensuring no duplicates
+    z_dim = _extract_dim(ArrayAxis.Z, dims)
+    y_dim = _extract_dim(ArrayAxis.Y, dims)
+    x_dim = _extract_dim(ArrayAxis.X, dims)
+
+    return z_dim, y_dim, x_dim
+
+
+def _extract_dim(axis: ArrayAxis, dims: dict[str, tuple[ArrayAxis, Stagger]]) -> tuple[str | None, Stagger]:
+    """Extract the dimension name and stagger for a given axis.
+
+    Parameters
+    ----------
+    axis : ArrayAxis
+        The axis to extract (Z, Y, or X).
+    dims : dict[str, tuple[ArrayAxis, Stagger]]
+        Mapping of dimension names to tuples of (ArrayAxis, Stagger).
+
+    Returns
+    -------
+    tuple[str | None, Stagger]
+        The dimension name and stagger for the specified axis. If no dimension is mapped to the axis, returns (None, Stagger.INVARIANT).
+
+    Raises
+    ------
+    ValueError
+        If multiple dimensions are mapped to the same axis.
+    """
+    matching_dims = [(dim, stagger) for dim, (ax, stagger) in dims.items() if ax == axis]
+    if len(matching_dims) == 0:
+        return None, Stagger.INVARIANT
+    elif len(matching_dims) == 1:
+        return matching_dims[0]
+    else:
+        raise ValueError(f"Multiple dimensions mapped to {axis} axis: {matching_dims}")
