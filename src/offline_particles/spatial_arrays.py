@@ -74,6 +74,27 @@ INVARIANT_STAGGERS = frozenset({Stagger.INVARIANT})
 INACTIVE_STAGGERS = frozenset({s for s in Stagger if not s.is_active})
 
 
+class ArrayAxis(enum.StrEnum):
+    """Enumeration of possible axes for spatial arrays."""
+
+    # Z axis
+    Z = "Z"
+    DEPTH = "Z"
+    VERTICAL = "Z"
+
+    # Y axis
+    Y = "Y"
+    LATITUDE = "Y"
+    LAT = "Y"
+    MERIDIONAL = "Y"
+
+    # X axis
+    X = "X"
+    LONGITUDE = "X"
+    LON = "X"
+    ZONAL = "X"
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class BBox:
     """Bounding box defined by min and max indices in each dimension."""
