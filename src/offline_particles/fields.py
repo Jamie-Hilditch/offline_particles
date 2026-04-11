@@ -334,8 +334,8 @@ class StaticField(Field):
                 dims_in_order.append(dim_name)
         data_in_order = data.transpose(*dims_in_order)
 
-        # squeeze invariant dimensions
-        squeeze_dims = [dim_name for dim_name, stagger in (z_dim, y_dim, x_dim) if stagger.is_invariant]
+        # squeeze invariant dimensions (filter out None for axes absent from the DataArray)
+        squeeze_dims = [dim_name for dim_name, stagger in (z_dim, y_dim, x_dim) if stagger.is_invariant and dim_name is not None]
         data_squeezed = data_in_order.squeeze(dim=squeeze_dims)
 
         # create spatial array
@@ -667,6 +667,77 @@ class TimeDependentField(Field):
             )
         return cls.from_numpy(np.asarray(data), z_stagger, y_stagger, x_stagger, attrs=attrs)
 
+    @classmethod
+    def from_xarray(
+        cls,
+        data: xr.DataArray,
+        time_dim: str,
+        **dims: tuple[ArrayAxis | str, Stagger | str],
+    ) -> "TimeDependentField":
+        """Create a TimeDependentField from an xarray DataArray.
+
+        Parameters
+        ----------
+        data : xr.DataArray
+            The input xarray DataArray containing the field data.
+        time_dim : str
+            Name of the time dimension in the DataArray.
+        **dims : dict[str, tuple[ArrayAxis | str, Stagger | str]]
+            Mapping of spatial dimension names to tuples of (ArrayAxis, Stagger).
+
+        Returns
+        -------
+        TimeDependentField
+            A TimeDependentField instance created from the input xarray DataArray.
+
+        Notes
+        -----
+        The spatial dimension names in `dims` must exactly match all non-time dimensions in `data`.
+        """
+        # validate time dimension
+        if time_dim not in data.dims:
+            raise ValueError(f"Time dimension '{time_dim}' not found in DataArray dimensions: {list(data.dims)}")
+
+        # validate spatial dimensions match exactly
+        spatial_data_dims = set(data.dims) - {time_dim}
+        dims_keys_set = set(dims.keys())
+        if mismatch := (spatial_data_dims ^ dims_keys_set):
+            raise ValueError(
+                f"Dimension names in dims must exactly match spatial dimensions in data. Mismatch: {mismatch}"
+            )
+
+        # parse dims to get dimension names and staggers for each axis
+        z_dim, y_dim, x_dim = _parse_xarray_dims(dims)
+
+        # transpose data to t, z, y, x order
+        dims_in_order = [time_dim]
+        for dim_name, _ in (z_dim, y_dim, x_dim):
+            if dim_name is not None:
+                dims_in_order.append(dim_name)
+        data_in_order = data.transpose(*dims_in_order)
+
+        # squeeze invariant spatial dimensions (filter out None for axes absent from the DataArray)
+        squeeze_dims = [dim_name for dim_name, stagger in (z_dim, y_dim, x_dim) if stagger.is_invariant and dim_name is not None]
+        data_squeezed = data_in_order.squeeze(dim=squeeze_dims)
+
+        # create field
+        if isinstance(data_squeezed.data, da.Array):
+            return cls.from_dask(
+                data=data_squeezed.data,
+                z_stagger=z_dim[1],
+                y_stagger=y_dim[1],
+                x_stagger=x_dim[1],
+                attrs=data.attrs,
+            )
+        else:
+            return cls.from_arraylike(
+                data=data_squeezed.data,
+                z_stagger=z_dim[1],
+                y_stagger=y_dim[1],
+                x_stagger=x_dim[1],
+                attrs=data.attrs,
+            )
+
 
 type Tin = np.floating
 type Tout = np.floating
@@ -704,6 +775,35 @@ def _validate_xarray_dims_match(data: xr.DataArray, dims: dict[str, tuple[ArrayA
         raise ValueError(f"Dimension names in dims must exactly match dimensions in data. Mismatch: {mismatch}")
 
 
+def _parse_array_axis(axis: ArrayAxis | str) -> ArrayAxis:
+    """Parse an ArrayAxis from an enum member or a string (canonical value or alias name).
+
+    Parameters
+    ----------
+    axis : ArrayAxis | str
+        Either an existing ``ArrayAxis`` member, a canonical value (``"Z"``, ``"Y"``, ``"X"``),
+        or an alias name (e.g. ``"DEPTH"``, ``"LATITUDE"``, ``"LON"``).
+
+    Raises
+    ------
+    ValueError
+        If the string does not match any ``ArrayAxis`` value or name.
+    """
+    if isinstance(axis, ArrayAxis):
+        return axis
+    # Try value lookup first ("Z", "Y", "X")
+    try:
+        return ArrayAxis(axis)
+    except ValueError:
+        pass
+    # Fall back to name lookup to support aliases ("DEPTH", "LATITUDE", etc.)
+    try:
+        return ArrayAxis[axis]
+    except KeyError:
+        pass
+    raise ValueError(f"'{axis}' is not a valid ArrayAxis value or name")
+
+
 def _parse_xarray_dims(
     dims: dict[str, tuple[ArrayAxis | str, Stagger | str]],
 ) -> tuple[tuple[str | None, Stagger], tuple[str | None, Stagger], tuple[str | None, Stagger]]:
@@ -721,7 +821,7 @@ def _parse_xarray_dims(
     """
     # first convert to ArrayAxis and Stagger enums
     parsed_dims: dict[str, tuple[ArrayAxis, Stagger]] = {
-        dim: (ArrayAxis(axis), Stagger(stagger)) for dim, (axis, stagger) in dims.items()
+        dim: (_parse_array_axis(axis), Stagger(stagger)) for dim, (axis, stagger) in dims.items()
     }
 
     # extract the dimension names and staggers for each axis, ensuring no duplicates
