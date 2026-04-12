@@ -1,7 +1,6 @@
-from offline_particles.spatial_arrays import ArrayAxis
 import pytest
 
-
+from offline_particles.spatial_arrays import ArrayAxis
 def test_array_axis_has_exactly_three_canonical_members() -> None:
     members = list(ArrayAxis)
 
