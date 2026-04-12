@@ -86,7 +86,9 @@ class TestStaticFieldFromXarray:
     def test_aliases_resolve_correctly(self) -> None:
         # "DEPTH" → ArrayAxis.Z, "LATITUDE" → ArrayAxis.Y, "LON" → ArrayAxis.X
         data = xr.DataArray(np.ones((3, 4, 5), dtype=np.float64), dims=["depth", "lat", "lon"])
-        field = StaticField.from_xarray(data, depth=("DEPTH", "center"), lat=("LATITUDE", "center"), lon=("LON", "center"))
+        field = StaticField.from_xarray(
+            data, depth=("DEPTH", "center"), lat=("LATITUDE", "center"), lon=("LON", "center")
+        )
         assert isinstance(field, StaticField)
         assert field.spatial_shape == (3, 4, 5)
         assert field.z_stagger.value == "center"  # DEPTH → Z
@@ -135,9 +137,7 @@ class TestTimeDependentFieldFromXarray:
     def test_error_both_dims_and_kwargs(self) -> None:
         data = xr.DataArray(np.ones((3, 4, 5, 6), dtype=np.float64), dims=["t", "z", "y", "x"])
         with pytest.raises(TypeError, match="cannot specify both 'dims' and keyword arguments"):
-            TimeDependentField.from_xarray(
-                data, "t", {"z": ("Z", "center")}, y=("Y", "center"), x=("X", "center")
-            )
+            TimeDependentField.from_xarray(data, "t", {"z": ("Z", "center")}, y=("Y", "center"), x=("X", "center"))
 
     def test_3d_no_z(self) -> None:
         """Creating from (t, y, x) DataArray should succeed (Z axis absent)."""
@@ -165,9 +165,7 @@ class TestTimeDependentFieldFromXarray:
         assert field.z_stagger.is_invariant
 
     def test_4d_dask_backed(self) -> None:
-        data = xr.DataArray(
-            da.ones((3, 4, 5, 6), chunks=(1, 4, 5, 6), dtype=np.float64), dims=["t", "z", "y", "x"]
-        )
+        data = xr.DataArray(da.ones((3, 4, 5, 6), chunks=(1, 4, 5, 6), dtype=np.float64), dims=["t", "z", "y", "x"])
         field = TimeDependentField.from_xarray(data, "t", z=("Z", "center"), y=("Y", "center"), x=("X", "center"))
         assert isinstance(field, TimeDependentField)
         assert field.spatial_shape == (4, 5, 6)
