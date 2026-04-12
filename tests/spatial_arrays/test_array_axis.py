@@ -1,4 +1,5 @@
 from offline_particles.spatial_arrays import ArrayAxis
+import pytest
 
 
 def test_array_axis_has_exactly_three_canonical_members() -> None:
@@ -44,3 +45,34 @@ def test_array_axis_string_value_constructor_uses_canonical_values() -> None:
     assert ArrayAxis("Z") is ArrayAxis.Z
     assert ArrayAxis("Y") is ArrayAxis.Y
     assert ArrayAxis("X") is ArrayAxis.X
+
+
+class TestArrayAxisParse:
+    def test_parse_canonical_values(self) -> None:
+        assert ArrayAxis.parse("Z") is ArrayAxis.Z
+        assert ArrayAxis.parse("Y") is ArrayAxis.Y
+        assert ArrayAxis.parse("X") is ArrayAxis.X
+
+    def test_parse_alias_names(self) -> None:
+        assert ArrayAxis.parse("DEPTH") is ArrayAxis.Z
+        assert ArrayAxis.parse("VERTICAL") is ArrayAxis.Z
+        assert ArrayAxis.parse("LATITUDE") is ArrayAxis.Y
+        assert ArrayAxis.parse("LAT") is ArrayAxis.Y
+        assert ArrayAxis.parse("MERIDIONAL") is ArrayAxis.Y
+        assert ArrayAxis.parse("LONGITUDE") is ArrayAxis.X
+        assert ArrayAxis.parse("LON") is ArrayAxis.X
+        assert ArrayAxis.parse("ZONAL") is ArrayAxis.X
+
+    def test_parse_enum_member_passthrough(self) -> None:
+        assert ArrayAxis.parse(ArrayAxis.Z) is ArrayAxis.Z
+        assert ArrayAxis.parse(ArrayAxis.Y) is ArrayAxis.Y
+        assert ArrayAxis.parse(ArrayAxis.X) is ArrayAxis.X
+
+    def test_parse_invalid_string_raises(self) -> None:
+        with pytest.raises(ValueError, match="not a valid ArrayAxis"):
+            ArrayAxis.parse("INVALID")
+
+    def test_parse_lowercase_raises(self) -> None:
+        """Lowercase strings are not valid — values and names are uppercase."""
+        with pytest.raises(ValueError, match="not a valid ArrayAxis"):
+            ArrayAxis.parse("z")

@@ -694,17 +694,8 @@ class TimeDependentField(Field):
         -----
         The spatial dimension names in `dims` must exactly match all non-time dimensions in `data`.
         """
-        # validate time dimension
-        if time_dim not in data.dims:
-            raise ValueError(f"Time dimension '{time_dim}' not found in DataArray dimensions: {list(data.dims)}")
-
-        # validate spatial dimensions match exactly
-        spatial_data_dims = set(data.dims) - {time_dim}
-        dims_keys_set = set(dims.keys())
-        if mismatch := (spatial_data_dims ^ dims_keys_set):
-            raise ValueError(
-                f"Dimension names in dims must exactly match spatial dimensions in data. Mismatch: {mismatch}"
-            )
+        # validate inputs (time dim presence + spatial dim correspondence)
+        _validate_xarray_dims_match(data, dims, time_dim=time_dim)
 
         # parse dims to get dimension names and staggers for each axis
         z_dim, y_dim, x_dim = _parse_xarray_dims(dims)
@@ -753,7 +744,12 @@ def _perform_interpolation(
         output[i] = previous[i] + ft * delta[i]
 
 
-def _validate_xarray_dims_match(data: xr.DataArray, dims: dict[str, tuple[ArrayAxis | str, Stagger | str]]) -> None:
+def _validate_xarray_dims_match(
+    data: xr.DataArray,
+    dims: dict[str, tuple[ArrayAxis | str, Stagger | str]],
+    *,
+    time_dim: str | None = None,
+) -> None:
     """Validate that the specified dimension mappings match the xarray DataArray.
 
     Parameters
@@ -761,47 +757,29 @@ def _validate_xarray_dims_match(data: xr.DataArray, dims: dict[str, tuple[ArrayA
     data : xr.DataArray
         The input xarray DataArray containing the field data.
     dims : dict[str, tuple[ArrayAxis | str, Stagger | str]]
-        Mapping of dimension names to tuples of (ArrayAxis, Stagger).
+        Mapping of spatial dimension names to tuples of (ArrayAxis, Stagger).
+    time_dim : str | None, optional
+        Name of the time dimension in the DataArray.  When provided the
+        dimension must be present in ``data`` and is excluded from the
+        comparison against ``dims``.
 
     Raises
     ------
     ValueError
-        If any of the specified dimensions are not present in the DataArray or vice versa.
+        If ``time_dim`` is given but not present in the DataArray, or if the
+        spatial dimension names in ``dims`` do not exactly match the
+        (non-time) dimensions in ``data``.
     """
-    # check exact correspondence between dims keys and data dimensions
-    data_dims_set = set(data.dims)
+    if time_dim is not None:
+        if time_dim not in data.dims:
+            raise ValueError(f"Time dimension '{time_dim}' not found in DataArray dimensions: {list(data.dims)}")
+        data_dims_set = set(data.dims) - {time_dim}
+    else:
+        data_dims_set = set(data.dims)
+
     dims_keys_set = set(dims.keys())
     if mismatch := (data_dims_set ^ dims_keys_set):
         raise ValueError(f"Dimension names in dims must exactly match dimensions in data. Mismatch: {mismatch}")
-
-
-def _parse_array_axis(axis: ArrayAxis | str) -> ArrayAxis:
-    """Parse an ArrayAxis from an enum member or a string (canonical value or alias name).
-
-    Parameters
-    ----------
-    axis : ArrayAxis | str
-        Either an existing ``ArrayAxis`` member, a canonical value (``"Z"``, ``"Y"``, ``"X"``),
-        or an alias name (e.g. ``"DEPTH"``, ``"LATITUDE"``, ``"LON"``).
-
-    Raises
-    ------
-    ValueError
-        If the string does not match any ``ArrayAxis`` value or name.
-    """
-    if isinstance(axis, ArrayAxis):
-        return axis
-    # Try value lookup first ("Z", "Y", "X")
-    try:
-        return ArrayAxis(axis)
-    except ValueError:
-        pass
-    # Fall back to name lookup to support aliases ("DEPTH", "LATITUDE", etc.)
-    try:
-        return ArrayAxis[axis]
-    except KeyError:
-        pass
-    raise ValueError(f"'{axis}' is not a valid ArrayAxis value or name")
 
 
 def _parse_xarray_dims(
@@ -821,7 +799,7 @@ def _parse_xarray_dims(
     """
     # first convert to ArrayAxis and Stagger enums
     parsed_dims: dict[str, tuple[ArrayAxis, Stagger]] = {
-        dim: (_parse_array_axis(axis), Stagger(stagger)) for dim, (axis, stagger) in dims.items()
+        dim: (ArrayAxis.parse(axis), Stagger(stagger)) for dim, (axis, stagger) in dims.items()
     }
 
     # extract the dimension names and staggers for each axis, ensuring no duplicates
