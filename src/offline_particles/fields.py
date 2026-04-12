@@ -319,7 +319,7 @@ class StaticField(Field):
 
         Notes
         -----
-        The spatial dimension names in `spatial_dims` must match the corresponding dimensions in `data`.
+        The dimension names provided in `dims` must match the corresponding dimensions in `data`.
         """
         # validate inputs
         _validate_xarray_dims_match(data, dims)
