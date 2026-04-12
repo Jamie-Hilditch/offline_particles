@@ -4,6 +4,7 @@ import abc
 import dataclasses
 import logging
 import warnings
+from collections.abc import Mapping
 from typing import Any
 
 import dask.array as da
@@ -301,7 +302,8 @@ class StaticField(Field):
     def from_xarray(
         cls,
         data: xr.DataArray,
-        **dims: tuple[ArrayAxis | str, Stagger | str],
+        dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]] | None = None,
+        **dims_kwargs: tuple[ArrayAxis | str, Stagger | str],
     ) -> "StaticField":
         """Create a StaticField from an xarray DataArray.
 
@@ -309,23 +311,37 @@ class StaticField(Field):
         ----------
         data : xr.DataArray
             The input xarray DataArray containing the field data.
-        **dims : dict[str, tuple[ArrayAxis | str, Stagger | str]]
-            Mapping of dimension names to tuples of (ArrayAxis, Stagger).
+        dims : Mapping[str, tuple[ArrayAxis | str, Stagger | str]], optional
+            Mapping of dimension names to ``(ArrayAxis, Stagger)`` tuples.
+            Cannot be combined with keyword arguments.
+        **dims_kwargs : tuple[ArrayAxis | str, Stagger | str]
+            Dimension mappings as keyword arguments.
+            Cannot be combined with the ``dims`` positional mapping.
 
         Returns
         -------
         StaticField
             A StaticField instance created from the input xarray DataArray.
 
+        Raises
+        ------
+        TypeError
+            If both ``dims`` and keyword arguments are provided.
+
         Notes
         -----
-        The dimension names provided in `dims` must match the corresponding dimensions in `data`.
+        The dimension names provided in ``dims`` (or as keyword arguments) must
+        match the dimensions of ``data`` exactly.
         """
+        if dims is not None and dims_kwargs:
+            raise TypeError("cannot specify both 'dims' and keyword arguments")
+        resolved_dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]] = dims if dims is not None else dims_kwargs
+
         # validate inputs
-        _validate_xarray_dims_match(data, dims)
+        _validate_xarray_dims_match(data, resolved_dims)
 
         # parse dims to get dimension names and staggers for each axis
-        z_dim, y_dim, x_dim = _parse_xarray_dims(dims)
+        z_dim, y_dim, x_dim = _parse_xarray_dims(resolved_dims)
 
         # need to transpose data to z,y,x order, removing singleton dimensions as needed
         dims_in_order = []
@@ -672,7 +688,8 @@ class TimeDependentField(Field):
         cls,
         data: xr.DataArray,
         time_dim: str,
-        **dims: tuple[ArrayAxis | str, Stagger | str],
+        dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]] | None = None,
+        **dims_kwargs: tuple[ArrayAxis | str, Stagger | str],
     ) -> "TimeDependentField":
         """Create a TimeDependentField from an xarray DataArray.
 
@@ -682,23 +699,37 @@ class TimeDependentField(Field):
             The input xarray DataArray containing the field data.
         time_dim : str
             Name of the time dimension in the DataArray.
-        **dims : dict[str, tuple[ArrayAxis | str, Stagger | str]]
-            Mapping of spatial dimension names to tuples of (ArrayAxis, Stagger).
+        dims : Mapping[str, tuple[ArrayAxis | str, Stagger | str]], optional
+            Mapping of spatial dimension names to ``(ArrayAxis, Stagger)`` tuples.
+            Cannot be combined with keyword arguments.
+        **dims_kwargs : tuple[ArrayAxis | str, Stagger | str]
+            Spatial dimension mappings as keyword arguments.
+            Cannot be combined with the ``dims`` positional mapping.
 
         Returns
         -------
         TimeDependentField
             A TimeDependentField instance created from the input xarray DataArray.
 
+        Raises
+        ------
+        TypeError
+            If both ``dims`` and keyword arguments are provided.
+
         Notes
         -----
-        The spatial dimension names in `dims` must exactly match all non-time dimensions in `data`.
+        The spatial dimension names in ``dims`` (or keyword arguments) must exactly
+        match all non-time dimensions in ``data``.
         """
+        if dims is not None and dims_kwargs:
+            raise TypeError("cannot specify both 'dims' and keyword arguments")
+        resolved_dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]] = dims if dims is not None else dims_kwargs
+
         # validate inputs (time dim presence + spatial dim correspondence)
-        _validate_xarray_dims_match(data, dims, time_dim=time_dim)
+        _validate_xarray_dims_match(data, resolved_dims, time_dim=time_dim)
 
         # parse dims to get dimension names and staggers for each axis
-        z_dim, y_dim, x_dim = _parse_xarray_dims(dims)
+        z_dim, y_dim, x_dim = _parse_xarray_dims(resolved_dims)
 
         # transpose data to t, z, y, x order
         dims_in_order = [time_dim]
@@ -746,7 +777,7 @@ def _perform_interpolation(
 
 def _validate_xarray_dims_match(
     data: xr.DataArray,
-    dims: dict[str, tuple[ArrayAxis | str, Stagger | str]],
+    dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]],
     *,
     time_dim: str | None = None,
 ) -> None:
@@ -756,7 +787,7 @@ def _validate_xarray_dims_match(
     ----------
     data : xr.DataArray
         The input xarray DataArray containing the field data.
-    dims : dict[str, tuple[ArrayAxis | str, Stagger | str]]
+    dims : Mapping[str, tuple[ArrayAxis | str, Stagger | str]]
         Mapping of spatial dimension names to tuples of (ArrayAxis, Stagger).
     time_dim : str | None, optional
         Name of the time dimension in the DataArray.  When provided the
@@ -783,13 +814,13 @@ def _validate_xarray_dims_match(
 
 
 def _parse_xarray_dims(
-    dims: dict[str, tuple[ArrayAxis | str, Stagger | str]],
+    dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]],
 ) -> tuple[tuple[str | None, Stagger], tuple[str | None, Stagger], tuple[str | None, Stagger]]:
     """Parse the dimension mappings and validate the stagger values.
 
     Parameters
     ----------
-    dims : dict[str, tuple[ArrayAxis | str, Stagger | str]]
+    dims : Mapping[str, tuple[ArrayAxis | str, Stagger | str]]
         Mapping of dimension names to tuples of (ArrayAxis, Stagger).
 
     Raises

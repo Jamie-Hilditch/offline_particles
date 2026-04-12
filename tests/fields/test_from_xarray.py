@@ -18,6 +18,27 @@ class TestStaticFieldFromXarray:
         assert field.y_stagger.value == "center"
         assert field.x_stagger.value == "center"
 
+    def test_3d_positional_mapping(self) -> None:
+        """Should work when dims is passed as a positional mapping instead of kwargs."""
+        data = xr.DataArray(np.ones((3, 4, 5), dtype=np.float64), dims=["z", "y", "x"])
+        dims = {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")}
+        field = StaticField.from_xarray(data, dims)
+        assert isinstance(field, StaticField)
+        assert field.spatial_shape == (3, 4, 5)
+
+    def test_positional_mapping_supports_non_identifier_dim_names(self) -> None:
+        """Dimension names that are not valid Python identifiers require the mapping style."""
+        data = xr.DataArray(np.ones((3, 4), dtype=np.float64), dims=["y-coord", "x-coord"])
+        dims = {"y-coord": ("Y", "center"), "x-coord": ("X", "center")}
+        field = StaticField.from_xarray(data, dims)
+        assert isinstance(field, StaticField)
+        assert field.spatial_shape == (3, 4)
+
+    def test_error_both_dims_and_kwargs(self) -> None:
+        data = xr.DataArray(np.ones((3, 4, 5), dtype=np.float64), dims=["z", "y", "x"])
+        with pytest.raises(TypeError, match="cannot specify both 'dims' and keyword arguments"):
+            StaticField.from_xarray(data, {"z": ("Z", "center")}, y=("Y", "center"), x=("X", "center"))
+
     def test_2d_numpy_backed_no_z(self) -> None:
         """Creating from a 2D (y, x) DataArray should succeed (Z axis absent)."""
         data = xr.DataArray(np.ones((4, 5), dtype=np.float64), dims=["y", "x"])
@@ -94,6 +115,29 @@ class TestTimeDependentFieldFromXarray:
         field = TimeDependentField.from_xarray(data, "t", z=("Z", "center"), y=("Y", "center"), x=("X", "center"))
         assert isinstance(field, TimeDependentField)
         assert field.spatial_shape == (4, 5, 6)
+
+    def test_4d_positional_mapping(self) -> None:
+        """Should work when dims is passed as a positional mapping instead of kwargs."""
+        data = xr.DataArray(np.ones((3, 4, 5, 6), dtype=np.float64), dims=["t", "z", "y", "x"])
+        dims = {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")}
+        field = TimeDependentField.from_xarray(data, "t", dims)
+        assert isinstance(field, TimeDependentField)
+        assert field.spatial_shape == (4, 5, 6)
+
+    def test_positional_mapping_supports_non_identifier_dim_names(self) -> None:
+        """Dimension names that are not valid Python identifiers require the mapping style."""
+        data = xr.DataArray(np.ones((3, 4, 5), dtype=np.float64), dims=["t", "y-coord", "x-coord"])
+        dims = {"y-coord": ("Y", "center"), "x-coord": ("X", "center")}
+        field = TimeDependentField.from_xarray(data, "t", dims)
+        assert isinstance(field, TimeDependentField)
+        assert field.spatial_shape == (4, 5)
+
+    def test_error_both_dims_and_kwargs(self) -> None:
+        data = xr.DataArray(np.ones((3, 4, 5, 6), dtype=np.float64), dims=["t", "z", "y", "x"])
+        with pytest.raises(TypeError, match="cannot specify both 'dims' and keyword arguments"):
+            TimeDependentField.from_xarray(
+                data, "t", {"z": ("Z", "center")}, y=("Y", "center"), x=("X", "center")
+            )
 
     def test_3d_no_z(self) -> None:
         """Creating from (t, y, x) DataArray should succeed (Z axis absent)."""
