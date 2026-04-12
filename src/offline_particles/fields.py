@@ -344,7 +344,7 @@ class StaticField(Field):
         z_dim, y_dim, x_dim = _parse_xarray_dims(resolved_dims)
 
         # get the array in the correct order with invariant dimensions squeezed out
-        transformed_data = _transform_DataArray(data, z_dim, y_dim, x_dim)
+        transformed_data = _transform_xarray_data_array(data, z_dim, y_dim, x_dim)
         array = transformed_data.data
 
         # create spatial array
@@ -725,7 +725,7 @@ class TimeDependentField(Field):
         z_dim, y_dim, x_dim = _parse_xarray_dims(resolved_dims)
 
         # get the array in the correct order with invariant dimensions squeezed out
-        transformed_data = _transform_DataArray(data, z_dim, y_dim, x_dim, time_dim=time_dim)
+        transformed_data = _transform_xarray_data_array(data, z_dim, y_dim, x_dim, time_dim=time_dim)
         array = transformed_data.data
 
         # create field
@@ -856,7 +856,7 @@ def _extract_dim(axis: ArrayAxis, dims: dict[str, tuple[ArrayAxis, Stagger]]) ->
         raise ValueError(f"Multiple dimensions mapped to {axis} axis: {matching_dims}")
 
 
-def _transform_DataArray(
+def _transform_xarray_data_array(
     data: xr.DataArray,
     z_dim: tuple[str | None, Stagger],
     y_dim: tuple[str | None, Stagger],
@@ -869,18 +869,17 @@ def _transform_DataArray(
     if time_dim is not None:
         dims_in_order.append(time_dim)
 
-    # now spatial dimensions in z,y,x order,
+    # add active dimensions and squeeze invariant dimensions
     for dim_name, stagger in (z_dim, y_dim, x_dim):
         if dim_name is None:
             continue
-        # squeeze invariant dimensions (don't add to dims_in_order — they no longer exist after squeeze)
-        if stagger.is_invariant:
+        if stagger.is_active:
+            dims_in_order.append(dim_name)
+        else:
             if data.sizes[dim_name] != 1:
                 raise ValueError(
                     f"Dimension '{dim_name}' is marked as invariant but has size {data.sizes[dim_name]} != 1"
                 )
             data = data.squeeze(dim=dim_name)
-        else:
-            dims_in_order.append(dim_name)
 
     return data.transpose(*dims_in_order)
