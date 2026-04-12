@@ -873,14 +873,14 @@ def _transform_DataArray(
     for dim_name, stagger in (z_dim, y_dim, x_dim):
         if dim_name is None:
             continue
-        # squeeze invariant dimensions
+        # squeeze invariant dimensions (don't add to dims_in_order — they no longer exist after squeeze)
         if stagger.is_invariant:
             if data.sizes[dim_name] != 1:
                 raise ValueError(
                     f"Dimension '{dim_name}' is marked as invariant but has size {data.sizes[dim_name]} != 1"
                 )
             data = data.squeeze(dim=dim_name)
-
-        dims_in_order.append(dim_name)
+        else:
+            dims_in_order.append(dim_name)
 
     return data.transpose(*dims_in_order)
