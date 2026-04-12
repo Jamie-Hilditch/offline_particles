@@ -343,21 +343,14 @@ class StaticField(Field):
         # parse dims to get dimension names and staggers for each axis
         z_dim, y_dim, x_dim = _parse_xarray_dims(resolved_dims)
 
-        # need to transpose data to z,y,x order, removing singleton dimensions as needed
-        dims_in_order = []
-        for dim_name, _ in (z_dim, y_dim, x_dim):
-            if dim_name is not None:
-                dims_in_order.append(dim_name)
-        data_in_order = data.transpose(*dims_in_order)
-
-        # squeeze invariant dimensions (filter out None for axes absent from the DataArray)
-        squeeze_dims = [dim_name for dim_name, stagger in (z_dim, y_dim, x_dim) if stagger.is_invariant and dim_name is not None]
-        data_squeezed = data_in_order.squeeze(dim=squeeze_dims)
+        # get the array in the correct order with invariant dimensions squeezed out
+        transformed_data = _transform_DataArray(data, z_dim, y_dim, x_dim)
+        array = transformed_data.data
 
         # create spatial array
-        if isinstance(data_squeezed.data, da.Array):
+        if isinstance(array, da.Array):
             return cls.from_dask(
-                data=data_squeezed.data,
+                data=array,
                 z_stagger=z_dim[1],
                 y_stagger=y_dim[1],
                 x_stagger=x_dim[1],
@@ -365,7 +358,7 @@ class StaticField(Field):
             )
         else:
             return cls.from_arraylike(
-                data=data_squeezed.data,
+                data=array,
                 z_stagger=z_dim[1],
                 y_stagger=y_dim[1],
                 x_stagger=x_dim[1],
@@ -731,21 +724,14 @@ class TimeDependentField(Field):
         # parse dims to get dimension names and staggers for each axis
         z_dim, y_dim, x_dim = _parse_xarray_dims(resolved_dims)
 
-        # transpose data to t, z, y, x order
-        dims_in_order = [time_dim]
-        for dim_name, _ in (z_dim, y_dim, x_dim):
-            if dim_name is not None:
-                dims_in_order.append(dim_name)
-        data_in_order = data.transpose(*dims_in_order)
-
-        # squeeze invariant spatial dimensions (filter out None for axes absent from the DataArray)
-        squeeze_dims = [dim_name for dim_name, stagger in (z_dim, y_dim, x_dim) if stagger.is_invariant and dim_name is not None]
-        data_squeezed = data_in_order.squeeze(dim=squeeze_dims)
+        # get the array in the correct order with invariant dimensions squeezed out
+        transformed_data = _transform_DataArray(data, z_dim, y_dim, x_dim, time_dim=time_dim)
+        array = transformed_data.data
 
         # create field
-        if isinstance(data_squeezed.data, da.Array):
+        if isinstance(array, da.Array):
             return cls.from_dask(
-                data=data_squeezed.data,
+                data=array,
                 z_stagger=z_dim[1],
                 y_stagger=y_dim[1],
                 x_stagger=x_dim[1],
@@ -753,7 +739,7 @@ class TimeDependentField(Field):
             )
         else:
             return cls.from_arraylike(
-                data=data_squeezed.data,
+                data=array,
                 z_stagger=z_dim[1],
                 y_stagger=y_dim[1],
                 x_stagger=x_dim[1],
@@ -868,3 +854,33 @@ def _extract_dim(axis: ArrayAxis, dims: dict[str, tuple[ArrayAxis, Stagger]]) ->
         return matching_dims[0]
     else:
         raise ValueError(f"Multiple dimensions mapped to {axis} axis: {matching_dims}")
+
+
+def _transform_DataArray(
+    data: xr.DataArray,
+    z_dim: tuple[str | None, Stagger],
+    y_dim: tuple[str | None, Stagger],
+    x_dim: tuple[str | None, Stagger],
+    time_dim: str | None = None,
+) -> xr.DataArray:
+    """Transform the DataArray by transposing and squeezing dimensions as needed."""
+    # time goes first if present
+    dims_in_order = []
+    if time_dim is not None:
+        dims_in_order.append(time_dim)
+
+    # now spatial dimensions in z,y,x order,
+    for dim_name, stagger in (z_dim, y_dim, x_dim):
+        if dim_name is None:
+            continue
+        # squeeze invariant dimensions
+        if stagger.is_invariant:
+            if data.sizes[dim_name] != 1:
+                raise ValueError(
+                    f"Dimension '{dim_name}' is marked as invariant but has size {data.sizes[dim_name]} != 1"
+                )
+            data = data.squeeze(dim=dim_name)
+
+        dims_in_order.append(dim_name)
+
+    return data.transpose(*dims_in_order)
