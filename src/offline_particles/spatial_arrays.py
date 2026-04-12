@@ -74,6 +74,56 @@ INVARIANT_STAGGERS = frozenset({Stagger.INVARIANT})
 INACTIVE_STAGGERS = frozenset({s for s in Stagger if not s.is_active})
 
 
+class ArrayAxis(enum.StrEnum):
+    """Enumeration of possible axes for spatial arrays."""
+
+    # Z axis
+    Z = "Z"
+    DEPTH = "Z"
+    VERTICAL = "Z"
+
+    # Y axis
+    Y = "Y"
+    LATITUDE = "Y"
+    LAT = "Y"
+    MERIDIONAL = "Y"
+
+    # X axis
+    X = "X"
+    LONGITUDE = "X"
+    LON = "X"
+    ZONAL = "X"
+
+    @classmethod
+    def parse(cls, axis: "ArrayAxis | str") -> "ArrayAxis":
+        """Return an ``ArrayAxis`` member from a member, canonical value, or alias name.
+
+        Parameters
+        ----------
+        axis : ArrayAxis | str
+            Either an existing ``ArrayAxis`` member, a canonical value (``"Z"``, ``"Y"``, ``"X"``),
+            or an alias name (e.g. ``"DEPTH"``, ``"LATITUDE"``, ``"LON"``).
+
+        Raises
+        ------
+        ValueError
+            If the string does not match any ``ArrayAxis`` value or name.
+        """
+        if isinstance(axis, cls):
+            return axis
+        # Try canonical value lookup first ("Z", "Y", "X")
+        try:
+            return cls(axis)
+        except ValueError:
+            pass
+        # Fall back to name lookup to support aliases ("DEPTH", "LATITUDE", etc.)
+        try:
+            return cls[axis]
+        except KeyError:
+            pass
+        raise ValueError(f"'{axis}' is not a valid ArrayAxis value or name")
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class BBox:
     """Bounding box defined by min and max indices in each dimension."""

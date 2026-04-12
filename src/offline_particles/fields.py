@@ -4,14 +4,16 @@ import abc
 import dataclasses
 import logging
 import warnings
+from collections.abc import Mapping
 from typing import Any
 
 import dask.array as da
 import numba
 import numpy as np
 import numpy.typing as npt
+import xarray as xr
 
-from .spatial_arrays import BBox, ChunkedDaskArray, NumpyArray, SpatialArray, Stagger
+from .spatial_arrays import ArrayAxis, BBox, ChunkedDaskArray, NumpyArray, SpatialArray, Stagger
 
 logger = logging.getLogger(__name__)
 
@@ -295,6 +297,73 @@ class StaticField(Field):
                 stacklevel=2,
             )
         return cls.from_numpy(np.asarray(data), z_stagger, y_stagger, x_stagger, attrs=attrs)
+
+    @classmethod
+    def from_xarray(
+        cls,
+        data: xr.DataArray,
+        dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]] | None = None,
+        **dims_kwargs: tuple[ArrayAxis | str, Stagger | str],
+    ) -> "StaticField":
+        """Create a StaticField from an xarray DataArray.
+
+        Parameters
+        ----------
+        data : xr.DataArray
+            The input xarray DataArray containing the field data.
+        dims : Mapping[str, tuple[ArrayAxis | str, Stagger | str]], optional
+            Mapping of dimension names to ``(ArrayAxis, Stagger)`` tuples.
+            Cannot be combined with keyword arguments.
+        **dims_kwargs : tuple[ArrayAxis | str, Stagger | str]
+            Dimension mappings as keyword arguments.
+            Cannot be combined with the ``dims`` positional mapping.
+
+        Returns
+        -------
+        StaticField
+            A StaticField instance created from the input xarray DataArray.
+
+        Raises
+        ------
+        TypeError
+            If both ``dims`` and keyword arguments are provided.
+
+        Notes
+        -----
+        The dimension names provided in ``dims`` (or as keyword arguments) must
+        match the dimensions of ``data`` exactly.
+        """
+        if dims is not None and dims_kwargs:
+            raise TypeError("cannot specify both 'dims' and keyword arguments")
+        resolved_dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]] = dims if dims is not None else dims_kwargs
+
+        # validate inputs
+        _validate_xarray_dims_match(data, resolved_dims)
+
+        # parse dims to get dimension names and staggers for each axis
+        z_dim, y_dim, x_dim = _parse_xarray_dims(resolved_dims)
+
+        # get the array in the correct order with invariant dimensions squeezed out
+        transformed_data = _transform_xarray_data_array(data, z_dim, y_dim, x_dim)
+        array = transformed_data.data
+
+        # create spatial array
+        if isinstance(array, da.Array):
+            return cls.from_dask(
+                data=array,
+                z_stagger=z_dim[1],
+                y_stagger=y_dim[1],
+                x_stagger=x_dim[1],
+                attrs=data.attrs,
+            )
+        else:
+            return cls.from_arraylike(
+                data=array,
+                z_stagger=z_dim[1],
+                y_stagger=y_dim[1],
+                x_stagger=x_dim[1],
+                attrs=data.attrs,
+            )
 
 
 type SpatialArrayFactory = type[NumpyArray] | type[ChunkedDaskArray]
@@ -607,6 +676,76 @@ class TimeDependentField(Field):
             )
         return cls.from_numpy(np.asarray(data), z_stagger, y_stagger, x_stagger, attrs=attrs)
 
+    @classmethod
+    def from_xarray(
+        cls,
+        data: xr.DataArray,
+        time_dim: str,
+        dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]] | None = None,
+        **dims_kwargs: tuple[ArrayAxis | str, Stagger | str],
+    ) -> "TimeDependentField":
+        """Create a TimeDependentField from an xarray DataArray.
+
+        Parameters
+        ----------
+        data : xr.DataArray
+            The input xarray DataArray containing the field data.
+        time_dim : str
+            Name of the time dimension in the DataArray.
+        dims : Mapping[str, tuple[ArrayAxis | str, Stagger | str]], optional
+            Mapping of spatial dimension names to ``(ArrayAxis, Stagger)`` tuples.
+            Cannot be combined with keyword arguments.
+        **dims_kwargs : tuple[ArrayAxis | str, Stagger | str]
+            Spatial dimension mappings as keyword arguments.
+            Cannot be combined with the ``dims`` positional mapping.
+
+        Returns
+        -------
+        TimeDependentField
+            A TimeDependentField instance created from the input xarray DataArray.
+
+        Raises
+        ------
+        TypeError
+            If both ``dims`` and keyword arguments are provided.
+
+        Notes
+        -----
+        The spatial dimension names in ``dims`` (or keyword arguments) must exactly
+        match all non-time dimensions in ``data``.
+        """
+        if dims is not None and dims_kwargs:
+            raise TypeError("cannot specify both 'dims' and keyword arguments")
+        resolved_dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]] = dims if dims is not None else dims_kwargs
+
+        # validate inputs (time dim presence + spatial dim correspondence)
+        _validate_xarray_dims_match(data, resolved_dims, time_dim=time_dim)
+
+        # parse dims to get dimension names and staggers for each axis
+        z_dim, y_dim, x_dim = _parse_xarray_dims(resolved_dims)
+
+        # get the array in the correct order with invariant dimensions squeezed out
+        transformed_data = _transform_xarray_data_array(data, z_dim, y_dim, x_dim, time_dim=time_dim)
+        array = transformed_data.data
+
+        # create field
+        if isinstance(array, da.Array):
+            return cls.from_dask(
+                data=array,
+                z_stagger=z_dim[1],
+                y_stagger=y_dim[1],
+                x_stagger=x_dim[1],
+                attrs=data.attrs,
+            )
+        else:
+            return cls.from_arraylike(
+                data=array,
+                z_stagger=z_dim[1],
+                y_stagger=y_dim[1],
+                x_stagger=x_dim[1],
+                attrs=data.attrs,
+            )
+
 
 type Tin = np.floating
 type Tout = np.floating
@@ -620,3 +759,127 @@ def _perform_interpolation(
     n = previous.size
     for i in numba.prange(n):  # ty: ignore[not-iterable]
         output[i] = previous[i] + ft * delta[i]
+
+
+def _validate_xarray_dims_match(
+    data: xr.DataArray,
+    dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]],
+    *,
+    time_dim: str | None = None,
+) -> None:
+    """Validate that the specified dimension mappings match the xarray DataArray.
+
+    Parameters
+    ----------
+    data : xr.DataArray
+        The input xarray DataArray containing the field data.
+    dims : Mapping[str, tuple[ArrayAxis | str, Stagger | str]]
+        Mapping of spatial dimension names to tuples of (ArrayAxis, Stagger).
+    time_dim : str | None, optional
+        Name of the time dimension in the DataArray.  When provided the
+        dimension must be present in ``data`` and is excluded from the
+        comparison against ``dims``.
+
+    Raises
+    ------
+    ValueError
+        If ``time_dim`` is given but not present in the DataArray, or if the
+        spatial dimension names in ``dims`` do not exactly match the
+        (non-time) dimensions in ``data``.
+    """
+    if time_dim is not None:
+        if time_dim not in data.dims:
+            raise ValueError(f"Time dimension '{time_dim}' not found in DataArray dimensions: {list(data.dims)}")
+        data_dims_set = set(data.dims) - {time_dim}
+    else:
+        data_dims_set = set(data.dims)
+
+    dims_keys_set = set(dims.keys())
+    if mismatch := (data_dims_set ^ dims_keys_set):
+        raise ValueError(f"Dimension names in dims must exactly match dimensions in data. Mismatch: {mismatch}")
+
+
+def _parse_xarray_dims(
+    dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]],
+) -> tuple[tuple[str | None, Stagger], tuple[str | None, Stagger], tuple[str | None, Stagger]]:
+    """Parse the dimension mappings and validate the stagger values.
+
+    Parameters
+    ----------
+    dims : Mapping[str, tuple[ArrayAxis | str, Stagger | str]]
+        Mapping of dimension names to tuples of (ArrayAxis, Stagger).
+
+    Raises
+    ------
+    ValueError
+        If any of the stagger values are invalid.
+    """
+    # first convert to ArrayAxis and Stagger enums
+    parsed_dims: dict[str, tuple[ArrayAxis, Stagger]] = {
+        dim: (ArrayAxis.parse(axis), Stagger(stagger)) for dim, (axis, stagger) in dims.items()
+    }
+
+    # extract the dimension names and staggers for each axis, ensuring no duplicates
+    z_dim = _extract_dim(ArrayAxis.Z, parsed_dims)
+    y_dim = _extract_dim(ArrayAxis.Y, parsed_dims)
+    x_dim = _extract_dim(ArrayAxis.X, parsed_dims)
+
+    return z_dim, y_dim, x_dim
+
+
+def _extract_dim(axis: ArrayAxis, dims: dict[str, tuple[ArrayAxis, Stagger]]) -> tuple[str | None, Stagger]:
+    """Extract the dimension name and stagger for a given axis.
+
+    Parameters
+    ----------
+    axis : ArrayAxis
+        The axis to extract (Z, Y, or X).
+    dims : dict[str, tuple[ArrayAxis, Stagger]]
+        Mapping of dimension names to tuples of (ArrayAxis, Stagger).
+
+    Returns
+    -------
+    tuple[str | None, Stagger]
+        The dimension name and stagger for the specified axis. If no dimension is mapped to the axis, returns (None, Stagger.INVARIANT).
+
+    Raises
+    ------
+    ValueError
+        If multiple dimensions are mapped to the same axis.
+    """
+    matching_dims = [(dim, stagger) for dim, (ax, stagger) in dims.items() if ax == axis]
+    if len(matching_dims) == 0:
+        return None, Stagger.INVARIANT
+    elif len(matching_dims) == 1:
+        return matching_dims[0]
+    else:
+        raise ValueError(f"Multiple dimensions mapped to {axis} axis: {matching_dims}")
+
+
+def _transform_xarray_data_array(
+    data: xr.DataArray,
+    z_dim: tuple[str | None, Stagger],
+    y_dim: tuple[str | None, Stagger],
+    x_dim: tuple[str | None, Stagger],
+    time_dim: str | None = None,
+) -> xr.DataArray:
+    """Transform the DataArray by transposing and squeezing dimensions as needed."""
+    # time goes first if present
+    dims_in_order = []
+    if time_dim is not None:
+        dims_in_order.append(time_dim)
+
+    # add active dimensions and squeeze invariant dimensions
+    for dim_name, stagger in (z_dim, y_dim, x_dim):
+        if dim_name is None:
+            continue
+        if stagger.is_active:
+            dims_in_order.append(dim_name)
+        else:
+            if data.sizes[dim_name] != 1:
+                raise ValueError(
+                    f"Dimension '{dim_name}' is marked as invariant but has size {data.sizes[dim_name]} != 1"
+                )
+            data = data.squeeze(dim=dim_name)
+
+    return data.transpose(*dims_in_order)
