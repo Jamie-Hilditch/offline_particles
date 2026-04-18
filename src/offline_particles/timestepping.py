@@ -19,12 +19,28 @@ type D = np.float64 | np.timedelta64
 class Clock:
     """Class keeping time for a simulation.
 
-    Examples:
-    >>> time_array = np.array([0, 1, 2, 3], dtype=np.float64)
-    >>> dt = 0.5
-    >>> Clock(time_array, dt)
-    Clock(dt=np.float64(0.5), time_unit=np.float64(1.0))
+    Args:
+        time_array: strictly increasing 1D array of time values.
+        dt: The time step. Must be positive for forward integration,
+            negative for backward integration.
+        time_unit: The time unit. Required for dimensional time, defaults
+            to 1.0 for dimensionless (float) time.
 
+    Raises:
+        ValueError: If ``time_array`` is not 1D, has fewer than 2 elements,
+            or is not strictly increasing.
+        ValueError: If ``time_unit`` is not positive.
+        ValueError: If ``dt`` has the wrong sign for the integration direction.
+
+    Note:
+        The clock direction (forward or backward in time) is determined by
+        the sign of ``dt`` at construction time and cannot be changed afterwards.
+
+    Examples:
+        >>> time_array = np.array([0, 1, 2, 3], dtype=np.float64)
+        >>> dt = 0.5
+        >>> Clock(time_array, dt)
+        Clock(dt=np.float64(0.5), time_unit=np.float64(1.0))
     """
 
     # scalar data sources
@@ -176,12 +192,38 @@ class Clock:
 
     @property
     def first_time(self) -> T:
-        """The chronological start of the simulation (time_array[0] if forward, time_array[-1] if backward)."""
+        """The chronological start of the simulation.
+
+        Returns:
+            T: ``time_array[0]`` if forward, ``time_array[-1]`` if backward.
+
+        Examples:
+            >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=0.5)
+            >>> clock.first_time
+            np.float64(0.0)
+
+            >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=-0.5)
+            >>> clock.first_time
+            np.float64(3.0)
+        """
         return self._time_array[0] if self._forward_in_time else self._time_array[-1]
 
     @property
     def final_time(self) -> T:
-        """The chronological end of the simulation (time_array[-1] if forward, time_array[0] if backward)."""
+        """The chronological end of the simulation.
+
+        Returns:
+            T: ``time_array[-1]`` if forward, ``time_array[0]`` if backward.
+
+        Examples:
+            >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=0.5)
+            >>> clock.final_time
+            np.float64(3.0)
+
+            >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=-0.5)
+            >>> clock.final_time
+            np.float64(0.0)
+        """
         return self._time_array[-1] if self._forward_in_time else self._time_array[0]
 
     def advance_time(self) -> None:
