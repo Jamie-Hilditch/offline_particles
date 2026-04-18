@@ -1,7 +1,0 @@
-API Reference
-=============
-
-.. toctree::
-   :maxdepth: 3
-
-   autoapi/offline_particles/index

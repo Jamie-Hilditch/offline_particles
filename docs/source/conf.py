@@ -9,10 +9,15 @@ author = 'Jamie Hilditch'
 extensions = [
     'sphinx.ext.napoleon',
     'autoapi.extension',
+    'myst_parser',
 ]
 
 templates_path = ['_templates']
 exclude_patterns = []
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.md': 'markdown',
+}
 
 # -- AutoAPI
 autoapi_dirs = ['../../src/offline_particles']
