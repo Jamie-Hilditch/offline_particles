@@ -47,5 +47,8 @@ ignore = ["E266"]
 
 [tool.pytest.ini_options]
 testpaths = [
-    "tests",
+  "tests",
+]
+addopts = [
+  "--doctest-modules",
 ]

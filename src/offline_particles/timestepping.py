@@ -17,7 +17,15 @@ type D = np.float64 | np.timedelta64
 
 
 class Clock:
-    """Class keeping time for a simulation."""
+    """Class keeping time for a simulation.
+
+    Examples:
+    >>> time_array = np.array([0, 1, 2, 3], dtype=np.float64)
+    >>> dt = 0.5
+    >>> offline_particles.Clock(time_array, dt)
+    Clock(dt=np.float64(0.5), time_unit=np.float64(1.0))
+
+    """
 
     # scalar data sources
     _dt_scalar = ScalarSource("_dt", lambda self, tinfo: self._normalised_dt)
@@ -32,8 +40,6 @@ class Clock:
         *,
         time_unit: D | None = None,
     ) -> None:
-        super().__init__()
-
         # validate time_array shape and length
         if time_array.ndim != 1:
             raise ValueError("time_array must be 1D.")
@@ -50,7 +56,7 @@ class Clock:
         # this fixes the time types
         if time_unit is None:
             # use a default value of 1 if times are dimensionless else error
-            if isinstance(dt, np.floating):
+            if isinstance(dt, float):
                 time_unit = np.float64(1.0)
             else:
                 raise ValueError("time_unit must be specified for dimensional time.")
@@ -68,6 +74,9 @@ class Clock:
         # use first_time so backward clocks start at time_array[-1]
         self.set_time(self.first_time)
         self.set_iteration(0)
+
+    def __repr__(self) -> str:
+        return f"Clock(dt={self.dt!r}, time_unit={self.time_unit!r})"
 
     def get_time_index(self, time: T) -> np.float64:
         """Get the time index corresponding to the given time.
