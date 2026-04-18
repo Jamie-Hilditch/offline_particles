@@ -8,14 +8,14 @@ repos:
       entry: uv run --frozen ruff check
       types_or: [python, pyi]
       args: [--fix]
-      files: ^(src|tests)/
+      files: ^(src|tests|docs/source)/
     # Run the ruff formatter.
     - id: ruff-format
       name: ruff format
       language: system
       entry: uv run --frozen ruff format
       types_or: [python, pyi]
-      files: ^(src|tests)/
+      files: ^(src|tests|docs/source)/
     - id: cython-lint
       name: cython-lint
       language: system
