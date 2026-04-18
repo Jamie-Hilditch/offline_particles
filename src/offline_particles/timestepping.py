@@ -13,7 +13,7 @@ from .launcher import Launcher, ScalarSource, Time_info, Tinfo
 from .particles import Particles
 
 type T = np.float64 | np.datetime64
-type D = float | np.float64 | np.timedelta64
+type D = np.float64 | np.timedelta64
 
 
 class Clock:
