@@ -22,7 +22,7 @@ class Clock:
     Examples:
     >>> time_array = np.array([0, 1, 2, 3], dtype=np.float64)
     >>> dt = 0.5
-    >>> offline_particles.Clock(time_array, dt)
+    >>> Clock(time_array, dt)
     Clock(dt=np.float64(0.5), time_unit=np.float64(1.0))
 
     """
