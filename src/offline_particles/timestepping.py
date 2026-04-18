@@ -38,7 +38,7 @@ class Clock:
 
     Examples:
         >>> time_array = np.array([0, 1, 2, 3], dtype=np.float64)
-        >>> dt = 0.5
+        >>> dt = np.float64(0.5)
         >>> Clock(time_array, dt)
         Clock(dt=np.float64(0.5), time_unit=np.float64(1.0))
     """
@@ -72,7 +72,7 @@ class Clock:
         # this fixes the time types
         if time_unit is None:
             # use a default value of 1 if times are dimensionless else error
-            if isinstance(dt, float | np.floating):
+            if isinstance(dt, np.floating):
                 time_unit = np.float64(1.0)
             else:
                 raise ValueError("time_unit must be specified for dimensional time.")
@@ -198,11 +198,11 @@ class Clock:
             T: ``time_array[0]`` if forward, ``time_array[-1]`` if backward.
 
         Examples:
-            >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=0.5)
+            >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=np.float64(0.5))
             >>> clock.first_time
             np.float64(0.0)
 
-            >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=-0.5)
+            >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=np.float64(-0.5))
             >>> clock.first_time
             np.float64(3.0)
         """
@@ -216,11 +216,11 @@ class Clock:
             T: ``time_array[-1]`` if forward, ``time_array[0]`` if backward.
 
         Examples:
-            >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=0.5)
+            >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=np.float64(0.5))
             >>> clock.final_time
             np.float64(3.0)
 
-            >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=-0.5)
+            >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=np.float64(-0.5))
             >>> clock.final_time
             np.float64(0.0)
         """
