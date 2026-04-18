@@ -61,6 +61,16 @@ class TestClockConstructionValidation:
         clock = _make_clock(time_array, 0.5)
         assert clock is not None
 
+    def test_accepts_python_float_dt_without_time_unit(self) -> None:
+        time_array = np.array([0.0, 1.0], dtype=np.float64)
+        clock = Clock(time_array, 0.5)
+        assert clock.time_unit == np.float64(1.0)
+
+    def test_accepts_numpy_float_scalar_dt_without_time_unit(self) -> None:
+        time_array = np.array([0.0, 1.0], dtype=np.float64)
+        clock = Clock(time_array, np.float32(0.5))
+        assert clock.time_unit == np.float64(1.0)
+
 
 # ---------------------------------------------------------------------------
 # Properties

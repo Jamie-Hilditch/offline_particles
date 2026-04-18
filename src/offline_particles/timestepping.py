@@ -72,7 +72,7 @@ class Clock:
         # this fixes the time types
         if time_unit is None:
             # use a default value of 1 if times are dimensionless else error
-            if isinstance(dt, float):
+            if isinstance(dt, float | np.floating):
                 time_unit = np.float64(1.0)
             else:
                 raise ValueError("time_unit must be specified for dimensional time.")
