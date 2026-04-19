@@ -109,6 +109,8 @@ class Clock:
 
         # determine clock direction from sign of dt
         dt = _regularise_DLike(dt)
+        if dt == dt * 0:
+            raise ValueError("dt cannot be zero.")
         self._forward_in_time: bool = dt > 0 * dt
 
         # set dt (validates sign and computes normalised dt)
