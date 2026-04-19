@@ -71,6 +71,29 @@ class TestClockConstructionValidation:
         clock = Clock(time_array, np.float64(0.5))
         assert clock.time_unit == np.float64(1.0)
 
+    def test_accepts_dimensional_time_array_dt_and_time_unit(self) -> None:
+        time_array = np.array(
+            ["2000-01-01T00:00:00", "2000-01-01T01:00:00"],
+            dtype="datetime64[s]",
+        )
+        dt = np.timedelta64(30, "m")
+        time_unit = np.timedelta64(1, "m")
+        clock = Clock(time_array, dt, time_unit=time_unit)
+        np.testing.assert_array_equal(clock.time_array, time_array)
+        assert clock.dt == dt
+        assert clock.time_unit == time_unit
+
+    def test_accepts_mixed_compatible_timedelta_units(self) -> None:
+        time_array = np.array(
+            ["2000-01-01T00:00:00", "2000-01-01T02:00:00"],
+            dtype="datetime64[s]",
+        )
+        dt = np.timedelta64(1500, "ms")
+        time_unit = np.timedelta64(1, "s")
+        clock = Clock(time_array, dt, time_unit=time_unit)
+        assert clock.dt == np.timedelta64(1, "s")
+        assert clock.time_unit == time_unit
+
 
 # ---------------------------------------------------------------------------
 # Properties
