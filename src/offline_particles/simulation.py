@@ -53,7 +53,10 @@ class Simulation:
         *,
         bbox_history_size: int = DEFAULT_BBOX_HISTORY_SIZE,
     ) -> None:
-        """Initialize the Simulation.
+        """
+        Note:
+            Use :class:`SimulationBuilder` to construct a simulation rather
+            than instantiating this class directly.
 
         Args:
             clock: The Clock governing simulation time and iteration.

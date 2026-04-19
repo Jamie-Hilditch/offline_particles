@@ -20,3 +20,17 @@ __all__ = [
     "SimulationState",
     "TimeSchedulerProtocol",
 ]
+
+# Set __module__ for all public classes to this module for cleaner documentation
+_module = __name__
+for _cls in [
+    AtIterationScheduler,
+    AtTimeScheduler,
+    Event,
+    IterationSchedulerProtocol,
+    RecurringIterationScheduler,
+    RecurringTimeScheduler,
+    SimulationState,
+    TimeSchedulerProtocol,
+]:
+    _cls.__module__ = _module

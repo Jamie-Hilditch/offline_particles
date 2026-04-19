@@ -8,7 +8,8 @@ author = "Jamie Hilditch"
 # -- General configuration
 extensions = [
     "sphinx.ext.napoleon",
-    "autoapi.extension",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
     "myst_parser",
 ]
 
@@ -19,16 +20,20 @@ source_suffix = {
     ".md": "markdown",
 }
 
-# -- AutoAPI
-autoapi_dirs = ["../../src/offline_particles"]
-autoapi_root = "autoapi"
-autoapi_options = [
-    "members",
-    "show-inheritance",
-    "show-module-summary",
-]
-autoapi_python_use_implicit_namespaces = True
-autoapi_add_toctree_entry = False
+# autodoc
+autodoc_default_options = {
+    "members": False,
+    "show-inheritance": True,
+    "undoc-members": False,
+}
+autosummary_generate = True
+autosummary_imported_members = False
+autosummary_template_dir = "_templates/autosummary"
+
+# Nice formatting
+add_module_names = False
+python_use_unqualified_type_names = True
+toc_object_entries_show_parents = "hide"
 
 # -- Napoleon
 napoleon_google_docstring = True
@@ -49,4 +54,4 @@ html_theme_options = {
 html_static_path = ["_static"]
 
 # -- warnings
-suppress_warnings = ["docutils"]
+# suppress_warnings = ["docutils"]

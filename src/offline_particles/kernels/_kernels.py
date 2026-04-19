@@ -30,7 +30,7 @@ class KernelInputDeclaration:
         object.__setattr__(self, "dtype", np.dtype(dtype))
 
     @property
-    def doc_string_part(self) -> str:
+    def _doc_string_part(self) -> str:
         return f"'{self.name}' ({self.dtype})"
 
 
@@ -90,7 +90,7 @@ class FieldDataDeclaration(KernelInputDeclaration):
             )
 
     @property
-    def doc_string_part(self) -> str:
+    def _doc_string_part(self) -> str:
         return (
             f"'{self.name}' ({self.dtype})\n"
             f"    z_staggers={self.z_staggers}\n"
@@ -196,13 +196,13 @@ class ParticleKernel:
         doc_lines.extend(self.func_name(fn) for fn in self._funcs)
 
         doc_lines.extend(_new_doc_section("Particle Properties"))
-        doc_lines.extend(decl.doc_string_part for decl in self._particle_properties.values())
+        doc_lines.extend(decl._doc_string_part for decl in self._particle_properties.values())
 
         doc_lines.extend(_new_doc_section("Scalars"))
-        doc_lines.extend(decl.doc_string_part for decl in self._scalars.values())
+        doc_lines.extend(decl._doc_string_part for decl in self._scalars.values())
 
         doc_lines.extend(_new_doc_section("Field Data"))
-        doc_lines.extend(decl.doc_string_part for decl in self._field_data.values())
+        doc_lines.extend(decl._doc_string_part for decl in self._field_data.values())
 
         return "\n".join(doc_lines)
 
@@ -341,15 +341,15 @@ class BoundKernel:
 
         doc_lines.extend(_new_doc_section("Particle Property Bindings"))
         for name, binding in self._particle_property_bindings.items():
-            doc_lines.append(f"'{binding}' → {kernel.particle_properties[name].doc_string_part}")
+            doc_lines.append(f"'{binding}' → {kernel.particle_properties[name]._doc_string_part}")
 
         doc_lines.extend(_new_doc_section("Scalar Bindings"))
         for name, binding in self._scalar_bindings.items():
-            doc_lines.append(f"'{binding}' → {kernel.scalars[name].doc_string_part}")
+            doc_lines.append(f"'{binding}' → {kernel.scalars[name]._doc_string_part}")
 
         doc_lines.extend(_new_doc_section("Field Data Bindings"))
         for name, binding in self._field_data_bindings.items():
-            doc_lines.append(f"'{binding}' → {kernel.field_data[name].doc_string_part}")
+            doc_lines.append(f"'{binding}' → {kernel.field_data[name]._doc_string_part}")
 
         return "\n".join(doc_lines)
 
