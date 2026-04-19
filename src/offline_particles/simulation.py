@@ -53,7 +53,8 @@ class Simulation:
         *,
         bbox_history_size: int = DEFAULT_BBOX_HISTORY_SIZE,
     ) -> None:
-        """
+        """Simulation class constructor.
+
         Note:
             Use :class:`SimulationBuilder` to construct a simulation rather
             than instantiating this class directly.
