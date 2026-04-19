@@ -12,6 +12,8 @@ import numpy.typing as npt
 from ..fields import Field, FieldData
 from ..spatial_arrays import ALL_STAGGERS, Stagger
 
+# these type aliases are manually documented in the module docstring for better formatting in the docs,
+# if they are updated here, also update the docstring at the top of the __init__.py file
 type ParticlePropertiesType = Mapping[str, npt.NDArray]
 type ScalarsType = Mapping[str, np.generic]
 type FieldDataType = Mapping[str, FieldData]

@@ -1,4 +1,21 @@
-"""Submodule defining particle kernels."""
+"""Submodule defining particle kernels.
+
+Types
+~~~~~
+
+.. list-table::
+   :header-rows: 0
+   :widths: 20 80
+
+   * - :py:data:`ParticlePropertiesType`
+     - ``Mapping[str, npt.NDArray]``
+   * - :py:data:`ScalarsType`
+     - ``Mapping[str, np.generic]``
+   * - :py:data:`FieldDataType`
+     - ``Mapping[str, FieldData]`` where the ``FieldData`` are instances of :py:class:`~offline_particles.fields.FieldData`
+   * - :py:data:`KernelFunction`
+     - ``Callable[[ParticlePropertiesType, ScalarsType, FieldDataType], None]``
+"""
 
 from . import common_inputs, roms, status, timed_activation, timestepping, validation
 from ._kernels import (
@@ -38,29 +55,3 @@ __all__ = [
     "is_inactive",
     "construct_validation_kernel",
 ]
-
-# add types to the module docstring
-# It's very hacky but it works
-_docstring_addition = """
-
-Types
-~~~~~
-
-.. list-table::
-   :header-rows: 0
-   :widths: 20 80
-
-"""  # type: ignore
-for type_alias in [ParticlePropertiesType, ScalarsType, FieldDataType, KernelFunction]:
-    try:
-        new_entry = f"   * - :py:data:`{type_alias.__name__}`\n"
-        new_entry += f"     - ``{type_alias.__value__}``\n"
-        _docstring_addition += new_entry
-    except Exception as e:
-        # If there's an error accessing __name__ or __value__, skip adding this type to the docstring
-        import warnings
-
-        warnings.warn(f"Warning: Could not add {type_alias} to docstring due to error: {e}")
-
-if __doc__ is not None:
-    __doc__ += _docstring_addition
