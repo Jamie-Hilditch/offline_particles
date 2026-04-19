@@ -39,18 +39,6 @@ __all__ = [
     "construct_validation_kernel",
 ]
 
-# Set __module__ for all public classes and functions to this module for cleaner documentation
-_module = __name__
-for _obj in [
-    BoundKernel,
-    FieldDataDeclaration,
-    ParticleKernel,
-    ParticlePropertyDeclaration,
-    ScalarDeclaration,
-    get_required_particle_property_dtypes,
-]:
-    _obj.__module__ = _module
-
 # add types to the module docstring
 # It's very hacky but it works
 _docstring_addition = """
