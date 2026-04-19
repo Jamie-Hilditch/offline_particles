@@ -40,10 +40,10 @@ class TestClockConstructionValidation:
         with pytest.raises(ValueError, match="strictly increasing"):
             _make_clock(time_array, 1.0)
 
-    def test_rejects_dimensional_dt_without_time_unit(self) -> None:
+    def test_rejects_dimensional_dt_with_default_time_unit(self) -> None:
         time_array = np.array([0.0, 1.0], dtype=np.float64)
         dt = np.timedelta64(1, "s")
-        with pytest.raises(ValueError, match="time_unit"):
+        with pytest.raises(TypeError, match="time_unit"):
             Clock(time_array, dt)
 
     def test_rejects_zero_time_unit(self) -> None:
@@ -61,10 +61,10 @@ class TestClockConstructionValidation:
         clock = _make_clock(time_array, np.float64(0.5))
         assert clock is not None
 
-    def test_rejects_python_float_dt_without_time_unit(self) -> None:
+    def test_accepts_python_float_dt_without_time_unit(self) -> None:
         time_array = np.array([0.0, 1.0], dtype=np.float64)
-        with pytest.raises(ValueError, match="time_unit"):
-            Clock(time_array, 0.5)  # type: ignore
+        clock = Clock(time_array, 0.5)  # type: ignore
+        assert clock.dt == np.float64(0.5)
 
     def test_accepts_numpy_float_scalar_dt_without_time_unit(self) -> None:
         time_array = np.array([0.0, 1.0], dtype=np.float64)
