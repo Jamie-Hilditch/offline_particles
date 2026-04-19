@@ -63,7 +63,7 @@ class TestClockConstructionValidation:
 
     def test_accepts_python_float_dt_without_time_unit(self) -> None:
         time_array = np.array([0.0, 1.0], dtype=np.float64)
-        clock = Clock(time_array, 0.5)  # type: ignore
+        clock = Clock(time_array, 0.5)
         assert clock.dt == np.float64(0.5)
 
     def test_accepts_numpy_float_scalar_dt_without_time_unit(self) -> None:
