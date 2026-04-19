@@ -83,7 +83,7 @@ class TestClockConstructionValidation:
         assert clock.dt == dt
         assert clock.time_unit == time_unit
 
-    def test_accepts_mixed_compatible_timedelta_units(self) -> None:
+    def test_mixed_compatible_timedelta_units_are_converted_to_time_unit_resolution(self) -> None:
         time_array = np.array(
             ["2000-01-01T00:00:00", "2000-01-01T02:00:00"],
             dtype="datetime64[s]",
