@@ -5,7 +5,7 @@ The following classes and submodules are reexported at the top level of the pack
 Submodules
 ~~~~~~~~~~
 
-- :py:mod:`~offline_particles.kernels`: Kernels for implement particle behaviour.
+- :py:mod:`~offline_particles.kernels`: Kernels for implementing particle behaviour.
 - :py:mod:`~offline_particles.output`: Output tools for saving simulation results.
 - :py:mod:`~offline_particles.models.roms`: Tools for working with ROMS output.
 
