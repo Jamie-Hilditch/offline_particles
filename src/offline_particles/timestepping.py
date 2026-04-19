@@ -64,6 +64,11 @@ class Clock:
         ValueError: If ``time_array`` is not 1D, has fewer than 2 elements,
             or is not strictly increasing.
         ValueError: If ``time_unit`` is not positive.
+        ValueError: If ``dt`` has the wrong sign for the clock direction.
+        TypeError: If ``dt`` or ``time_unit`` has an unsupported type, or if
+            ``dt`` is incompatible with ``time_unit`` (for example, dimensional
+            time requires ``np.timedelta64`` increments, while non-dimensional
+            time requires floating-point increments).
 
     Note:
         The clock direction (forward or backward in time) is determined by
