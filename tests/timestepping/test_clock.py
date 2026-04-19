@@ -92,7 +92,6 @@ class TestClockConstructionValidation:
         time_unit = np.timedelta64(1, "s")
         clock = Clock(time_array, dt, time_unit=time_unit)
         np.testing.assert_array_equal(clock.time_array, time_array)
-        assert dt == np.timedelta64(1500, "ms")
         assert clock.dt == np.timedelta64(1, "s")
         assert clock.dt != dt
         assert clock.time_unit == time_unit
