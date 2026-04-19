@@ -2,12 +2,8 @@
 
 from typing import Iterable, Protocol, runtime_checkable
 
-import numpy as np
-
+from ..timestepping import D, T
 from ._events import Event
-
-type T = np.float64 | np.datetime64
-type D = np.float64 | np.timedelta64
 
 
 @runtime_checkable

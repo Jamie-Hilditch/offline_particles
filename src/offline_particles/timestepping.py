@@ -12,8 +12,42 @@ from .kernels.timestepping import construct_ab3_initialisation_kernel
 from .launcher import Launcher, ScalarSource, Time_info, Tinfo
 from .particles import Particles
 
-type T = np.float64 | np.datetime64
-type D = np.float64 | np.timedelta64
+# Supported time and time increment types
+#: Supported time types: np.floating for non-dimensional time or np.datetime64 for dimensional time.
+type T = np.floating | np.datetime64
+#: Supported time increment types: np.floating for non-dimensional time or np.timedelta64 for dimensional time.
+type D = np.floating | np.timedelta64
+#: Accepted time increment types: np.floating, np.timedelta64, float or int (python floats and integers are converted to np.float64).
+type DLike = np.floating | np.timedelta64 | float | int
+
+
+def _regularise_DLike(dt: DLike) -> D:
+    """Regularise a DLike time increment into a D time increment."""
+    match dt:
+        case np.floating() | np.timedelta64():
+            return dt
+        case float() | int():
+            return np.float64(dt)
+        case _:
+            raise TypeError(f"dt must be a np.floating, np.timedelta64, or float, got {type(dt)!r}")
+
+
+def _convert_DLike(dt: DLike, time_unit: D) -> D:
+    """Convert a DLike time increment into a D time increment of the same type as time_unit."""
+    _dt = _regularise_DLike(dt)
+    match _dt, time_unit:
+        # dimensionless time: allow any floating type, convert to time_unit type
+        case np.floating(), np.floating():
+            return _dt.astype(time_unit.dtype)
+        # dimensional time: require dt to be same type as time_unit
+        case np.timedelta64(), np.timedelta64():
+            return _dt.astype(time_unit.dtype)
+        case _:
+            raise TypeError(
+                f"dt={dt!r} regularised to {_dt!r} which is not compatible with time_unit={time_unit!r}. "
+                f"Non-dimensional time requires np.floating, "
+                f"dimensional time requires np.timedelta64."
+            )
 
 
 class Clock:
@@ -23,14 +57,18 @@ class Clock:
         time_array: strictly increasing 1D array of time values.
         dt: The time step. Must be positive for forward integration,
             negative for backward integration.
-        time_unit: The time unit. Required for dimensional time, defaults
-            to 1.0 for dimensionless (float) time.
+        time_unit: The time unit. Determines the type of time increments. Required for dimensional time,
+            defaults to np.float64(1.0) for dimensionless time.
 
     Raises:
         ValueError: If ``time_array`` is not 1D, has fewer than 2 elements,
             or is not strictly increasing.
         ValueError: If ``time_unit`` is not positive.
-        ValueError: If ``dt`` has the wrong sign for the integration direction.
+        ValueError: If ``dt`` has the wrong sign for the clock direction.
+        TypeError: If ``dt`` or ``time_unit`` has an unsupported type, or if
+            ``dt`` is incompatible with ``time_unit`` (for example, dimensional
+            time requires ``np.timedelta64`` increments, while non-dimensional
+            time requires floating-point increments).
 
     Note:
         The clock direction (forward or backward in time) is determined by
@@ -52,9 +90,9 @@ class Clock:
     def __init__(
         self,
         time_array: npt.NDArray[T],
-        dt: D,
+        dt: DLike,
         *,
-        time_unit: D | None = None,
+        time_unit: DLike = np.float64(1.0),
     ) -> None:
         # validate time_array shape and length
         if time_array.ndim != 1:
@@ -68,22 +106,19 @@ class Clock:
         # precompute maximum searchsorted index: clamps idx so idx+1 is always valid
         self._max_tidx = len(time_array) - 2
 
-        # first set the time unit
-        # this fixes the time types
-        if time_unit is None:
-            # use a default value of 1 if times are dimensionless else error
-            if isinstance(dt, np.floating):
-                time_unit = np.float64(1.0)
-            else:
-                raise ValueError("time_unit must be specified for dimensional time.")
-
-        # time unit must be positive and then sign of dt determines clock direction
+        # determine increment dtype
+        time_unit = _regularise_DLike(time_unit)
         if not (time_unit > time_unit * 0):
             raise ValueError("time_unit must be positive.")
-        self._time_unit = time_unit
+        self._time_unit: D = time_unit
+
+        # determine clock direction from sign of dt
+        dt = _regularise_DLike(dt)
+        if dt == dt * 0:
+            raise ValueError("dt cannot be zero.")
         self._forward_in_time: bool = dt > 0 * dt
 
-        # now set the timestep which has the same type as time_unit
+        # set dt (validates sign and computes normalised dt)
         self.set_dt(dt)
 
         # initialise time, time_index and iteration
@@ -120,18 +155,20 @@ class Clock:
         fraction = (time - t0) / (t1 - t0)
         return idx + fraction
 
-    def set_dt(self, dt: D) -> None:
+    def set_dt(self, dt: DLike) -> None:
         """Set the time step."""
-        # validate sign of dt using zero of the same type/unit as dt
+        dt = _convert_DLike(
+            dt, self.time_unit
+        )  # validates dt is compatible with time_unit and converts to correct type
+
+        # validate sign of dt using zero of the same type as dt
         if self._forward_in_time and not (dt > dt * 0):
             raise ValueError("dt must be positive for forward-in-time integration.")
         if not self._forward_in_time and not (dt < dt * 0):
             raise ValueError("dt must be negative for backward-in-time integration.")
-        # convert dt to timestep_type
-        try:
-            self._normalised_dt = np.float64(dt / self._time_unit)  # type: ignore[operator]
-        except Exception as e:
-            raise TypeError(f"dt must be of the same type as time_unit={self._time_unit!r}") from e
+
+        # set normalised dt for internal use
+        self._normalised_dt = np.float64(dt / self.time_unit)  # type: ignore[operator]
 
     def set_time(self, time: T) -> None:
         """Set the current time and update the time index."""
@@ -158,7 +195,7 @@ class Clock:
     @property
     def dt(self) -> D:
         """The time step for this clock."""
-        return self._normalised_dt * self._time_unit
+        return (self._normalised_dt * self._time_unit).astype(self._time_unit.dtype)  # type: ignore[operator]
 
     @property
     def time(self) -> T:

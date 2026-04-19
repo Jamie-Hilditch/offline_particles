@@ -8,14 +8,15 @@ import numpy as np
 
 from ..kernels import BoundKernel
 from ..particles import ParticlesView
+from ..timestepping import D, T
 
 
 @dataclasses.dataclass(frozen=True)
 class SimulationState:
     """Dataclass representing the current state of the simulation."""
 
-    time: np.float64 | np.datetime64
-    dt: np.float64 | np.timedelta64
+    time: T
+    dt: D
     tidx: np.float64
     iteration: int
     wall_time: np.timedelta64

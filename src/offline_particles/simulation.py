@@ -23,10 +23,7 @@ from .kernels import BoundKernel, get_required_particle_property_dtypes
 from .launcher import Launcher, Tinfo
 from .output import AbstractOutputWriter, AbstractOutputWriterBuilder
 from .particles import Particles, ParticlesView
-from .timestepping import Clock, Timestepper
-
-type T = np.float64 | np.datetime64
-type D = np.float64 | np.timedelta64
+from .timestepping import Clock, D, T, Timestepper
 
 DEFAULT_BBOX_HISTORY_SIZE = 256
 
@@ -144,7 +141,7 @@ class Simulation:
         return self._fieldset
 
     @property
-    def time(self) -> np.float64 | np.datetime64:
+    def time(self) -> T:
         """Get the current simulation time.
 
         Returns:
@@ -162,7 +159,7 @@ class Simulation:
         return self._clock.iteration
 
     @property
-    def dt(self) -> np.float64 | np.timedelta64:
+    def dt(self) -> D:
         """Get the timestep size.
 
         Returns:
@@ -180,7 +177,7 @@ class Simulation:
         return self._clock.tidx
 
     @property
-    def time_unit(self) -> np.float64 | np.timedelta64:
+    def time_unit(self) -> D:
         """Get the time unit used by the timestepper.
 
         Returns:

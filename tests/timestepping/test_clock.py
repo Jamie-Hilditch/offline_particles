@@ -40,10 +40,10 @@ class TestClockConstructionValidation:
         with pytest.raises(ValueError, match="strictly increasing"):
             _make_clock(time_array, 1.0)
 
-    def test_rejects_dimensional_dt_without_time_unit(self) -> None:
+    def test_rejects_dimensional_dt_with_default_time_unit(self) -> None:
         time_array = np.array([0.0, 1.0], dtype=np.float64)
         dt = np.timedelta64(1, "s")
-        with pytest.raises(ValueError, match="time_unit"):
+        with pytest.raises(TypeError, match="time_unit"):
             Clock(time_array, dt)
 
     def test_rejects_zero_time_unit(self) -> None:
@@ -61,15 +61,42 @@ class TestClockConstructionValidation:
         clock = _make_clock(time_array, np.float64(0.5))
         assert clock is not None
 
-    def test_rejects_python_float_dt_without_time_unit(self) -> None:
+    def test_accepts_python_float_dt_without_time_unit(self) -> None:
         time_array = np.array([0.0, 1.0], dtype=np.float64)
-        with pytest.raises(ValueError, match="time_unit"):
-            Clock(time_array, 0.5)  # type: ignore
+        clock = Clock(time_array, 0.5)
+        assert clock.dt == np.float64(0.5)
 
     def test_accepts_numpy_float_scalar_dt_without_time_unit(self) -> None:
         time_array = np.array([0.0, 1.0], dtype=np.float64)
         clock = Clock(time_array, np.float64(0.5))
         assert clock.time_unit == np.float64(1.0)
+
+    def test_accepts_dimensional_time_array_dt_and_time_unit(self) -> None:
+        time_array = np.array(
+            ["2000-01-01T00:00:00", "2000-01-01T01:00:00"],
+            dtype="datetime64[s]",
+        )
+        dt = np.timedelta64(30, "m")
+        time_unit = np.timedelta64(1, "m")
+        clock = Clock(time_array, dt, time_unit=time_unit)
+        np.testing.assert_array_equal(clock.time_array, time_array)
+        assert clock.dt == dt
+        assert clock.time_unit == time_unit
+
+    def test_mixed_compatible_timedelta_units_are_converted_to_time_unit_resolution(self) -> None:
+        time_array = np.array(
+            ["2000-01-01T00:00:00", "2000-01-01T02:00:00"],
+            dtype="datetime64[s]",
+        )
+        dt = np.timedelta64(1500, "ms")
+        time_unit = np.timedelta64(1, "s")
+        clock = Clock(time_array, dt, time_unit=time_unit)
+        np.testing.assert_array_equal(clock.time_array, time_array)
+        assert clock.dt == np.timedelta64(1, "s")
+        assert clock.dt != dt
+        assert clock.time_unit == time_unit
+        clock.advance_time()
+        assert clock.time == np.datetime64("2000-01-01T00:00:01")
 
 
 # ---------------------------------------------------------------------------
