@@ -53,7 +53,7 @@ for _obj in [
 
 # add types to the module docstring
 # It's very hacky but it works
-__doc__ += """
+_docstring_addition = """
 
 Types
 ~~~~~
@@ -67,9 +67,12 @@ for type_alias in [ParticlePropertiesType, ScalarsType, FieldDataType, KernelFun
     try:
         new_entry = f"   * - :py:data:`{type_alias.__name__}`\n"
         new_entry += f"     - ``{type_alias.__value__}``\n"
-        __doc__ += new_entry
+        _docstring_addition += new_entry
     except Exception as e:
         # If there's an error accessing __name__ or __value__, skip adding this type to the docstring
         import warnings
 
         warnings.warn(f"Warning: Could not add {type_alias} to docstring due to error: {e}")
+
+if __doc__ is not None:
+    __doc__ += _docstring_addition
