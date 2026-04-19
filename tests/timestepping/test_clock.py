@@ -95,6 +95,8 @@ class TestClockConstructionValidation:
         assert clock.dt == np.timedelta64(1, "s")
         assert clock.dt != dt
         assert clock.time_unit == time_unit
+        clock.advance_time()
+        assert clock.time == np.datetime64("2000-01-01T00:00:01")
 
 
 # ---------------------------------------------------------------------------
