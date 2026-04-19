@@ -12,8 +12,13 @@ from .kernels.timestepping import construct_ab3_initialisation_kernel
 from .launcher import Launcher, ScalarSource, Time_info, Tinfo
 from .particles import Particles
 
-type T = np.float64 | np.datetime64
-type D = np.float64 | np.timedelta64
+# Supported time and time increment types
+type T = np.floating | np.datetime64
+type D = np.floating | np.timedelta64
+T.__doc__ = "Supported time types: np.floating for non-dimensional time or np.datetime64 for dimensional time."
+D.__doc__ = (
+    "Supported time increment types: np.floating for non-dimensional time or np.timedelta64 for dimensional time."
+)
 
 
 class Clock:
