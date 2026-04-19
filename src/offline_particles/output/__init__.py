@@ -13,7 +13,7 @@ __all__ = [
     "linearly_interpolate_fields",
 ]
 
-# Set __module__ for all public classes to this module for cleaner documentation
+# Set __module__ for all public classes and functions to this module for cleaner documentation
 _module = __name__
 for _obj in [
     AbstractOutputWriter,
