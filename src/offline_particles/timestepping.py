@@ -17,7 +17,7 @@ from .particles import Particles
 type T = np.floating | np.datetime64
 #: Supported time increment types: np.floating for non-dimensional time or np.timedelta64 for dimensional time.
 type D = np.floating | np.timedelta64
-#: Accepted time increment types: np.floating, np.timedelta64, or float (converted to np.float64).
+#: Accepted time increment types: np.floating, np.timedelta64, float or int (python floats and integers are converted to np.float64).
 type DLike = np.floating | np.timedelta64 | float | int
 
 
