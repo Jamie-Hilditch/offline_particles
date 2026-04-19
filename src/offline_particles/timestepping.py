@@ -106,7 +106,6 @@ class Clock:
         if not (time_unit > time_unit * 0):
             raise ValueError("time_unit must be positive.")
         self._time_unit: D = time_unit
-        self._increment_dtype = self.time_unit.dtype
 
         # determine clock direction from sign of dt
         dt = _regularise_DLike(dt)
