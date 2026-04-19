@@ -1,4 +1,21 @@
-"""Submodule for timestepping classes."""
+"""Submodule for timestepping classes.
+
+Types
+~~~~~
+
+.. list-table::
+   :header-rows: 0
+   :widths: 10 45 45
+
+   * - :py:data:`T`
+     - ``np.floating | np.datetime64``
+     - Supported time types.
+   * - :py:data:`D`
+     - ``np.floating | np.timedelta64``
+     - Supported time increment types.
+   * - :py:data:`DLike`
+     - ``np.floating | np.timedelta64 | float | int``
+     - Accepted time increment input types. Converted to :py:data:`D` internally."""
 
 import abc
 import itertools
@@ -12,12 +29,20 @@ from .kernels.timestepping import construct_ab3_initialisation_kernel
 from .launcher import Launcher, ScalarSource, Time_info, Tinfo
 from .particles import Particles
 
+__all__ = [
+    "ABTimestepper",
+    "Clock",
+    "D",
+    "DLike",
+    "RK2Timestepper",
+    "T",
+    "Timestepper",
+]
+
 # Supported time and time increment types
-#: Supported time types: np.floating for non-dimensional time or np.datetime64 for dimensional time.
+# We need to ensure these are kept up to date in the module docstring.
 type T = np.floating | np.datetime64
-#: Supported time increment types: np.floating for non-dimensional time or np.timedelta64 for dimensional time.
 type D = np.floating | np.timedelta64
-#: Accepted time increment types: np.floating, np.timedelta64, float or int (python floats and integers are converted to np.float64).
 type DLike = np.floating | np.timedelta64 | float | int
 
 
