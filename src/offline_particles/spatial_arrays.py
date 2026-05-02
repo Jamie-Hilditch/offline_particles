@@ -164,15 +164,6 @@ class BBox:
     xmin: float
     xmax: float
 
-    @property
-    def by_dimension(self) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float]]:
-        """Bounding box organized by dimension."""
-        return (
-            (self.zmin, self.zmax),
-            (self.ymin, self.ymax),
-            (self.xmin, self.xmax),
-        )
-
     def axis_bounds(self, axis: ArrayAxis) -> tuple[float, float]:
         """Get the bounding box limits for a specific axis."""
         match axis:
