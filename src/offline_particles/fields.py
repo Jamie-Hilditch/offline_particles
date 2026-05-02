@@ -61,6 +61,11 @@ class Field(abc.ABC):
         self._attrs = attrs
 
     @property
+    def layout(self) -> ArrayLayout:
+        """The array layout of the field."""
+        return self._layout
+
+    @property
     def ndim(self) -> int:
         """Number of dimensions in the spatial array."""
         return self._layout.ndim
@@ -337,18 +342,14 @@ class TimeDependentField(Field):
     def __init__(
         self,
         data: da.Array | npt.NDArray,
-        z_stagger: Stagger | str,
-        y_stagger: Stagger | str,
-        x_stagger: Stagger | str,
+        layout: ArrayLayout,
         spatial_array_factory: SpatialArrayFactory = NumpyArray,
         output_dtype: npt.DTypeLike = np.float64,
         *,
         attrs: dict[str, Any] | None = None,
     ):
         super().__init__(
-            z_stagger=Stagger(z_stagger),
-            y_stagger=Stagger(y_stagger),
-            x_stagger=Stagger(x_stagger),
+            layout=layout,
             attrs=attrs,
         )
 
@@ -377,12 +378,8 @@ class TimeDependentField(Field):
             raise ValueError("TimeDependentField requires at least 2 time steps.")
         self._num_timesteps = self._data.shape[0]
         self._It = 0
-        self._previous_time_slice = self._spatial_array_factory(
-            self._data[0, ...], self.z_stagger, self.y_stagger, self.x_stagger
-        )
-        self._next_time_slice = self._spatial_array_factory(
-            self._data[1, ...], self.z_stagger, self.y_stagger, self.x_stagger
-        )
+        self._previous_time_slice = self._spatial_array_factory(self._data[0, ...], self.layout)
+        self._next_time_slice = self._spatial_array_factory(self._data[1, ...], self.layout)
 
     def _allocate_interpolation_arrays(self, shape: tuple[int, ...]) -> None:
         """Allocate temporary arrays for interpolation."""
@@ -400,14 +397,13 @@ class TimeDependentField(Field):
     def __repr__(self) -> str:
         return (
             f"TimeDependentField(shape={self._data.shape}, "
-            f"z_stagger={self.z_stagger}, "
-            f"y_stagger={self.y_stagger}, "
-            f"x_stagger={self.x_stagger}, "
+            f"dtype={self._data.dtype}, "
+            f"layout={self.layout}, "
             f"spatial_array_factory={self._spatial_array_factory.__name__})"
         )
 
     def __str__(self) -> str:
-        return f"TimeDependentField on z={self.z_stagger.name}, y={self.y_stagger.name}, x={self.x_stagger.name} grid"
+        return f"TimeDependentField on {self.layout} grid"
 
     @property
     def dtype(self) -> np.dtype:
@@ -458,12 +454,7 @@ class TimeDependentField(Field):
             raise IndexError("Cannot increment past the penultimate timestep.")
         self._It += 1
         self._previous_time_slice = self._next_time_slice
-        self._next_time_slice = self._spatial_array_factory(
-            self._data[self._It + 1, ...],
-            self.z_stagger,
-            self.y_stagger,
-            self.x_stagger,
-        )
+        self._next_time_slice = self._spatial_array_factory(self._data[self._It + 1, ...], self.layout)
         # loading new data invalidates cached delta and output
         self._cached_delta_valid = False
         self._output_valid = False
@@ -475,12 +466,7 @@ class TimeDependentField(Field):
             raise IndexError("Cannot decrement past the first timestep.")
         self._It -= 1
         self._next_time_slice = self._previous_time_slice
-        self._previous_time_slice = self._spatial_array_factory(
-            self._data[self._It, ...],
-            self.z_stagger,
-            self.y_stagger,
-            self.x_stagger,
-        )
+        self._previous_time_slice = self._spatial_array_factory(self._data[self._It, ...], self.layout)
         # loading new data invalidates cached delta and output
         self._cached_delta_valid = False
         self._output_valid = False
@@ -501,15 +487,8 @@ class TimeDependentField(Field):
             raise IndexError(f"Valid range of time indices is 0,...,{self._num_timesteps - 2}, got {It}.")
 
         self._It = It
-        self._previous_time_slice = self._spatial_array_factory(
-            self._data[self._It, ...], self.z_stagger, self.y_stagger, self.x_stagger
-        )
-        self._next_time_slice = self._spatial_array_factory(
-            self._data[self._It + 1, ...],
-            self.z_stagger,
-            self.y_stagger,
-            self.x_stagger,
-        )
+        self._previous_time_slice = self._spatial_array_factory(self._data[self._It, ...], self.layout)
+        self._next_time_slice = self._spatial_array_factory(self._data[self._It + 1, ...], self.layout)
         # loading new data invalidates cached delta and output
         self._cached_delta_valid = False
         self._output_valid = False
@@ -581,44 +560,43 @@ class TimeDependentField(Field):
     def from_numpy(
         cls,
         data: npt.NDArray,
-        z_stagger: Stagger | str,
-        y_stagger: Stagger | str,
-        x_stagger: Stagger | str,
+        axes: tuple[ArrayAxis | str, ...],
+        staggers: tuple[Stagger | str, ...],
         *,
         attrs: dict[str, Any] | None = None,
     ) -> "TimeDependentField":
         """Create a TimeDependentField from a NumPy array."""
+        layout = ArrayLayout(axes, staggers)
         if not isinstance(data, np.ndarray):
             raise TypeError(f"Expected a NumPy array, got {type(data).__name__}")
-        return cls(data, z_stagger, y_stagger, x_stagger, NumpyArray, attrs=attrs)
+        return cls(data, layout, NumpyArray, attrs=attrs)
 
     @classmethod
     def from_dask(
         cls,
         data: da.Array,
-        z_stagger: Stagger | str,
-        y_stagger: Stagger | str,
-        x_stagger: Stagger | str,
+        axes: tuple[ArrayAxis | str, ...],
+        staggers: tuple[Stagger | str, ...],
         *,
         preload_space: bool = False,
         attrs: dict[str, Any] | None = None,
     ) -> "TimeDependentField":
         """Create a TimeDependentField from a chunked Dask array."""
+        layout = ArrayLayout(axes, staggers)
         if not isinstance(data, da.Array):
             raise TypeError(f"Expected a Dask array, got {type(data).__name__}")
         if preload_space:
             factory = NumpyArray
         else:
             factory = ChunkedDaskArray
-        return cls(data, z_stagger, y_stagger, x_stagger, factory, attrs=attrs)
+        return cls(data, layout, factory, attrs=attrs)
 
     @classmethod
     def from_arraylike(
         cls,
         data: npt.ArrayLike,
-        z_stagger: Stagger | str,
-        y_stagger: Stagger | str,
-        x_stagger: Stagger | str,
+        axes: tuple[ArrayAxis | str, ...],
+        staggers: tuple[Stagger | str, ...],
         *,
         attrs: dict[str, Any] | None = None,
     ) -> "TimeDependentField":
@@ -636,15 +614,16 @@ class TimeDependentField(Field):
                 "Use TimeDependentField.from_dask for Dask arrays.",
                 stacklevel=2,
             )
-        return cls.from_numpy(np.asarray(data), z_stagger, y_stagger, x_stagger, attrs=attrs)
+        return cls.from_numpy(np.asarray(data), axes, staggers, attrs=attrs)
 
     @classmethod
     def from_xarray(
         cls,
         data: xr.DataArray,
         time_dim: str,
-        dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]] | None = None,
-        **dims_kwargs: tuple[ArrayAxis | str, Stagger | str],
+        dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]],
+        *,
+        ignore_missing_dims: bool = False,
     ) -> "TimeDependentField":
         """Create a TimeDependentField from an xarray DataArray.
 
@@ -654,57 +633,64 @@ class TimeDependentField(Field):
             The input xarray DataArray containing the field data.
         time_dim : str
             Name of the time dimension in the DataArray.
-        dims : Mapping[str, tuple[ArrayAxis | str, Stagger | str]], optional
+        dims : Mapping[str, tuple[ArrayAxis | str, Stagger | str]]
             Mapping of spatial dimension names to ``(ArrayAxis, Stagger)`` tuples.
             Cannot be combined with keyword arguments.
-        **dims_kwargs : tuple[ArrayAxis | str, Stagger | str]
-            Spatial dimension mappings as keyword arguments.
-            Cannot be combined with the ``dims`` positional mapping.
+        ignore_missing_dims : bool, optional
+            If True, dimensions specified in ``dims`` that are not present in the DataArray will
+            be ignored. If False (default), a ValueError will be raised.
 
         Returns
         -------
         TimeDependentField
             A TimeDependentField instance created from the input xarray DataArray.
 
-        Raises
-        ------
-        TypeError
-            If both ``dims`` and keyword arguments are provided.
-
         Notes
         -----
         The spatial dimension names in ``dims`` (or keyword arguments) must exactly
-        match all non-time dimensions in ``data``.
+        match all non-time dimensions in ``data`` unless ``ignore_missing_dims`` is True, in which case extra dimensions in ``dims``
+        that are not present in ``data`` will be ignored. All non-time dimensions in ``data`` must be accounted for in ``dims``
+        regardless of the value of ``ignore_missing_dims``.
         """
-        if dims is not None and dims_kwargs:
-            raise TypeError("cannot specify both 'dims' and keyword arguments")
-        resolved_dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]] = dims if dims is not None else dims_kwargs
+        # first ensure time dim exists
+        if time_dim not in data.dims:
+            raise ValueError(f"Time dimension '{time_dim}' not found in data dimensions {data.dims}")
 
-        # validate inputs (time dim presence + spatial dim correspondence)
-        # _validate_xarray_dims_match(data, resolved_dims, time_dim=time_dim)
+        # get spatial dims on data
+        spatial_dims = [dim for dim in data.dims if dim != time_dim]
 
-        # parse dims to get dimension names and staggers for each axis
-        z_dim, y_dim, x_dim = _parse_xarray_dims(resolved_dims)
+        # move time dim to the front if it's not already
+        data = data.transpose([time_dim] + spatial_dims)
 
-        # get the array in the correct order with invariant dimensions squeezed out
-        transformed_data = _transform_xarray_data_array(data, z_dim, y_dim, x_dim, time_dim=time_dim)
-        array = transformed_data.data
+        # build an array layout from the provided dims
+        dims_mapping = dims.copy()  # make a copy to avoid mutating the input
+        axes = []
+        staggers = []
+        for dim in data.dims:
+            if dim not in dims:
+                raise ValueError(f"Dimension '{dim}' in data is missing from dims mapping.")
+            axis, stagger = dims_mapping.pop(dim)
+            axes.append(ArrayAxis.parse(axis))
+            staggers.append(Stagger.parse(stagger))
+
+        # error if there are any extra dimensions in dims that were not in data
+        if (not ignore_missing_dims) and dims_mapping:
+            raise ValueError(f"Dimensions in dims mapping not found in data: {list(dims_mapping.keys())}")
+
+        layout = ArrayLayout(axes, staggers)
+        array = data.data
 
         # create field
         if isinstance(array, da.Array):
             return cls.from_dask(
                 data=array,
-                z_stagger=z_dim[1],
-                y_stagger=y_dim[1],
-                x_stagger=x_dim[1],
+                layout=layout,
                 attrs=data.attrs,
             )
         else:
             return cls.from_arraylike(
                 data=array,
-                z_stagger=z_dim[1],
-                y_stagger=y_dim[1],
-                x_stagger=x_dim[1],
+                layout=layout,
                 attrs=data.attrs,
             )
 
@@ -721,89 +707,3 @@ def _perform_interpolation(
     n = previous.size
     for i in numba.prange(n):  # ty: ignore[not-iterable]
         output[i] = previous[i] + ft * delta[i]
-
-
-def _parse_xarray_dims(
-    dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]],
-) -> tuple[tuple[str | None, Stagger], tuple[str | None, Stagger], tuple[str | None, Stagger]]:
-    """Parse the dimension mappings and validate the stagger values.
-
-    Parameters
-    ----------
-    dims : Mapping[str, tuple[ArrayAxis | str, Stagger | str]]
-        Mapping of dimension names to tuples of (ArrayAxis, Stagger).
-
-    Raises
-    ------
-    ValueError
-        If any of the stagger values are invalid.
-    """
-    # first convert to ArrayAxis and Stagger enums
-    parsed_dims: dict[str, tuple[ArrayAxis, Stagger]] = {
-        dim: (ArrayAxis.parse(axis), Stagger(stagger)) for dim, (axis, stagger) in dims.items()
-    }
-
-    # extract the dimension names and staggers for each axis, ensuring no duplicates
-    z_dim = _extract_dim(ArrayAxis.Z, parsed_dims)
-    y_dim = _extract_dim(ArrayAxis.Y, parsed_dims)
-    x_dim = _extract_dim(ArrayAxis.X, parsed_dims)
-
-    return z_dim, y_dim, x_dim
-
-
-def _extract_dim(axis: ArrayAxis, dims: dict[str, tuple[ArrayAxis, Stagger]]) -> tuple[str | None, Stagger]:
-    """Extract the dimension name and stagger for a given axis.
-
-    Parameters
-    ----------
-    axis : ArrayAxis
-        The axis to extract (Z, Y, or X).
-    dims : dict[str, tuple[ArrayAxis, Stagger]]
-        Mapping of dimension names to tuples of (ArrayAxis, Stagger).
-
-    Returns
-    -------
-    tuple[str | None, Stagger]
-        The dimension name and stagger for the specified axis. If no dimension is mapped to the axis, returns (None, Stagger.INVARIANT).
-
-    Raises
-    ------
-    ValueError
-        If multiple dimensions are mapped to the same axis.
-    """
-    matching_dims = [(dim, stagger) for dim, (ax, stagger) in dims.items() if ax == axis]
-    if len(matching_dims) == 0:
-        return None, Stagger.INVARIANT
-    elif len(matching_dims) == 1:
-        return matching_dims[0]
-    else:
-        raise ValueError(f"Multiple dimensions mapped to {axis} axis: {matching_dims}")
-
-
-def _transform_xarray_data_array(
-    data: xr.DataArray,
-    z_dim: tuple[str | None, Stagger],
-    y_dim: tuple[str | None, Stagger],
-    x_dim: tuple[str | None, Stagger],
-    time_dim: str | None = None,
-) -> xr.DataArray:
-    """Transform the DataArray by transposing and squeezing dimensions as needed."""
-    # time goes first if present
-    dims_in_order = []
-    if time_dim is not None:
-        dims_in_order.append(time_dim)
-
-    # add active dimensions and squeeze invariant dimensions
-    for dim_name, stagger in (z_dim, y_dim, x_dim):
-        if dim_name is None:
-            continue
-        if stagger.is_active:
-            dims_in_order.append(dim_name)
-        else:
-            if data.sizes[dim_name] != 1:
-                raise ValueError(
-                    f"Dimension '{dim_name}' is marked as invariant but has size {data.sizes[dim_name]} != 1"
-                )
-            data = data.squeeze(dim=dim_name)
-
-    return data.transpose(*dims_in_order)
