@@ -179,9 +179,7 @@ class StaticField(Field):
             simulation_axis_size = simulation_size.axis_size(axis)
             expected_size = stagger.expected_size(simulation_axis_size)
             if data_size != expected_size:
-                raise ValueError(
-                    f"Expected size {expected_size} along axis {axis} but got {data_size}"
-                )
+                raise ValueError(f"Expected size {expected_size} along axis {axis} but got {data_size}")
 
     def get_field_data(self, time_index: float, bbox: BBox) -> FieldData:
         """Get the field data at a given time index.
@@ -666,7 +664,7 @@ class TimeDependentField(Field):
         dims_mapping = dict(dims)  # make a copy to avoid mutating the input
         axes = []
         staggers = []
-        for dim in data.dims:
+        for dim in spatial_dims:
             if dim not in dims:
                 raise ValueError(f"Dimension '{dim}' in data is missing from dims mapping.")
             axis, stagger = dims_mapping.pop(dim)
