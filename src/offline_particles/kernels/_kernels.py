@@ -10,7 +10,7 @@ import numpy as np
 import numpy.typing as npt
 
 from ..fields import Field, FieldData
-from ..spatial_arrays import ALL_STAGGERS, Stagger
+from ..spatial_arrays import ArrayLayout
 
 # these type aliases are manually documented in the module docstring for better formatting in the docs,
 # if they are updated here, also update the docstring at the top of the __init__.py file
@@ -18,6 +18,8 @@ type ParticlePropertiesType = Mapping[str, npt.NDArray]
 type ScalarsType = Mapping[str, np.generic]
 type FieldDataType = Mapping[str, FieldData]
 type KernelFunction = Callable[[ParticlePropertiesType, ScalarsType, FieldDataType], None]
+
+type LayoutValidator = Callable[[ArrayLayout], None]
 
 
 @dataclasses.dataclass(frozen=True, slots=True, init=False)
@@ -48,23 +50,16 @@ class ScalarDeclaration(KernelInputDeclaration):
 class FieldDataDeclaration(KernelInputDeclaration):
     """Declaration of field data required by a kernel."""
 
-    z_staggers: frozenset[Stagger]
-    y_staggers: frozenset[Stagger]
-    x_staggers: frozenset[Stagger]
+    _layout_validators: tuple[LayoutValidator, ...]
 
     def __init__(
         self,
         name: str,
         dtype: npt.DTypeLike,
-        *,
-        z_staggers: Iterable[Stagger] = ALL_STAGGERS,
-        y_staggers: Iterable[Stagger] = ALL_STAGGERS,
-        x_staggers: Iterable[Stagger] = ALL_STAGGERS,
+        layout_validators: Iterable[LayoutValidator] = (),
     ) -> None:
-        KernelInputDeclaration.__init__(self, name, dtype)
-        object.__setattr__(self, "z_staggers", frozenset(Stagger(s) for s in z_staggers))
-        object.__setattr__(self, "y_staggers", frozenset(Stagger(s) for s in y_staggers))
-        object.__setattr__(self, "x_staggers", frozenset(Stagger(s) for s in x_staggers))
+        super().__init__(name, dtype)
+        object.__setattr__(self, "_layout_validators", tuple(layout_validators))
 
     def validate_field(self, field: Field) -> None:
         """Validate that a field matches this declaration."""
@@ -72,33 +67,12 @@ class FieldDataDeclaration(KernelInputDeclaration):
             raise TypeError(
                 f"Kernel field data '{self.name}' has dtype '{self.dtype}', but field has dtype '{field.output_dtype}'."
             )
-        if field.z_stagger not in self.z_staggers:
-            raise ValueError(
-                f"Valid z_staggers for kernel field data '{self.name}' are "
-                f"{self.z_staggers}, "
-                f"but field has z_stagger '{field.z_stagger}'."
-            )
-        if field.y_stagger not in self.y_staggers:
-            raise ValueError(
-                f"Valid y_staggers for kernel field data '{self.name}' are "
-                f"{self.y_staggers}, "
-                f"but field has y_stagger '{field.y_stagger}'."
-            )
-        if field.x_stagger not in self.x_staggers:
-            raise ValueError(
-                f"Valid x_staggers for kernel field data '{self.name}' are "
-                f"{self.x_staggers}, "
-                f"but field has x_stagger '{field.x_stagger}'."
-            )
+        for validator in self._layout_validators:
+            validator(field.layout)
 
     @property
     def _doc_string_part(self) -> str:
-        return (
-            f"'{self.name}' ({self.dtype})\n"
-            f"    z_staggers={self.z_staggers}\n"
-            f"    y_staggers={self.y_staggers}\n"
-            f"    x_staggers={self.x_staggers}"
-        )
+        return f"'{self.name}' ({self.dtype}) with {len(self._layout_validators)} layout validators"
 
 
 class ParticleKernel:

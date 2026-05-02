@@ -40,7 +40,7 @@ class Fieldset:
     ) -> None:
         super().__init__()
         # sizes of centered dimensions
-        self._simulation_size = SimulationSize(t_size=t_size, z_size=z_size, y_size=y_size, x_size=x_size)
+        self._simulation_size = SimulationSize(time=t_size, z=z_size, y=y_size, x=x_size)
 
         # set default index bounds if not provided
         if zidx_bounds is None:
@@ -82,7 +82,7 @@ class Fieldset:
     @property
     def t_size(self) -> int:
         """Size of the time dimension."""
-        return self.simulation_size.t
+        return self.simulation_size.time
 
     @property
     def z_size(self) -> int:
@@ -163,7 +163,7 @@ class Fieldset:
         if name in self:
             raise KeyError(f"Field '{name}' already exists in Fieldset. First remove it before adding a new one.")
         try:
-            field.validate_shape(self.simulation_shape)
+            field.validate_shape(self.simulation_size)
         except ValueError as e:
             raise ValueError(f"Error validating shape of Field '{name}'.") from e
         self._fields[name] = field

@@ -130,6 +130,12 @@ class ArrayLayout:
 
     __slots__ = ("ndim", "axes", "staggers", "offsets")
 
+    # Type annotations for the type checker
+    ndim: int
+    axes: tuple[ArrayAxis, ...]
+    staggers: tuple[Stagger, ...]
+    offsets: tuple[float, ...]
+
     def __init__(self, axes: Iterable[ArrayAxis | str], staggers: Iterable[Stagger | str]) -> None:
         axes = tuple(ArrayAxis.parse(axis) for axis in axes)
         staggers = tuple(Stagger(s) for s in staggers)
@@ -141,7 +147,7 @@ class ArrayLayout:
             raise ValueError("Axes must be unique")
 
         # set attributes
-        object.__setattr__(self, "ndim", len(self.axes))
+        object.__setattr__(self, "ndim", len(axes))
         object.__setattr__(self, "axes", axes)
         object.__setattr__(self, "staggers", staggers)
         object.__setattr__(self, "offsets", tuple(s.offset for s in staggers))

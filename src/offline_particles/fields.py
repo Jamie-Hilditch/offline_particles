@@ -68,22 +68,22 @@ class Field(abc.ABC):
     @property
     def ndim(self) -> int:
         """Number of dimensions in the spatial array."""
-        return self._layout.ndim
+        return self.layout.ndim
 
     @property
     def axes(self) -> tuple[ArrayAxis, ...]:
         """Axes of the spatial array."""
-        return self._layout.axes
+        return self.layout.axes
 
     @property
     def staggers(self) -> tuple[Stagger, ...]:
         """Staggering of the dimensions."""
-        return self._layout.staggers
+        return self.layout.staggers
 
     @property
-    def offsets(self) -> tuple[float]:
+    def offsets(self) -> tuple[float, ...]:
         """Offsets for all dimensions."""
-        return self._layout.offsets
+        return self.layout.offsets
 
     @property
     def attrs(self) -> dict[str, Any]:
@@ -114,8 +114,8 @@ class Field(abc.ABC):
         return self._layout.ndim
 
     @abc.abstractmethod
-    def validate_shape(self, simulation_shape: SimulationSize) -> None:
-        """Validate that the field's shape is compatible with the domain shape."""
+    def validate_shape(self, simulation_size: SimulationSize) -> None:
+        """Validate that the field's shape is compatible with the sizes of the simulation dimensions."""
         pass
 
     @abc.abstractmethod
@@ -173,10 +173,10 @@ class StaticField(Field):
         """Shape of the spatial dimensions of the field."""
         return self._data.shape
 
-    def validate_shape(self, simulation_shape: SimulationSize) -> None:
-        """Validate that the field's shape is compatible with the simulation shape."""
+    def validate_shape(self, simulation_size: SimulationSize) -> None:
+        """Validate that the field's shape is compatible with the sizes of the simulation dimensions."""
         for data_size, axis, stagger in zip(self._data.shape, self.axes, self.staggers):
-            simulation_axis_size = simulation_shape.axis_size(axis)
+            simulation_axis_size = simulation_size.axis_size(axis)
             expected_size = stagger.expected_size(simulation_axis_size)
             if data_size != expected_size:
                 raise ValueError(
@@ -301,7 +301,7 @@ class StaticField(Field):
         regardless of the value of ``ignore_missing_dims``.
         """
         # build an array layout from the provided dims
-        dims_mapping = dims.copy()  # make a copy to avoid mutating the input
+        dims_mapping = dict(dims)  # make a copy to avoid mutating the input
         axes = []
         staggers = []
         for dim in data.dims:
@@ -309,26 +309,27 @@ class StaticField(Field):
                 raise ValueError(f"Dimension '{dim}' in data is missing from dims mapping.")
             axis, stagger = dims_mapping.pop(dim)
             axes.append(ArrayAxis.parse(axis))
-            staggers.append(Stagger.parse(stagger))
+            staggers.append(Stagger(stagger))
 
         # error if there are any extra dimensions in dims that were not in data
         if (not ignore_missing_dims) and dims_mapping:
             raise ValueError(f"Dimensions in dims mapping not found in data: {list(dims_mapping.keys())}")
 
-        layout = ArrayLayout(axes, staggers)
         array = data.data
 
         # create spatial array
         if isinstance(array, da.Array):
             return cls.from_dask(
                 data=array,
-                layout=layout,
+                axes=tuple(axes),
+                staggers=tuple(staggers),
                 attrs=data.attrs,
             )
         else:
             return cls.from_arraylike(
                 data=array,
-                layout=layout,
+                axes=tuple(axes),
+                staggers=tuple(staggers),
                 attrs=data.attrs,
             )
 
@@ -425,17 +426,18 @@ class TimeDependentField(Field):
         """Number of spatial dimensions of the field."""
         return len(self.spatial_shape)
 
-    def validate_shape(self, simulation_shape: tuple[int, int, int, int]) -> None:
-        """Validate that the field's shape is compatible with the domain shape."""
-        staggered_shape = (
-            simulation_shape[0],
-            self.z_stagger.expected_size(simulation_shape[1]),
-            self.y_stagger.expected_size(simulation_shape[2]),
-            self.x_stagger.expected_size(simulation_shape[3]),
-        )
-        expected_shape = tuple(s for s in staggered_shape if s is not None)
-        if self._data.shape != expected_shape:
-            raise ValueError(f"Expected shape {expected_shape} but data has shape {self._data.shape}")
+    def validate_shape(self, simulation_size: SimulationSize) -> None:
+        """Validate that the field's shape is compatible with the sizes of the simulation dimensions."""
+        # first validate time dimension
+        if self._data.shape[0] != simulation_size.time:
+            raise ValueError(f"Expected size {simulation_size.time} along time axis but got {self._data.shape[0]}")
+        for data_size, axis, stagger in zip(self._data.shape[1:], self.axes, self.staggers):
+            simulation_axis_size = simulation_size.axis_size(axis)
+            expected_size = stagger.expected_size(simulation_axis_size)
+            if data_size != expected_size:
+                raise ValueError(
+                    f"Expected size {expected_size} along axis {axis} but got {self._data.shape[axis.value]}"
+                )
 
     @property
     def previous_time_slice(self) -> SpatialArray:
@@ -663,7 +665,7 @@ class TimeDependentField(Field):
         data = data.transpose([time_dim] + spatial_dims)
 
         # build an array layout from the provided dims
-        dims_mapping = dims.copy()  # make a copy to avoid mutating the input
+        dims_mapping = dict(dims)  # make a copy to avoid mutating the input
         axes = []
         staggers = []
         for dim in data.dims:
@@ -671,26 +673,27 @@ class TimeDependentField(Field):
                 raise ValueError(f"Dimension '{dim}' in data is missing from dims mapping.")
             axis, stagger = dims_mapping.pop(dim)
             axes.append(ArrayAxis.parse(axis))
-            staggers.append(Stagger.parse(stagger))
+            staggers.append(Stagger(stagger))
 
         # error if there are any extra dimensions in dims that were not in data
         if (not ignore_missing_dims) and dims_mapping:
             raise ValueError(f"Dimensions in dims mapping not found in data: {list(dims_mapping.keys())}")
 
-        layout = ArrayLayout(axes, staggers)
         array = data.data
 
         # create field
         if isinstance(array, da.Array):
             return cls.from_dask(
                 data=array,
-                layout=layout,
+                axes=tuple(axes),
+                staggers=tuple(staggers),
                 attrs=data.attrs,
             )
         else:
             return cls.from_arraylike(
                 data=array,
-                layout=layout,
+                axes=tuple(axes),
+                staggers=tuple(staggers),
                 attrs=data.attrs,
             )
 
