@@ -22,10 +22,9 @@ class Stagger(enum.StrEnum):
     RIGHT = "right"
     INNER = "inner"
     OUTER = "outer"
-    INVARIANT = "invariant"
 
     @property
-    def offset(self) -> float | None:
+    def offset(self) -> float:
         """Offset between centered indices and staggered indices."""
         match self:
             case Stagger.CENTER:
@@ -34,10 +33,8 @@ class Stagger(enum.StrEnum):
                 return 0.5
             case Stagger.RIGHT | Stagger.INNER:
                 return -0.5
-            case Stagger.INVARIANT:
-                return None
 
-    def expected_size(self, N: int) -> int | None:
+    def expected_size(self, N: int) -> int:
         """Expected size of dimension given size of centered dimension."""
         match self:
             case Stagger.CENTER | Stagger.LEFT | Stagger.RIGHT:
@@ -46,16 +43,6 @@ class Stagger(enum.StrEnum):
                 return N + 1
             case Stagger.INNER:
                 return N - 1
-            case Stagger.INVARIANT:
-                return None
-
-    @property
-    def is_invariant(self) -> bool:
-        return self is Stagger.INVARIANT
-
-    @property
-    def is_active(self) -> bool:
-        return self is not Stagger.INVARIANT
 
     @property
     def on_face(self) -> bool:
@@ -70,9 +57,6 @@ class Stagger(enum.StrEnum):
 ALL_STAGGERS = frozenset(Stagger)
 CENTERED_STAGGERS = frozenset({Stagger.CENTER})
 ON_FACE_STAGGERS = frozenset({s for s in Stagger if s.on_face})
-ACTIVE_STAGGERS = frozenset({s for s in Stagger if s.is_active})
-INVARIANT_STAGGERS = frozenset({Stagger.INVARIANT})
-INACTIVE_STAGGERS = frozenset({s for s in Stagger if not s.is_active})
 
 
 class ArrayAxis(enum.StrEnum):
