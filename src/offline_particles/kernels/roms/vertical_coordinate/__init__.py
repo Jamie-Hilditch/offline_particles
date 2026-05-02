@@ -21,7 +21,7 @@ __all__ = [
 z_declaration = ParticlePropertyDeclaration("z", np.float64)
 hc_declaration = ScalarDeclaration("hc", np.float64)
 NZ_declaration = ScalarDeclaration("NZ", np.int32)
-h_declaration = FieldDataDeclaration("h", np.float64, [validate_ZYX_ordering])
+h_declaration = FieldDataDeclaration("h", np.float64, [validate_YX_ordering])
 zeta_declaration = FieldDataDeclaration("zeta", np.float64, [validate_YX_ordering])
 C_declaration = FieldDataDeclaration("C", np.float64, [validate_Z_ordering])
 
