@@ -4,6 +4,7 @@ import abc
 import dataclasses
 import enum
 import logging
+from typing import Iterable
 
 import dask.array as da
 import numpy as np
@@ -122,6 +123,34 @@ class ArrayAxis(enum.StrEnum):
         except KeyError:
             pass
         raise ValueError(f"'{axis}' is not a valid ArrayAxis value or name")
+
+
+class ArrayLayout:
+    """Specification of a spatial array's axes and staggering."""
+
+    __slots__ = ("ndims", "axes", "staggers", "offsets")
+
+    def __init__(self, axes: Iterable[ArrayAxis | str], staggers: Iterable[Stagger | str]) -> None:
+        axes = tuple(ArrayAxis.parse(axis) for axis in axes)
+        staggers = tuple(Stagger(s) for s in staggers)
+
+        # validation
+        if len(axes) != len(staggers):
+            raise ValueError("Number of axes and staggers must match")
+        if len(set(axes)) != len(axes):
+            raise ValueError("Axes must be unique")
+
+        # set attributes
+        object.__setattr__(self, "ndims", len(self.axes))
+        object.__setattr__(self, "axes", axes)
+        object.__setattr__(self, "staggers", staggers)
+        object.__setattr__(self, "offsets", tuple(s.offset for s in staggers))
+
+    def __setattr__(self, name, value):
+        raise AttributeError("ArrayLayout is immutable")
+
+    def __delattr__(self, name):
+        raise AttributeError("ArrayLayout is immutable")
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
