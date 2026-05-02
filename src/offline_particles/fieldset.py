@@ -5,7 +5,7 @@ from typing import Any, ItemsView, KeysView, Mapping, ValuesView
 
 import numpy as np
 
-from .fields import Field
+from .fields import Field, SimulationSize
 
 
 class Fieldset:
@@ -18,8 +18,11 @@ class Fieldset:
         z_size: size of the centered z dimension
         y_size: size of the centered y dimension
         x_size: size of the centered x dimension
-        constants: optional keyword argument, dictionary of constants to add to the fieldset
-        fields: fields to add to the fieldset as keyword arguments
+        fields: optional dictionary of fields to add to the fieldset
+        constants: optional dictionary of constants to add to the fieldset
+        zidx_bounds: optional bounds of the z index (default: (0, z_size - 1))
+        yidx_bounds: optional bounds of the y index (default: (0, y_size - 1))
+        xidx_bounds: optional bounds of the x index (default: (0, x_size - 1))
     """
 
     def __init__(
@@ -29,32 +32,34 @@ class Fieldset:
         y_size: int,
         x_size: int,
         *,
+        fields: Mapping[str, Field] | None = None,
         constants: Mapping[str, Any] | None = None,
         zidx_bounds: tuple[float, float] | None = None,
         yidx_bounds: tuple[float, float] | None = None,
         xidx_bounds: tuple[float, float] | None = None,
-        **fields: Field,
     ) -> None:
         super().__init__()
         # sizes of centered dimensions
-        self._t_size = t_size
-        self._z_size = z_size
-        self._y_size = y_size
-        self._x_size = x_size
+        self._simulation_size = SimulationSize(t_size=t_size, z_size=z_size, y_size=y_size, x_size=x_size)
 
         # set default index bounds if not provided
         if zidx_bounds is None:
-            zidx_bounds = (0, z_size - 1)
+            zidx_bounds = (0, self._simulation_size.z - 1)
         if yidx_bounds is None:
-            yidx_bounds = (0, y_size - 1)
+            yidx_bounds = (0, self._simulation_size.y - 1)
         if xidx_bounds is None:
-            xidx_bounds = (0, x_size - 1)
+            xidx_bounds = (0, self._simulation_size.x - 1)
         self._zidx_bounds = (np.float64(zidx_bounds[0]), np.float64(zidx_bounds[1]))
         self._yidx_bounds = (np.float64(yidx_bounds[0]), np.float64(yidx_bounds[1]))
         self._xidx_bounds = (np.float64(xidx_bounds[0]), np.float64(xidx_bounds[1]))
 
         self._fields: dict[str, Field] = {}
         self._constants: dict[str, np.generic] = {}
+
+        # add fields
+        if fields is not None:
+            for name, field in fields.items():
+                self.add_field(name, field)
 
         # add constants
         if constants is not None:
@@ -69,29 +74,30 @@ class Fieldset:
         self.add_constant("xidx_min", self._xidx_bounds[0])
         self.add_constant("xidx_max", self._xidx_bounds[1])
 
-        # add fields
-        for name, field in fields.items():
-            self.add_field(name, field)
+    @property
+    def simulation_size(self) -> SimulationSize:
+        """Simulation size as a SimulationSize named tuple."""
+        return self._simulation_size
 
     @property
     def t_size(self) -> int:
         """Size of the time dimension."""
-        return self._t_size
+        return self.simulation_size.t
 
     @property
     def z_size(self) -> int:
         """Size of the centered z dimension."""
-        return self._z_size
+        return self.simulation_size.z
 
     @property
     def y_size(self) -> int:
         """Size of the centered y dimension."""
-        return self._y_size
+        return self.simulation_size.y
 
     @property
     def x_size(self) -> int:
         """Size of the centered x dimension."""
-        return self._x_size
+        return self.simulation_size.x
 
     @property
     def zidx_bounds(self) -> tuple[float, float]:
@@ -137,11 +143,6 @@ class Fieldset:
     def xidx_max(self) -> float:
         """Maximum x index."""
         return self._xidx_bounds[1]
-
-    @property
-    def simulation_shape(self) -> tuple[int, int, int, int]:
-        """4D shape of the simulation assuming centered grids."""
-        return (self._t_size, self._z_size, self._y_size, self._x_size)
 
     @property
     def fields(self) -> Mapping[str, Field]:
