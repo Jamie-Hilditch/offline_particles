@@ -58,7 +58,7 @@ class FieldDataDeclaration(KernelInputDeclaration):
         dtype: npt.DTypeLike,
         layout_validators: Iterable[LayoutValidator] = (),
     ) -> None:
-        super().__init__(name, dtype)
+        KernelInputDeclaration.__init__(self, name, dtype)
         object.__setattr__(self, "_layout_validators", tuple(layout_validators))
 
     def validate_field(self, field: Field) -> None:

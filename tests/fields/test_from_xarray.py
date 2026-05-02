@@ -17,26 +17,21 @@ class TestStaticFieldFromXarray:
         assert field.spatial_shape == (3, 4, 5)
         assert field.staggers == (Stagger.CENTER, Stagger.CENTER, Stagger.CENTER)
 
-    def test_3d_positional_mapping(self) -> None:
-        """Should work when dims is passed as a positional mapping instead of kwargs."""
+    def test_3d_dims_as_variable(self) -> None:
+        """dims mapping can be passed as a variable."""
         data = xr.DataArray(np.ones((3, 4, 5), dtype=np.float64), dims=["z", "y", "x"])
         dims = {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")}
         field = StaticField.from_xarray(data, dims)
         assert isinstance(field, StaticField)
         assert field.spatial_shape == (3, 4, 5)
 
-    def test_positional_mapping_supports_non_identifier_dim_names(self) -> None:
-        """Dimension names that are not valid Python identifiers require the mapping style."""
+    def test_non_identifier_dim_names(self) -> None:
+        """Dimension names that are not valid Python identifiers are supported."""
         data = xr.DataArray(np.ones((3, 4), dtype=np.float64), dims=["y-coord", "x-coord"])
         dims = {"y-coord": ("Y", "center"), "x-coord": ("X", "center")}
         field = StaticField.from_xarray(data, dims)
         assert isinstance(field, StaticField)
         assert field.spatial_shape == (3, 4)
-
-    def test_error_both_dims_and_kwargs(self) -> None:
-        data = xr.DataArray(np.ones((3, 4, 5), dtype=np.float64), dims=["z", "y", "x"])
-        with pytest.raises(TypeError, match="cannot specify both 'dims' and keyword arguments"):
-            StaticField.from_xarray(data, {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")})
 
     def test_2d_numpy_backed_no_z(self) -> None:
         """Creating from a 2D (y, x) DataArray should succeed (Z axis absent)."""
@@ -67,13 +62,14 @@ class TestStaticFieldFromXarray:
         field = StaticField.from_xarray(data, {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")})
         assert field.attrs == {"units": "m/s"}
 
-    def test_dim_order_independent(self) -> None:
-        """DataArray with (x, y, z) order should be transposed correctly."""
+    def test_dim_order_preserved(self) -> None:
+        """Field preserves the dimension ordering of the input DataArray."""
         data = xr.DataArray(np.arange(60, dtype=np.float64).reshape(5, 4, 3), dims=["x", "y", "z"])
         field = StaticField.from_xarray(data, {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")})
         assert isinstance(field, StaticField)
-        # after transpose to (z, y, x) shape should be (3, 4, 5)
-        assert field.spatial_shape == (3, 4, 5)
+        # field preserves the dim ordering of the xarray DataArray (x, y, z) → shape (5, 4, 3)
+        assert field.axes == (ArrayAxis.X, ArrayAxis.Y, ArrayAxis.Z)
+        assert field.spatial_shape == (5, 4, 3)
 
     def test_aliases_resolve_correctly(self) -> None:
         # "DEPTH" → ArrayAxis.Z, "LATITUDE" → ArrayAxis.Y, "LON" → ArrayAxis.X
@@ -89,18 +85,20 @@ class TestStaticFieldFromXarray:
 
     def test_validation_error_missing_dim(self) -> None:
         data = xr.DataArray(np.ones((3, 4, 5)), dims=["z", "y", "x"])
-        with pytest.raises(ValueError, match="Mismatch"):
+        with pytest.raises(ValueError, match="Dimension 'x' in data is missing from dims mapping"):
             StaticField.from_xarray(data, {"z": ("Z", "center"), "y": ("Y", "center")})  # missing x
 
     def test_validation_error_extra_dim(self) -> None:
         data = xr.DataArray(np.ones((4, 5)), dims=["y", "x"])
-        with pytest.raises(ValueError, match="Mismatch"):
+        with pytest.raises(ValueError, match="Dimensions in dims mapping not found in data"):
             StaticField.from_xarray(data, {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")})  # extra z
 
     def test_validation_error_duplicate_axis(self) -> None:
         data = xr.DataArray(np.ones((3, 4, 5)), dims=["z", "y", "x"])
-        with pytest.raises(ValueError, match="Multiple dimensions mapped"):
-            StaticField.from_xarray(data, {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")})
+        with pytest.raises(ValueError, match="Axes must be unique"):
+            StaticField.from_xarray(
+                data, {"z": ("Z", "center"), "y": ("Z", "center"), "x": ("X", "center")}
+            )  # both z and y map to Z axis
 
 
 class TestTimeDependentFieldFromXarray:
@@ -112,16 +110,16 @@ class TestTimeDependentFieldFromXarray:
         assert isinstance(field, TimeDependentField)
         assert field.spatial_shape == (4, 5, 6)
 
-    def test_4d_positional_mapping(self) -> None:
-        """Should work when dims is passed as a positional mapping instead of kwargs."""
+    def test_4d_dims_as_variable(self) -> None:
+        """dims mapping can be passed as a variable."""
         data = xr.DataArray(np.ones((3, 4, 5, 6), dtype=np.float64), dims=["t", "z", "y", "x"])
         dims = {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")}
         field = TimeDependentField.from_xarray(data, "t", dims)
         assert isinstance(field, TimeDependentField)
         assert field.spatial_shape == (4, 5, 6)
 
-    def test_positional_mapping_supports_non_identifier_dim_names(self) -> None:
-        """Dimension names that are not valid Python identifiers require the mapping style."""
+    def test_non_identifier_dim_names(self) -> None:
+        """Dimension names that are not valid Python identifiers are supported."""
         data = xr.DataArray(np.ones((3, 4, 5), dtype=np.float64), dims=["t", "y-coord", "x-coord"])
         dims = {"y-coord": ("Y", "center"), "x-coord": ("X", "center")}
         field = TimeDependentField.from_xarray(data, "t", dims)
@@ -159,15 +157,16 @@ class TestTimeDependentFieldFromXarray:
         field = TimeDependentField.from_xarray(data, "t", {"y": ("Y", "center"), "x": ("X", "center")})
         assert field.attrs == {"units": "m/s"}
 
-    def test_dim_order_independent(self) -> None:
-        """DataArray with (z, t, x, y) order should be transposed correctly."""
+    def test_time_dim_moved_to_front(self) -> None:
+        """DataArray with time not at first position: time is moved to front, spatial ordering preserved."""
         data = xr.DataArray(np.ones((4, 3, 6, 5), dtype=np.float64), dims=["z", "t", "x", "y"])
         field = TimeDependentField.from_xarray(
             data, "t", {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")}
         )
         assert isinstance(field, TimeDependentField)
-        # after transpose to (t, z, y, x) shape should be (3, 4, 5, 6)
-        assert field.data.shape == (3, 4, 5, 6)
+        # time moved to front, spatial dims keep original order (z, x, y) → shape (3, 4, 6, 5)
+        assert field.data.shape == (3, 4, 6, 5)
+        assert field.axes == (ArrayAxis.Z, ArrayAxis.X, ArrayAxis.Y)
 
     def test_validation_error_missing_time_dim(self) -> None:
         data = xr.DataArray(np.ones((3, 4, 5)), dims=["t", "y", "x"])
@@ -176,19 +175,19 @@ class TestTimeDependentFieldFromXarray:
 
     def test_validation_error_missing_spatial_dim(self) -> None:
         data = xr.DataArray(np.ones((3, 4, 5)), dims=["t", "y", "x"])
-        with pytest.raises(ValueError, match="Mismatch"):
+        with pytest.raises(ValueError, match="Dimension 'x' in data is missing from dims mapping"):
             TimeDependentField.from_xarray(data, "t", {"y": ("Y", "center")})  # missing x
 
     def test_validation_error_extra_spatial_dim(self) -> None:
         data = xr.DataArray(np.ones((3, 4, 5)), dims=["t", "y", "x"])
-        with pytest.raises(ValueError, match="Mismatch"):
+        with pytest.raises(ValueError, match="Dimensions in dims mapping not found in data"):
             TimeDependentField.from_xarray(
                 data, "t", {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")}
             )
 
     def test_validation_error_duplicate_axis(self) -> None:
         data = xr.DataArray(np.ones((3, 4, 5, 6)), dims=["t", "z", "y", "x"])
-        with pytest.raises(ValueError, match="Multiple dimensions mapped"):
+        with pytest.raises(ValueError, match="Axes must be unique"):
             TimeDependentField.from_xarray(
-                data, "t", {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")}
-            )
+                data, "t", {"z": ("Z", "center"), "y": ("Z", "center"), "x": ("X", "center")}
+            )  # both z and y map to Z axis

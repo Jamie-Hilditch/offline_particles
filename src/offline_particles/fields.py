@@ -658,7 +658,7 @@ class TimeDependentField(Field):
         spatial_dims = [dim for dim in data.dims if dim != time_dim]
 
         # move time dim to the front if it's not already
-        data = data.transpose([time_dim] + spatial_dims)
+        data = data.transpose(time_dim, *spatial_dims)
 
         # build an array layout from the provided dims
         dims_mapping = dict(dims)  # make a copy to avoid mutating the input
