@@ -435,9 +435,7 @@ class TimeDependentField(Field):
             simulation_axis_size = simulation_size.axis_size(axis)
             expected_size = stagger.expected_size(simulation_axis_size)
             if data_size != expected_size:
-                raise ValueError(
-                    f"Expected size {expected_size} along axis {axis} but got {self._data.shape[axis.value]}"
-                )
+                raise ValueError(f"Expected size {expected_size} along axis {axis} but got {data_size}")
 
     @property
     def previous_time_slice(self) -> SpatialArray:
