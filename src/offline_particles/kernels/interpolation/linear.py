@@ -4,9 +4,17 @@ from typing import Literal
 
 import numpy as np
 
-from ...spatial_arrays import ACTIVE_STAGGERS, INACTIVE_STAGGERS
 from .._kernels import BoundKernel, FieldDataDeclaration, ParticleKernel, ParticlePropertyDeclaration
-from ..common_inputs import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
+from ..input_declarations import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
+from ..layout_validators import (
+    validate_X_ordering,
+    validate_Y_ordering,
+    validate_YX_ordering,
+    validate_Z_ordering,
+    validate_ZX_ordering,
+    validate_ZY_ordering,
+    validate_ZYX_ordering,
+)
 from ._linear import (
     bilinear_interpolation_accumulation_kernel_function,
     bilinear_interpolation_kernel_function,
@@ -27,25 +35,17 @@ __all__ = [
 output_declaration = ParticlePropertyDeclaration("output", np.float64)
 field_data_declarations_1d = {
     "zidx": FieldDataDeclaration(
-        "field", np.float64, z_staggers=ACTIVE_STAGGERS, y_staggers=INACTIVE_STAGGERS, x_staggers=INACTIVE_STAGGERS
+        "field",
+        np.float64,
+        [validate_Z_ordering],
     ),
-    "yidx": FieldDataDeclaration(
-        "field", np.float64, z_staggers=INACTIVE_STAGGERS, y_staggers=ACTIVE_STAGGERS, x_staggers=INACTIVE_STAGGERS
-    ),
-    "xidx": FieldDataDeclaration(
-        "field", np.float64, z_staggers=INACTIVE_STAGGERS, y_staggers=INACTIVE_STAGGERS, x_staggers=ACTIVE_STAGGERS
-    ),
+    "yidx": FieldDataDeclaration("field", np.float64, [validate_Y_ordering]),
+    "xidx": FieldDataDeclaration("field", np.float64, [validate_X_ordering]),
 }
 field_data_declarations_2d = {
-    ("zidx", "yidx"): FieldDataDeclaration(
-        "field", np.float64, z_staggers=ACTIVE_STAGGERS, y_staggers=ACTIVE_STAGGERS, x_staggers=INACTIVE_STAGGERS
-    ),
-    ("zidx", "xidx"): FieldDataDeclaration(
-        "field", np.float64, z_staggers=ACTIVE_STAGGERS, y_staggers=INACTIVE_STAGGERS, x_staggers=ACTIVE_STAGGERS
-    ),
-    ("yidx", "xidx"): FieldDataDeclaration(
-        "field", np.float64, z_staggers=INACTIVE_STAGGERS, y_staggers=ACTIVE_STAGGERS, x_staggers=ACTIVE_STAGGERS
-    ),
+    ("zidx", "yidx"): FieldDataDeclaration("field", np.float64, [validate_ZY_ordering]),
+    ("zidx", "xidx"): FieldDataDeclaration("field", np.float64, [validate_ZX_ordering]),
+    ("yidx", "xidx"): FieldDataDeclaration("field", np.float64, [validate_YX_ordering]),
 }
 
 
@@ -89,9 +89,7 @@ def _trilinear_interpolation_kernel() -> ParticleKernel:
             output_declaration,
         ],
         field_data=[
-            FieldDataDeclaration(
-                "field", np.float64, z_staggers=ACTIVE_STAGGERS, y_staggers=ACTIVE_STAGGERS, x_staggers=ACTIVE_STAGGERS
-            ),
+            FieldDataDeclaration("field", np.float64, [validate_ZYX_ordering]),
         ],
     )
 
@@ -136,9 +134,7 @@ def _trilinear_interpolation_accumulation_kernel() -> ParticleKernel:
             output_declaration,
         ],
         field_data=[
-            FieldDataDeclaration(
-                "field", np.float64, z_staggers=ACTIVE_STAGGERS, y_staggers=ACTIVE_STAGGERS, x_staggers=ACTIVE_STAGGERS
-            ),
+            FieldDataDeclaration("field", np.float64, [validate_ZYX_ordering]),
         ],
     )
 

@@ -2,7 +2,6 @@
 
 import numpy as np
 
-from ....spatial_arrays import ACTIVE_STAGGERS, INACTIVE_STAGGERS
 from ..._kernels import (
     BoundKernel,
     FieldDataDeclaration,
@@ -10,7 +9,8 @@ from ..._kernels import (
     ParticlePropertyDeclaration,
     ScalarDeclaration,
 )
-from ...common_inputs import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
+from ...input_declarations import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
+from ...layout_validators import validate_YX_ordering, validate_Z_ordering, validate_ZYX_ordering
 from .vertical_coordinate import compute_z_kernel_function, compute_zidx_kernel_function
 
 __all__ = [
@@ -21,15 +21,9 @@ __all__ = [
 z_declaration = ParticlePropertyDeclaration("z", np.float64)
 hc_declaration = ScalarDeclaration("hc", np.float64)
 NZ_declaration = ScalarDeclaration("NZ", np.int32)
-h_declaration = FieldDataDeclaration(
-    "h", np.float64, z_staggers=INACTIVE_STAGGERS, y_staggers=ACTIVE_STAGGERS, x_staggers=ACTIVE_STAGGERS
-)
-zeta_declaration = FieldDataDeclaration(
-    "zeta", np.float64, z_staggers=INACTIVE_STAGGERS, y_staggers=ACTIVE_STAGGERS, x_staggers=ACTIVE_STAGGERS
-)
-C_declaration = FieldDataDeclaration(
-    "C", np.float64, z_staggers=ACTIVE_STAGGERS, y_staggers=INACTIVE_STAGGERS, x_staggers=INACTIVE_STAGGERS
-)
+h_declaration = FieldDataDeclaration("h", np.float64, [validate_ZYX_ordering])
+zeta_declaration = FieldDataDeclaration("zeta", np.float64, [validate_YX_ordering])
+C_declaration = FieldDataDeclaration("C", np.float64, [validate_Z_ordering])
 
 
 def construct_compute_z_kernel(

@@ -1,7 +1,7 @@
 import numpy as np
 
 from .._kernels import BoundKernel, ParticleKernel, ScalarDeclaration
-from ..common_inputs import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
+from ..input_declarations import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
 from ._validation import domain_bounds, finite_indices
 
 __all__ = [

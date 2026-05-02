@@ -3,14 +3,14 @@
 import numpy as np
 import pytest
 
-from offline_particles.fields import StaticField
+from offline_particles.fields import SimulationSize, StaticField
 from offline_particles.fieldset import Fieldset
 
 
 def _make_static_field(z: int, y: int, x: int) -> StaticField:
     """Create a minimal StaticField for testing."""
     data = np.zeros((z, y, x), dtype=np.float64)
-    return StaticField.from_numpy(data, "center", "center", "center")
+    return StaticField.from_numpy(data, axes=("Z", "Y", "X"), staggers=("center", "center", "center"))
 
 
 # ---------------------------------------------------------------------------
@@ -26,9 +26,9 @@ class TestFieldsetConstruction:
         assert fs.y_size == 5
         assert fs.x_size == 6
 
-    def test_simulation_shape(self) -> None:
+    def test_simulation_size(self) -> None:
         fs = Fieldset(10, 4, 5, 6)
-        assert fs.simulation_shape == (10, 4, 5, 6)
+        assert fs.simulation_size == SimulationSize(10, 4, 5, 6)
 
     def test_default_index_bounds(self) -> None:
         fs = Fieldset(10, 4, 5, 6)
@@ -58,7 +58,7 @@ class TestFieldsetConstruction:
 
     def test_fields_kwarg(self) -> None:
         field = _make_static_field(4, 5, 6)
-        fs = Fieldset(10, 4, 5, 6, u=field)
+        fs = Fieldset(10, 4, 5, 6, fields={"u": field})
         assert "u" in fs.fields
 
 

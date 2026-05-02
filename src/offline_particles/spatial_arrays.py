@@ -197,7 +197,7 @@ class SpatialArray(abc.ABC):
         return self._layout.staggers
 
     @property
-    def offsets(self) -> tuple[float]:
+    def offsets(self) -> tuple[float, ...]:
         """Offsets for all dimensions."""
         return self._layout.offsets
 
@@ -306,7 +306,7 @@ class ChunkedDaskArray(SpatialArray):
         self._chunk_boundaries = tuple(np.cumulative_sum(chunk, include_initial=True) for chunk in self._chunks)
         # placeholders for array and bounds of current subset
         self._subset: npt.NDArray[np.generic] = np.zeros((0,) * data.ndim, data.dtype)
-        self._subset_bounds: tuple[tuple[int, int], ...] = ((0, 0),) * self._ndim
+        self._subset_bounds: tuple[tuple[int, int], ...] = ((0, 0),) * self.ndim
 
     @property
     def dtype(self) -> np.dtype:
