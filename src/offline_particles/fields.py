@@ -13,7 +13,7 @@ import numpy as np
 import numpy.typing as npt
 import xarray as xr
 
-from .spatial_arrays import ArrayAxis, BBox, ChunkedDaskArray, NumpyArray, SpatialArray, Stagger
+from .spatial_arrays import ArrayAxis, ArrayLayout, BBox, ChunkedDaskArray, NumpyArray, SpatialArray, Stagger
 
 logger = logging.getLogger(__name__)
 
@@ -27,80 +27,63 @@ class FieldData:
         return f"FieldData(array(shape={self.array.shape}, dtype={self.array.dtype}), offsets={self.offsets})"
 
 
+@dataclasses.dataclass(frozen=True, slots=True)
+class SimulationSize:
+    time: int
+    z: int
+    y: int
+    x: int
+
+    def axis_size(self, axis: ArrayAxis) -> int:
+        match axis:
+            case ArrayAxis.Z:
+                return self.z
+            case ArrayAxis.Y:
+                return self.y
+            case ArrayAxis.X:
+                return self.x
+            case _:
+                raise ValueError(f"Invalid axis: {axis}")
+
+
 class Field(abc.ABC):
     """Abstract base class for fields used in particle simulations."""
 
     def __init__(
         self,
-        z_stagger: Stagger,
-        y_stagger: Stagger,
-        x_stagger: Stagger,
+        layout: ArrayLayout,
         *,
         attrs: dict[str, Any] | None = None,
     ) -> None:
-        self._z_stagger = z_stagger
-        self._y_stagger = y_stagger
-        self._x_stagger = x_stagger
-        self._z_offset = z_stagger.offset
-        self._y_offset = y_stagger.offset
-        self._x_offset = x_stagger.offset
+        self._layout = layout
         if attrs is None:
             attrs = {}
         self._attrs = attrs
 
     @property
-    def z_stagger(self) -> Stagger:
-        """Staggering in the vertical direction."""
-        return self._z_stagger
+    def ndim(self) -> int:
+        """Number of dimensions in the spatial array."""
+        return self._layout.ndim
 
     @property
-    def y_stagger(self) -> Stagger:
-        """Stagger in the eta (y) direction."""
-        return self._y_stagger
+    def axes(self) -> tuple[ArrayAxis, ...]:
+        """Axes of the spatial array."""
+        return self._layout.axes
 
     @property
-    def x_stagger(self) -> Stagger:
-        """Stagger in the xi (x) direction."""
-        return self._x_stagger
+    def staggers(self) -> tuple[Stagger, ...]:
+        """Staggering of the dimensions."""
+        return self._layout.staggers
 
     @property
-    def stagger(self) -> tuple[Stagger, Stagger, Stagger]:
-        """Staggering of the (z, y, x) dimensions."""
-        return (self._z_stagger, self._y_stagger, self._x_stagger)
+    def offsets(self) -> tuple[float]:
+        """Offsets for all dimensions."""
+        return self._layout.offsets
 
     @property
     def attrs(self) -> dict[str, Any]:
         """Attributes associated with the field."""
         return self._attrs
-
-    @property
-    def z_offset(self) -> float | None:
-        """Offset of the z dimension."""
-        return self._z_offset
-
-    @property
-    def y_offset(self) -> float | None:
-        """Offset of the y dimension."""
-        return self._y_offset
-
-    @property
-    def x_offset(self) -> float | None:
-        """Offset of the x dimension."""
-        return self._x_offset
-
-    @property
-    def all_offsets(self) -> tuple[float | None, float | None, float | None]:
-        """Offset of the (z, y, x) dimensions."""
-        return (self._z_offset, self._y_offset, self._x_offset)
-
-    @property
-    def dmask(self) -> tuple[bool, bool, bool]:
-        """Mask indicating which dimensions are active."""
-        return (
-            self._z_stagger.is_active,
-            self._y_stagger.is_active,
-            self._x_stagger.is_active,
-        )
 
     @property
     @abc.abstractmethod
@@ -121,13 +104,12 @@ class Field(abc.ABC):
         pass
 
     @property
-    @abc.abstractmethod
     def nspatial_dims(self) -> int:
         """Number of spatial dimensions of the field."""
-        pass
+        return self._layout.ndim
 
     @abc.abstractmethod
-    def validate_shape(self, simulation_shape: tuple[int, int, int, int]) -> None:
+    def validate_shape(self, simulation_shape: SimulationSize) -> None:
         """Validate that the field's shape is compatible with the domain shape."""
         pass
 
@@ -160,9 +142,7 @@ class StaticField(Field):
         attrs: dict[str, Any] | None = None,
     ):
         super().__init__(
-            z_stagger=data.z_stagger,
-            y_stagger=data.y_stagger,
-            x_stagger=data.x_stagger,
+            layout=data.layout,
             attrs=attrs,
         )
         self._data = data
@@ -173,15 +153,10 @@ class StaticField(Field):
         return self._data
 
     def __repr__(self) -> str:
-        return (
-            f"StaticField(shape={self._data.shape}, "
-            f"z_stagger={self.z_stagger}, "
-            f"y_stagger={self.y_stagger}, "
-            f"x_stagger={self.x_stagger})"
-        )
+        return f"StaticField(shape={self._data.shape}, dtype={self.dtype}, layout={self.layout})"
 
     def __str__(self) -> str:
-        return f"StaticField on z={self.z_stagger.name}, y={self.y_stagger.name}, x={self.x_stagger.name} grid"
+        return f"StaticField on {self._data.layout} grid"
 
     @property
     def dtype(self) -> np.dtype:
@@ -193,21 +168,15 @@ class StaticField(Field):
         """Shape of the spatial dimensions of the field."""
         return self._data.shape
 
-    @property
-    def nspatial_dims(self) -> int:
-        """Number of spatial dimensions of the field."""
-        return len(self.spatial_shape)
-
-    def validate_shape(self, simulation_shape: tuple[int, int, int, int]) -> None:
-        """Validate that the field's shape is compatible with the domain shape."""
-        staggered_shape = (
-            self.z_stagger.expected_size(simulation_shape[1]),
-            self.y_stagger.expected_size(simulation_shape[2]),
-            self.x_stagger.expected_size(simulation_shape[3]),
-        )
-        expected_shape = tuple(s for s in staggered_shape if s is not None)
-        if self._data.shape != expected_shape:
-            raise ValueError(f"Expected shape {expected_shape} but data has shape {self._data.shape}")
+    def validate_shape(self, simulation_shape: SimulationSize) -> None:
+        """Validate that the field's shape is compatible with the simulation shape."""
+        for data_size, axis, stagger in zip(self._data.shape, self.axes, self.staggers):
+            simulation_axis_size = simulation_shape.axis_size(axis)
+            expected_size = stagger.expected_size(simulation_axis_size)
+            if data_size != expected_size:
+                raise ValueError(
+                    f"Expected size {expected_size} along axis {axis} but got {self._data.shape[axis.value]}"
+                )
 
     def get_field_data(self, time_index: float, bbox: BBox) -> FieldData:
         """Get the field data at a given time index.
@@ -224,7 +193,7 @@ class StaticField(Field):
         Returns
         -------
         FieldData
-            Namedtuple containing the field data array and offsets.
+            Dataclass containing the field data array and offsets.
         """
         # For static fields, we ignore time_index
         array, offsets = self._data.get_data_subset(bbox)
@@ -234,20 +203,18 @@ class StaticField(Field):
     def from_numpy(
         cls,
         data: npt.NDArray,
-        z_stagger: Stagger | str,
-        y_stagger: Stagger | str,
-        x_stagger: Stagger | str,
+        axes: tuple[ArrayAxis | str, ...],
+        staggers: tuple[Stagger | str, ...],
         *,
         attrs: dict[str, Any] | None = None,
     ) -> "StaticField":
         """Create a StaticField from a NumPy array."""
+        layout = ArrayLayout(axes, staggers)
         if not isinstance(data, np.ndarray):
             raise TypeError(f"Expected a NumPy array, got {type(data).__name__}")
         spatial_array = NumpyArray(
             data=data,
-            z_stagger=Stagger(z_stagger),
-            y_stagger=Stagger(y_stagger),
-            x_stagger=Stagger(x_stagger),
+            layout=layout,
         )
         return cls(data=spatial_array, attrs=attrs)
 
@@ -255,20 +222,18 @@ class StaticField(Field):
     def from_dask(
         cls,
         data: da.Array,
-        z_stagger: Stagger | str,
-        y_stagger: Stagger | str,
-        x_stagger: Stagger | str,
+        axes: tuple[ArrayAxis | str, ...],
+        staggers: tuple[Stagger | str, ...],
         *,
         attrs: dict[str, Any] | None = None,
     ) -> "StaticField":
         """Create a StaticField from a chunked Dask array."""
+        layout = ArrayLayout(axes, staggers)
         if not isinstance(data, da.Array):
             raise TypeError(f"Expected a Dask array, got {type(data).__name__}")
         spatial_array = ChunkedDaskArray(
             data=data,
-            z_stagger=Stagger(z_stagger),
-            y_stagger=Stagger(y_stagger),
-            x_stagger=Stagger(x_stagger),
+            layout=layout,
         )
         return cls(data=spatial_array, attrs=attrs)
 
@@ -276,9 +241,8 @@ class StaticField(Field):
     def from_arraylike(
         cls,
         data: npt.ArrayLike,
-        z_stagger: Stagger | str,
-        y_stagger: Stagger | str,
-        x_stagger: Stagger | str,
+        axes: tuple[ArrayAxis | str, ...],
+        staggers: tuple[Stagger | str, ...],
         *,
         attrs: dict[str, Any] | None = None,
     ) -> "StaticField":
@@ -296,14 +260,15 @@ class StaticField(Field):
                 "Use StaticField.from_dask for Dask arrays.",
                 stacklevel=2,
             )
-        return cls.from_numpy(np.asarray(data), z_stagger, y_stagger, x_stagger, attrs=attrs)
+        return cls.from_numpy(np.asarray(data), axes, staggers, attrs=attrs)
 
     @classmethod
     def from_xarray(
         cls,
         data: xr.DataArray,
-        dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]] | None = None,
-        **dims_kwargs: tuple[ArrayAxis | str, Stagger | str],
+        dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]],
+        *,
+        ignore_missing_dims: bool = False,
     ) -> "StaticField":
         """Create a StaticField from an xarray DataArray.
 
@@ -311,57 +276,54 @@ class StaticField(Field):
         ----------
         data : xr.DataArray
             The input xarray DataArray containing the field data.
-        dims : Mapping[str, tuple[ArrayAxis | str, Stagger | str]], optional
+        dims : Mapping[str, tuple[ArrayAxis | str, Stagger | str]]
             Mapping of dimension names to ``(ArrayAxis, Stagger)`` tuples.
-            Cannot be combined with keyword arguments.
-        **dims_kwargs : tuple[ArrayAxis | str, Stagger | str]
-            Dimension mappings as keyword arguments.
-            Cannot be combined with the ``dims`` positional mapping.
+        ignore_missing_dims : bool, optional
+            If True, dimensions specified in ``dims`` that are not present in the DataArray will
+            be ignored. If False (default), a ValueError will be raised.
+
 
         Returns
         -------
         StaticField
             A StaticField instance created from the input xarray DataArray.
 
-        Raises
-        ------
-        TypeError
-            If both ``dims`` and keyword arguments are provided.
-
         Notes
         -----
-        The dimension names provided in ``dims`` (or as keyword arguments) must
-        match the dimensions of ``data`` exactly.
+        The dimension names provided in ``dims`` must match the dimensions of ``data`` exactly unless
+        ``ignore_missing_dims`` is True, in which case extra dimensions in ``dims`` that are not present
+        in ``data`` will be ignored. All dimensions in ``data`` must be accounted for in ``dims``
+        regardless of the value of ``ignore_missing_dims``.
         """
-        if dims is not None and dims_kwargs:
-            raise TypeError("cannot specify both 'dims' and keyword arguments")
-        resolved_dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]] = dims if dims is not None else dims_kwargs
+        # build an array layout from the provided dims
+        dims_mapping = dims.copy()  # make a copy to avoid mutating the input
+        axes = []
+        staggers = []
+        for dim in data.dims:
+            if dim not in dims:
+                raise ValueError(f"Dimension '{dim}' in data is missing from dims mapping.")
+            axis, stagger = dims_mapping.pop(dim)
+            axes.append(ArrayAxis.parse(axis))
+            staggers.append(Stagger.parse(stagger))
 
-        # validate inputs
-        _validate_xarray_dims_match(data, resolved_dims)
+        # error if there are any extra dimensions in dims that were not in data
+        if (not ignore_missing_dims) and dims_mapping:
+            raise ValueError(f"Dimensions in dims mapping not found in data: {list(dims_mapping.keys())}")
 
-        # parse dims to get dimension names and staggers for each axis
-        z_dim, y_dim, x_dim = _parse_xarray_dims(resolved_dims)
-
-        # get the array in the correct order with invariant dimensions squeezed out
-        transformed_data = _transform_xarray_data_array(data, z_dim, y_dim, x_dim)
-        array = transformed_data.data
+        layout = ArrayLayout(axes, staggers)
+        array = data.data
 
         # create spatial array
         if isinstance(array, da.Array):
             return cls.from_dask(
                 data=array,
-                z_stagger=z_dim[1],
-                y_stagger=y_dim[1],
-                x_stagger=x_dim[1],
+                layout=layout,
                 attrs=data.attrs,
             )
         else:
             return cls.from_arraylike(
                 data=array,
-                z_stagger=z_dim[1],
-                y_stagger=y_dim[1],
-                x_stagger=x_dim[1],
+                layout=layout,
                 attrs=data.attrs,
             )
 
@@ -719,7 +681,7 @@ class TimeDependentField(Field):
         resolved_dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]] = dims if dims is not None else dims_kwargs
 
         # validate inputs (time dim presence + spatial dim correspondence)
-        _validate_xarray_dims_match(data, resolved_dims, time_dim=time_dim)
+        # _validate_xarray_dims_match(data, resolved_dims, time_dim=time_dim)
 
         # parse dims to get dimension names and staggers for each axis
         z_dim, y_dim, x_dim = _parse_xarray_dims(resolved_dims)
@@ -759,44 +721,6 @@ def _perform_interpolation(
     n = previous.size
     for i in numba.prange(n):  # ty: ignore[not-iterable]
         output[i] = previous[i] + ft * delta[i]
-
-
-def _validate_xarray_dims_match(
-    data: xr.DataArray,
-    dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]],
-    *,
-    time_dim: str | None = None,
-) -> None:
-    """Validate that the specified dimension mappings match the xarray DataArray.
-
-    Parameters
-    ----------
-    data : xr.DataArray
-        The input xarray DataArray containing the field data.
-    dims : Mapping[str, tuple[ArrayAxis | str, Stagger | str]]
-        Mapping of spatial dimension names to tuples of (ArrayAxis, Stagger).
-    time_dim : str | None, optional
-        Name of the time dimension in the DataArray.  When provided the
-        dimension must be present in ``data`` and is excluded from the
-        comparison against ``dims``.
-
-    Raises
-    ------
-    ValueError
-        If ``time_dim`` is given but not present in the DataArray, or if the
-        spatial dimension names in ``dims`` do not exactly match the
-        (non-time) dimensions in ``data``.
-    """
-    if time_dim is not None:
-        if time_dim not in data.dims:
-            raise ValueError(f"Time dimension '{time_dim}' not found in DataArray dimensions: {list(data.dims)}")
-        data_dims_set = set(data.dims) - {time_dim}
-    else:
-        data_dims_set = set(data.dims)
-
-    dims_keys_set = set(dims.keys())
-    if mismatch := (data_dims_set ^ dims_keys_set):
-        raise ValueError(f"Dimension names in dims must exactly match dimensions in data. Mismatch: {mismatch}")
 
 
 def _parse_xarray_dims(
