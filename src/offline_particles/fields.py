@@ -180,7 +180,7 @@ class StaticField(Field):
             expected_size = stagger.expected_size(simulation_axis_size)
             if data_size != expected_size:
                 raise ValueError(
-                    f"Expected size {expected_size} along axis {axis} but got {self._data.shape[axis.value]}"
+                    f"Expected size {expected_size} along axis {axis} but got {data_size}"
                 )
 
     def get_field_data(self, time_index: float, bbox: BBox) -> FieldData:
