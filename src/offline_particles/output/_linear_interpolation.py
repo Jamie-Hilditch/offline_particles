@@ -21,7 +21,7 @@ def linearly_interpolate_fields(
     Args:
         fieldset: The fieldset containing the fields to interpolate.
         variables: The list of variable names to interpolate.
-        particle_field_prefix: The prefix for the particle array to store the output data.
+        particle_property_prefix: The prefix for the particle array to store the output data.
     """
     outputs = {}
 
