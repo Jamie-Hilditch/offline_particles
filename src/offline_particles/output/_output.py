@@ -237,7 +237,7 @@ class AbstractOutputWriterBuilder(abc.ABC):
         """The static (time-independent) outputs declared for this writer.
 
         Note:
-        Static outputs are written once at iteration 0, after particle initialisation.
+            Static outputs are written once at iteration 0, after particle initialisation.
         """
         pass
 
