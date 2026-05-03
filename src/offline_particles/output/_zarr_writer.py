@@ -2,14 +2,15 @@
 
 import dataclasses
 import types
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 
 import numpy as np
+import numpy.typing as npt
 import zarr
 import zarr.storage
 
 from ..events import SimulationState
-from ._output import AbstractOutputWriter, AbstractOutputWriterBuilder, Output
+from ._output import AbstractOutputWriter, AbstractOutputWriterBuilder, Output, TwoKeyDict
 
 DEFAULT_CHUNKSIZE = 250_000
 
@@ -38,22 +39,22 @@ class ZarrOutputWriter(AbstractOutputWriter):
         name: str,
         store: zarr.storage.StoreLike,
         time_arrays: Mapping[str, zarr.Array],
-        outputs: dict[str, ZarrOutputArray],
-        static_outputs: dict[str, ZarrOutputArray],
+        outputs: TwoKeyDict[str, str, ZarrOutputArray],
+        static_outputs: TwoKeyDict[str, str, ZarrOutputArray],
     ) -> None:
         """Initialize the Zarr output writer.
 
         Args:
             store: The Zarr store to write to.
             time_arrays: A dictionary mapping particle sets to Zarr arrays for time output.
-            outputs: A dictionary mapping output keys to ZarrOutputArrays for time-dependent outputs.
-            static_outputs: A dictionary mapping output keys to ZarrOutputArrays for static outputs.
+            outputs: A two-key mapping from particle set names and output names to ZarrOutputArrays for time-dependent outputs.
+            static_outputs: A two-key mapping from particle set names and static output names to ZarrOutputArrays for static outputs.
         """
         self._name = name
         self._store = store
         self._time_arrays = types.MappingProxyType(time_arrays)
-        self._outputs = types.MappingProxyType(outputs)
-        self._static_outputs = types.MappingProxyType(static_outputs)
+        self._outputs = outputs
+        self._static_outputs = static_outputs
         self._output_count: int = 0
 
     @property
@@ -67,14 +68,16 @@ class ZarrOutputWriter(AbstractOutputWriter):
         return self._store
 
     @property
-    def outputs(self) -> Mapping[str, Output]:
+    def outputs(self) -> Iterable[tuple[tuple[str, str], Output]]:
         """The outputs declared for this writer."""
-        return types.MappingProxyType({key: zoa.output for key, zoa in self._outputs.items()})
+        for key, zarr_output_array in self._outputs.items():
+            yield key, zarr_output_array.output
 
     @property
-    def static_outputs(self) -> Mapping[str, Output]:
+    def static_outputs(self) -> Iterable[tuple[tuple[str, str], Output]]:
         """The static (time-independent) outputs declared for this writer."""
-        return types.MappingProxyType({key: zoa.output for key, zoa in self._static_outputs.items()})
+        for key, zarr_output_array in self._static_outputs.items():
+            yield key, zarr_output_array.output
 
     def write_time(self, state: SimulationState) -> None:
         """Write the current simulation time.
@@ -88,13 +91,15 @@ class ZarrOutputWriter(AbstractOutputWriter):
         for array in self._time_arrays.values():
             array.append(np.array([state.time]), axis=0)
 
-    def write_output(self, key: str, state: SimulationState) -> None:
+    def write_output(self, particle_set: str, name: str, state: SimulationState) -> None:
         """Write output for a given variable at the current time step.
 
         Args:
-            key: The identifier of the output variable to write.
+            particle_set: The set of particles for which to write output.
+            name: The name of the output variable to write.
             state: The current simulation state.
         """
+        key = (particle_set, name)
         if key not in self._outputs:
             raise KeyError(f"Output variable '{key}' not found.")
 
@@ -106,17 +111,19 @@ class ZarrOutputWriter(AbstractOutputWriter):
         # write output
         time_size, particle_size = array.shape
         array.resize((time_size + 1, particle_size))
-        array[-1, :] = state.particles[output.particle_set][property_name]
+        array[-1, :] = state.particles[particle_set][property_name]
 
-    def write_static_output(self, key: str, state: SimulationState) -> None:
+    def write_static_output(self, particle_set: str, name: str, state: SimulationState) -> None:
         """Write a static (time-independent) output variable once.
 
         This is called at iteration 0, after particle initialisation.
 
         Args:
-            key: The identifier of the static output variable to write.
+            particle_set: The set of particles for which to write the static output.
+            name: The name of the static output variable to write.
             state: The current simulation state.
         """
+        key = (particle_set, name)
         if key not in self._static_outputs:
             raise KeyError(f"Static output variable '{key}' not found.")
 
@@ -125,7 +132,7 @@ class ZarrOutputWriter(AbstractOutputWriter):
         array = zarr_output_array.array
         property_name = output.particle_property.name
 
-        array[:] = state.particles[output.particle_set][property_name]
+        array[:] = state.particles[particle_set][property_name]
 
     def finalise_write_round(self, state: SimulationState) -> None:
         """Confirm that all outputs have been written for the current round and then increments the count."""
@@ -140,9 +147,11 @@ class ZarrOutputWriter(AbstractOutputWriter):
                 )
 
         # check all other outputs
-        for name, zoa in self._outputs.items():
-            if zoa.array.shape[0] != expected_count:
-                raise RuntimeError(f"Output '{name}' has {zoa.array.shape[0]} time entries, expected {expected_count}.")
+        for (particle_set, name), zarr_output_array in self._outputs.items():
+            if zarr_output_array.array.shape[0] != expected_count:
+                raise RuntimeError(
+                    f"Output '{name}' for group '{particle_set}' has {zarr_output_array.array.shape[0]} time entries, expected {expected_count}."
+                )
 
         # increment count
         self._output_count += 1
@@ -157,7 +166,6 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         store: zarr.storage.StoreLike,
         *,
         chunksize: int = DEFAULT_CHUNKSIZE,
-        consolidate_metadata: bool = True,
         time_name: str = "time",
         overwrite: bool = False,
         array_kwargs: dict[str, Any] | None = None,
@@ -177,8 +185,8 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         """
         self._name = name
         self._store = store
-        self._outputs: dict[str, ZarrOutputDefinition] = {}
-        self._static_outputs: dict[str, ZarrOutputDefinition] = {}
+        self._outputs: TwoKeyDict[str, str, ZarrOutputDefinition] = {}
+        self._static_outputs: TwoKeyDict[str, str, ZarrOutputDefinition] = {}
 
         self._chunksize = chunksize
         self._time_name = time_name
@@ -196,23 +204,27 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         return self._name
 
     @property
-    def outputs(self) -> Mapping[str, Output]:
+    def outputs(self) -> Iterable[tuple[tuple[str, str], Output]]:
         """The outputs declared for this writer."""
-        return types.MappingProxyType({key: zod.output for key, zod in self._outputs.items()})
+        for key, zarr_output_def in self._outputs.items():
+            yield key, zarr_output_def.output
 
     @property
-    def static_outputs(self) -> Mapping[str, Output]:
+    def static_outputs(self) -> Iterable[tuple[tuple[str, str], Output]]:
         """The static (time-independent) outputs declared for this writer."""
-        return types.MappingProxyType({key: zod.output for key, zod in self._static_outputs.items()})
+        for key, zarr_output_def in self._static_outputs.items():
+            yield key, zarr_output_def.output
 
-    def add_output(self, key: str, output: Output, **kwargs) -> None:
+    def add_output(self, particle_set: str, name: str, output: Output, **kwargs) -> None:
         """Add output to the writer.
 
         Args:
-            key: The identifier for the output. Also used as the Zarr array name unless 'name' is given in kwargs.
+            particle_set: The particle set to which the output belongs.
+            name: The name of the output. Also used as the Zarr array name unless 'name' is given in kwargs.
             output: The output to add.
             **kwargs: Additional keyword arguments passed to Zarr.create_array for this output.
         """
+        key = (particle_set, name)
         array_kwargs = self._array_kwargs.copy()
         array_kwargs.update(kwargs)
 
@@ -223,27 +235,31 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
 
         self._outputs[key] = ZarrOutputDefinition(output, array_kwargs)
 
-    def remove_output(self, key: str) -> None:
+    def remove_output(self, particle_set: str, name: str) -> None:
         """Remove an output from the writer.
 
         Args:
-            key: The identifier of the output to remove.
+            particle_set: The particle set to which the output belongs.
+            name: The name of the output to remove.
         """
+        key = (particle_set, name)
         if key not in self._outputs:
             raise KeyError(f"Output variable '{key}' does not exist.")
 
         del self._outputs[key]
 
-    def add_static_output(self, key: str, output: Output, **kwargs) -> None:
+    def add_static_output(self, particle_set: str, name: str, output: Output, **kwargs) -> None:
         """Add a static (time-independent) output to the writer.
 
         Static outputs are written once at iteration 0, after particle initialisation.
 
         Args:
-            key: The identifier for the static output. Also used as the Zarr array name unless 'name' is given in kwargs.
+            particle_set: The particle set to which the static output belongs.
+            name: The name of the static output. Also used as the Zarr array name unless 'name' is given in kwargs.
             output: The output to add.
             **kwargs: Additional keyword arguments passed to Zarr.create_array for this output.
         """
+        key = (particle_set, name)
         array_kwargs = self._array_kwargs.copy()
         array_kwargs.update(kwargs)
 
@@ -254,18 +270,20 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
 
         self._static_outputs[key] = ZarrOutputDefinition(output, array_kwargs)
 
-    def remove_static_output(self, key: str) -> None:
+    def remove_static_output(self, particle_set: str, name: str) -> None:
         """Remove a static output from the writer.
 
         Args:
-            key: The identifier of the static output to remove.
+            particle_set: The particle set to which the static output belongs.
+            name: The name of the static output to remove.
         """
+        key = (particle_set, name)
         if key not in self._static_outputs:
             raise KeyError(f"Static output variable '{key}' does not exist.")
 
         del self._static_outputs[key]
 
-    def build(self, nparticles: dict[str, int], time_type: np.dtype = np.dtype(np.float64)) -> ZarrOutputWriter:
+    def build(self, nparticles: dict[str, int], time_type: npt.DTypeLike = np.float64) -> ZarrOutputWriter:
         # open the zarr store
 
         # initialise time array for each particle set group
@@ -274,7 +292,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
                 self._store,
                 name=f"{particle_set}/{self._time_name}",
                 shape=(0,),
-                dtype=time_type,
+                dtype=np.dtype(time_type),
                 chunks=(1,),
                 dimension_names=(self._time_name,),
                 overwrite=self._overwrite,
@@ -284,39 +302,39 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         }
 
         # create output arrays
-        outputs = {}
-        for key, zod in self._outputs.items():
-            output = zod.output
-            kwargs = zod.kwargs.copy()
+        outputs = TwoKeyDict()
+        for (particle_set, name), zarr_output_def in self._outputs.items():
+            output = zarr_output_def.output
+            kwargs = zarr_output_def.kwargs.copy()
 
             # get nparticles for this particle set
-            if output.particle_set not in nparticles:
-                raise KeyError(f"Number of particles for particle set '{output.particle_set}' not provided.")
-            num_particles = nparticles[output.particle_set]
+            if particle_set not in nparticles:
+                raise KeyError(f"Number of particles for particle set '{particle_set}' not provided.")
+            num_particles = nparticles[particle_set]
 
             # create output array
-            array_name = kwargs.pop("name", key)
-            outputs[key] = ZarrOutputArray(
+            array_name = kwargs.pop("name", name)
+            outputs[particle_set, name] = ZarrOutputArray(
                 output,
-                self._initialize_output_array(array_name, output, num_particles, kwargs),
+                self._initialize_output_array(particle_set, array_name, output, num_particles, kwargs),
             )
 
         # create static output arrays (1D, written once)
-        static_outputs = {}
-        for key, zod in self._static_outputs.items():
-            output = zod.output
-            kwargs = zod.kwargs.copy()
+        static_outputs = TwoKeyDict()
+        for (particle_set, name), zarr_output_def in self._static_outputs.items():
+            output = zarr_output_def.output
+            kwargs = zarr_output_def.kwargs.copy()
 
             # get nparticles for this particle set
-            if output.particle_set not in nparticles:
-                raise KeyError(f"Number of particles for particle set '{output.particle_set}' not provided.")
-            num_particles = nparticles[output.particle_set]
+            if particle_set not in nparticles:
+                raise KeyError(f"Number of particles for particle set '{particle_set}' not provided.")
+            num_particles = nparticles[particle_set]
 
             # create static output array
-            array_name = kwargs.pop("name", key)
-            static_outputs[key] = ZarrOutputArray(
+            array_name = kwargs.pop("name", name)
+            static_outputs[particle_set, name] = ZarrOutputArray(
                 output,
-                self._initialize_static_output_array(array_name, output, num_particles, kwargs),
+                self._initialize_static_output_array(particle_set, array_name, output, num_particles, kwargs),
             )
 
         return ZarrOutputWriter(
@@ -328,11 +346,9 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         )
 
     def _initialize_output_array(
-        self, name: str, output: Output, nparticles: int, array_kwargs: dict[str, Any]
+        self, particle_set: str, name: str, output: Output, nparticles: int, array_kwargs: dict[str, Any]
     ) -> zarr.Array:
         """Initialize Zarr array for output."""
-
-        particle_set = output.particle_set
 
         # set shape and chunks
         shape = (0, nparticles)
@@ -353,11 +369,10 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         return array
 
     def _initialize_static_output_array(
-        self, name: str, output: Output, nparticles: int, array_kwargs: dict[str, Any]
+        self, particle_set: str, name: str, output: Output, nparticles: int, array_kwargs: dict[str, Any]
     ) -> zarr.Array:
         """Initialize Zarr array for a static (time-independent) output."""
 
-        particle_set = output.particle_set
         # set shape and chunks (1D: particles only)
         shape = (nparticles,)
         chunks = (max(1, min(self._chunksize, nparticles)),)
