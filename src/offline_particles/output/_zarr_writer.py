@@ -1,6 +1,7 @@
 """Write output to Zarr stores."""
 
 import dataclasses
+import itertools
 import types
 from typing import Any, Iterable, Mapping
 
@@ -284,7 +285,10 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         del self._static_outputs[key]
 
     def build(self, nparticles: dict[str, int], time_type: npt.DTypeLike = np.float64) -> ZarrOutputWriter:
-        # open the zarr store
+        # validate particle_sets
+        for particle_set in itertools.chain(self._outputs.outer_keys(), self._static_outputs.outer_keys()):
+            if particle_set not in nparticles:
+                raise KeyError(f"Number of particles for particle set '{particle_set}' not provided.")
 
         # initialise time array for each particle set group
         time_arrays = {
@@ -306,10 +310,6 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         for (particle_set, name), zarr_output_def in self._outputs.items():
             output = zarr_output_def.output
             kwargs = zarr_output_def.kwargs.copy()
-
-            # get nparticles for this particle set
-            if particle_set not in nparticles:
-                raise KeyError(f"Number of particles for particle set '{particle_set}' not provided.")
             num_particles = nparticles[particle_set]
 
             # create output array
@@ -326,8 +326,6 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             kwargs = zarr_output_def.kwargs.copy()
 
             # get nparticles for this particle set
-            if particle_set not in nparticles:
-                raise KeyError(f"Number of particles for particle set '{particle_set}' not provided.")
             num_particles = nparticles[particle_set]
 
             # create static output array

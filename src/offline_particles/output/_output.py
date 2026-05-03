@@ -5,7 +5,7 @@ import collections.abc
 import dataclasses
 import functools
 import types
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable, KeysView, Mapping
 
 import numpy as np
 import numpy.typing as npt
@@ -98,9 +98,9 @@ class TwoKeyDict[OT, IT, VT](collections.abc.MutableMapping[tuple[OT, IT], VT]):
             raise KeyError(f"Outer key '{outer_key}' not found.")
         return types.MappingProxyType(self._data[outer_key])
 
-    def get_outer_keys(self) -> list[OT]:
-        """Get a list of all outer keys."""
-        return list(self._data.keys())
+    def outer_keys(self) -> KeysView[OT]:
+        """Get a view of all outer keys."""
+        return self._data.keys()
 
 
 class AbstractOutputWriter(abc.ABC):
