@@ -185,8 +185,8 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         """
         self._name = name
         self._store = store
-        self._outputs: TwoKeyDict[str, str, ZarrOutputDefinition] = {}
-        self._static_outputs: TwoKeyDict[str, str, ZarrOutputDefinition] = {}
+        self._outputs: TwoKeyDict[str, str, ZarrOutputDefinition] = TwoKeyDict()
+        self._static_outputs: TwoKeyDict[str, str, ZarrOutputDefinition] = TwoKeyDict()
 
         self._chunksize = chunksize
         self._time_name = time_name
