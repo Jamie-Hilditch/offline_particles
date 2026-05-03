@@ -268,4 +268,3 @@ class TestOrderingValidatorFactory:
         validator(_layout("X", "Y", "Z"))  # should not raise
         with pytest.raises(ValueError, match="Expected axes"):
             validator(_layout("Z", "Y", "X"))
-

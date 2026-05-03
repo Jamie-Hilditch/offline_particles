@@ -63,15 +63,11 @@ class TestConstructLinearInterpolationKernel:
         assert kernel.kernel.field_data["field"].dtype == np.dtype(np.float64)
 
     def test_custom_field_dtype_is_applied(self) -> None:
-        kernel = construct_linear_interpolation_kernel(
-            "Z", "temperature", "temp_field", field_dtype=np.float32
-        )
+        kernel = construct_linear_interpolation_kernel("Z", "temperature", "temp_field", field_dtype=np.float32)
         assert kernel.kernel.field_data["field"].dtype == np.dtype(np.float32)
 
     def test_output_dtype_defaults_to_field_dtype(self) -> None:
-        kernel = construct_linear_interpolation_kernel(
-            "Z", "temperature", "temp_field", field_dtype=np.float32
-        )
+        kernel = construct_linear_interpolation_kernel("Z", "temperature", "temp_field", field_dtype=np.float32)
         assert kernel.kernel.particle_properties["output"].dtype == np.dtype(np.float32)
 
     def test_custom_output_dtype_is_applied(self) -> None:
@@ -118,9 +114,7 @@ class TestConstructBilinearInterpolationKernel:
         assert kernel.particle_property_bindings["idx_1"] == "zidx"
 
     def test_array_axis_enum_accepted(self) -> None:
-        kernel = construct_bilinear_interpolation_kernel(
-            (ArrayAxis.Z, ArrayAxis.Y), "temperature", "temp_field"
-        )
+        kernel = construct_bilinear_interpolation_kernel((ArrayAxis.Z, ArrayAxis.Y), "temperature", "temp_field")
         assert kernel.particle_property_bindings["idx_0"] == "zidx"
         assert kernel.particle_property_bindings["idx_1"] == "yidx"
 
@@ -156,7 +150,7 @@ class TestConstructBilinearInterpolationKernel:
 
     def test_wrong_number_of_axes_raises(self) -> None:
         with pytest.raises(ValueError, match="axes must be a tuple of two elements"):
-            construct_bilinear_interpolation_kernel(("Z",), "temperature", "temp_field")
+            construct_bilinear_interpolation_kernel(("Z",), "temperature", "temp_field")  # type: ignore[call-arg]
 
     def test_duplicate_axes_raises(self) -> None:
         with pytest.raises(ValueError, match="two axes must be different"):
@@ -238,7 +232,7 @@ class TestConstructTrilinearInterpolationKernel:
 
     def test_wrong_number_of_axes_raises(self) -> None:
         with pytest.raises(ValueError, match="axes must be a tuple of three elements"):
-            construct_trilinear_interpolation_kernel(("Z", "Y"), "temperature", "temp_field")
+            construct_trilinear_interpolation_kernel(("Z", "Y"), "temperature", "temp_field")  # type: ignore[arg-type]
 
     def test_duplicate_axes_raises(self) -> None:
         with pytest.raises(ValueError, match="All three axes must be different"):
@@ -283,9 +277,7 @@ class TestConvenienceConstructors:
             (construct_ZY_interpolation_kernel, "zidx", "yidx"),
         ],
     )
-    def test_2d_constructors_bind_correct_indices(
-        self, constructor, expected_idx_0, expected_idx_1
-    ) -> None:
+    def test_2d_constructors_bind_correct_indices(self, constructor, expected_idx_0, expected_idx_1) -> None:
         kernel = constructor(output="temperature", field="temp_field")
         assert isinstance(kernel, BoundKernel)
         assert kernel.particle_property_bindings["idx_0"] == expected_idx_0
