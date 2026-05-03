@@ -83,7 +83,7 @@ class ZarrOutputWriter(AbstractOutputWriter):
         """Write the current simulation time.
 
         Args:
-            time: The current simulation time.
+            state: The current simulation state; ``state.time`` is written.
 
         Note:
             Each particle set group has its own time array.
