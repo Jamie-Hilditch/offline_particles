@@ -129,7 +129,7 @@ def construct_linear_interpolation_kernel(
     Parameters
     ----------
     axis : ArrayAxis or str
-        Axis to perform linear interpolation along. If a string is provided, it must be one of "Z", "Y", or "X" (case-insensitive).
+        Axis to perform linear interpolation along. If a string is provided, it must be one of "Z", "Y", or "X".
     output : str
         Name of the particle property to bind the output to.
     field : str
@@ -273,7 +273,7 @@ def construct_bilinear_interpolation_kernel(
     Parameters
     ----------
     axes : tuple[ArrayAxis or str, ArrayAxis or str]
-        Tuple of two axes to perform bilinear interpolation along. If strings are provided, they must be one of "Z", "Y", or "X" (case-insensitive).
+        Tuple of two axes to perform bilinear interpolation along. If strings are provided, they must be one of "Z", "Y", or "X".
     output : str
         Name of the particle property to bind the output to.
     field : str
@@ -461,7 +461,7 @@ def construct_trilinear_interpolation_kernel(
     Parameters
     ----------
     axes : tuple[ArrayAxis or str, ArrayAxis or str, ArrayAxis or str]
-        Tuple of three axes to perform trilinear interpolation along. If strings are provided, they must be one of "Z", "Y", or "X" (case-insensitive).
+        Tuple of three axes to perform trilinear interpolation along. If strings are provided, they must be one of "Z", "Y", or "X".
     output : str
         Name of the particle property to bind the output to.
     field : str
