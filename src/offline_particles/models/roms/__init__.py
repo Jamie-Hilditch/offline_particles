@@ -3,7 +3,7 @@
 # import ROMS kernels
 from ...kernels.base import construct_add_property_kernel
 from ...kernels.buoyancy import construct_buoyancy_force_accumulation_kernel
-from ...kernels.interpolation import construct_trilinear_interpolation_kernel
+from ...kernels.interpolation import construct_ZYX_interpolation_kernel
 from ...kernels.relaxation import (
     construct_linear_damping_accumulation_kernel,
     construct_quadratic_damping_accumulation_kernel,
@@ -105,7 +105,7 @@ def roms_ab3_timestepper(
 
     # vertical advection
     if vertical_velocity:
-        tendency_kernels.append(construct_trilinear_interpolation_kernel("_dz0", w, accumulate=True))
+        tendency_kernels.append(construct_ZYX_interpolation_kernel("_dz0", w, accumulate=True))
 
     # relative vertical velocity
     if buoyant_particles or linear_damping or quadratic_damping:

@@ -10,7 +10,7 @@ from ..._kernels import (
     ScalarDeclaration,
 )
 from ...input_declarations import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
-from ...layout_validators import validate_YX_ordering, validate_Z_ordering, validate_ZYX_ordering
+from ...layout_validators import validate_YX_ordering, validate_Z_ordering
 from .vertical_coordinate import compute_z_kernel_function, compute_zidx_kernel_function
 
 __all__ = [

@@ -6,7 +6,6 @@ from ..kernels.interpolation import (
     construct_linear_interpolation_kernel,
     construct_trilinear_interpolation_kernel,
 )
-from ..spatial_arrays import ArrayAxis
 from ._output import Output
 
 
@@ -34,22 +33,32 @@ def linearly_interpolate_fields(
         particle_property = f"{particle_property_prefix}_{dtype}"
 
         match field.axes:
-            case (ArrayAxis.Z, ArrayAxis.Y, ArrayAxis.X):
-                kernel = construct_trilinear_interpolation_kernel(particle_property, var)
-            case (ArrayAxis.Z, ArrayAxis.Y):
-                kernel = construct_bilinear_interpolation_kernel(("zidx", "yidx"), particle_property, var)
-            case (ArrayAxis.Z, ArrayAxis.X):
-                kernel = construct_bilinear_interpolation_kernel(("zidx", "xidx"), particle_property, var)
-            case (ArrayAxis.Y, ArrayAxis.X):
-                kernel = construct_bilinear_interpolation_kernel(("yidx", "xidx"), particle_property, var)
-            case (ArrayAxis.Z,):
-                kernel = construct_linear_interpolation_kernel("zidx", particle_property, var)
-            case (ArrayAxis.Y,):
-                kernel = construct_linear_interpolation_kernel("yidx", particle_property, var)
-            case (ArrayAxis.X,):
-                kernel = construct_linear_interpolation_kernel("xidx", particle_property, var)
+            case (axis,):
+                kernel = construct_linear_interpolation_kernel(
+                    axis=axis,
+                    output=particle_property,
+                    field=var,
+                    field_dtype=dtype,
+                    output_dtype=dtype,
+                )
+            case (axis0, axis1):
+                kernel = construct_bilinear_interpolation_kernel(
+                    axes=(axis0, axis1),
+                    output=particle_property,
+                    field=var,
+                    field_dtype=dtype,
+                    output_dtype=dtype,
+                )
+            case (axis0, axis1, axis2):
+                kernel = construct_trilinear_interpolation_kernel(
+                    axes=(axis0, axis1, axis2),
+                    output=particle_property,
+                    field=var,
+                    field_dtype=dtype,
+                    output_dtype=dtype,
+                )
             case _:
-                raise ValueError(f"Field '{var}' has unsupported axes: {field.axes}")
+                raise ValueError(f"Field '{var}' has unsupported number of axes: {len(field.axes)}")
 
         name = f"{particle_set}:{var}"
         outputs[name] = Output(particle_set, particle_property, kernel)

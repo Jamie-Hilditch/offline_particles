@@ -77,3 +77,24 @@ class TestArrayAxisParse:
         """Lowercase strings are not valid — values and names are uppercase."""
         with pytest.raises(ValueError, match="not a valid ArrayAxis"):
             ArrayAxis.parse("z")
+
+
+class TestArrayAxisParticleIndexName:
+    def test_z_axis_maps_to_zidx(self) -> None:
+        assert ArrayAxis.Z.particle_index_name == "zidx"
+
+    def test_y_axis_maps_to_yidx(self) -> None:
+        assert ArrayAxis.Y.particle_index_name == "yidx"
+
+    def test_x_axis_maps_to_xidx(self) -> None:
+        assert ArrayAxis.X.particle_index_name == "xidx"
+
+    def test_alias_members_return_same_index_name_as_canonical(self) -> None:
+        assert ArrayAxis.DEPTH.particle_index_name == "zidx"
+        assert ArrayAxis.VERTICAL.particle_index_name == "zidx"
+        assert ArrayAxis.LATITUDE.particle_index_name == "yidx"
+        assert ArrayAxis.LAT.particle_index_name == "yidx"
+        assert ArrayAxis.MERIDIONAL.particle_index_name == "yidx"
+        assert ArrayAxis.LONGITUDE.particle_index_name == "xidx"
+        assert ArrayAxis.LON.particle_index_name == "xidx"
+        assert ArrayAxis.ZONAL.particle_index_name == "xidx"
