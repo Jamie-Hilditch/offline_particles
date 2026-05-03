@@ -128,7 +128,7 @@ class TestZarrOutputWriterStaticOutputArrays:
         # The static output array should be 1D with shape (nparticles,)
         group = zarr.open_group(store, mode="r")
         assert "density" in group["particles"]
-        arr = group["particles"]["density"]
+        arr = group["particles"]["density"]  # type: ignore[invalid-argument-type]
         assert isinstance(arr, zarr.Array)
         assert arr.shape == (5,)
         assert arr.ndim == 1
@@ -142,7 +142,7 @@ class TestZarrOutputWriterStaticOutputArrays:
 
         group = zarr.open_group(store, mode="r")
         assert "x" in group["particles"]
-        arr = group["particles"]["x"]
+        arr = group["particles"]["x"]  # type: ignore[invalid-argument-type]
         assert isinstance(arr, zarr.Array)
         assert arr.shape == (0, 5)
         assert arr.ndim == 2
@@ -187,7 +187,7 @@ class TestZarrOutputWriterWriteStaticOutput:
         writer.write_static_output("particles", "density", state)
 
         group = zarr.open_group(store, mode="r")
-        arr = group["particles"]["density"]
+        arr = group["particles"]["density"]  # type: ignore[invalid-argument-type]
         assert isinstance(arr, zarr.Array)
         np.testing.assert_array_equal(arr[:], values)
 
@@ -214,7 +214,7 @@ class TestZarrOutputWriterWriteStaticOutput:
 
         group = zarr.open_group(store, mode="r")
         # time-dependent array should still be empty
-        x_arr = group["particles"]["x"]
+        x_arr = group["particles"]["x"]  # type: ignore[invalid-argument-type]
         assert isinstance(x_arr, zarr.Array)
         assert x_arr.shape[0] == 0
 
@@ -269,7 +269,7 @@ class TestCreateStaticOutputEvents:
         events[0](state)
 
         group = zarr.open_group(store, mode="r")
-        arr = group["particles"]["density"]
+        arr = group["particles"]["density"]  # type: ignore[invalid-argument-type]
         assert isinstance(arr, zarr.Array)
         np.testing.assert_array_equal(arr[:], values)
 
@@ -299,7 +299,7 @@ class TestCreateStaticOutputEvents:
         builder.build({"particles": 5})
 
         group = zarr.open_group(store, mode="r")
-        density_arr = group["particles"]["density"]
+        density_arr = group["particles"]["density"]  # type: ignore[invalid-argument-type]
         assert isinstance(density_arr, zarr.Array)
         dim_names = getattr(density_arr.metadata, "dimension_names", None)
         assert dim_names == ("particles",)
