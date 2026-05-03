@@ -108,6 +108,17 @@ class ArrayAxis(enum.StrEnum):
             pass
         raise ValueError(f"'{axis}' is not a valid ArrayAxis value or name")
 
+    @property
+    def particle_index_name(self) -> str:
+        """Return the name of the particle property containing the indices for this axis."""
+        match self:
+            case ArrayAxis.Z:
+                return "zidx"
+            case ArrayAxis.Y:
+                return "yidx"
+            case ArrayAxis.X:
+                return "xidx"
+
 
 class ArrayLayout:
     """Specification of a spatial array's axes and staggering."""

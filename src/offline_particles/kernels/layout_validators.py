@@ -1,5 +1,7 @@
 """Functions that validate array layouts."""
 
+from typing import Callable
+
 from ..spatial_arrays import ArrayAxis, ArrayLayout
 
 
@@ -51,3 +53,13 @@ def validate_X_ordering(layout: ArrayLayout) -> None:
     expected_axes = (ArrayAxis.X,)
     if layout.axes != expected_axes:
         raise ValueError(f"Expected axes {expected_axes} but got {layout.axes}")
+
+
+def ordering_validator_factory(expected_axes: tuple[ArrayAxis, ...]) -> Callable[[ArrayLayout], None]:
+    """Factory function to create layout validators for specific axis orderings."""
+
+    def validator(layout: ArrayLayout) -> None:
+        if layout.axes != expected_axes:
+            raise ValueError(f"Expected axes {expected_axes} but got {layout.axes}")
+
+    return validator
