@@ -3,6 +3,7 @@
 import pytest
 
 from offline_particles.kernels.layout_validators import (
+    ordering_validator_factory,
     validate_X_ordering,
     validate_Y_ordering,
     validate_YX_ordering,
@@ -215,3 +216,56 @@ class TestLayoutValidatorsWithFieldDataDeclaration:
         decl = FieldDataDeclaration("u", np.float64, [validate_YX_ordering, validate_ZYX_ordering])
         with pytest.raises(ValueError, match="Expected axes"):
             decl.validate_field(field)
+
+
+class TestOrderingValidatorFactory:
+    def test_factory_returns_callable(self) -> None:
+        from offline_particles.spatial_arrays import ArrayAxis
+
+        validator = ordering_validator_factory((ArrayAxis.Z, ArrayAxis.Y, ArrayAxis.X))
+        assert callable(validator)
+
+    def test_factory_validator_passes_for_matching_axes(self) -> None:
+        from offline_particles.spatial_arrays import ArrayAxis
+
+        validator = ordering_validator_factory((ArrayAxis.Z, ArrayAxis.Y, ArrayAxis.X))
+        validator(_layout("Z", "Y", "X"))  # should not raise
+
+    def test_factory_validator_fails_for_wrong_order(self) -> None:
+        from offline_particles.spatial_arrays import ArrayAxis
+
+        validator = ordering_validator_factory((ArrayAxis.Z, ArrayAxis.Y, ArrayAxis.X))
+        with pytest.raises(ValueError, match="Expected axes"):
+            validator(_layout("X", "Y", "Z"))
+
+    def test_factory_validator_fails_for_wrong_number_of_axes(self) -> None:
+        from offline_particles.spatial_arrays import ArrayAxis
+
+        validator = ordering_validator_factory((ArrayAxis.Z, ArrayAxis.Y))
+        with pytest.raises(ValueError, match="Expected axes"):
+            validator(_layout("Z", "Y", "X"))
+
+    def test_factory_validator_passes_regardless_of_staggers(self) -> None:
+        from offline_particles.spatial_arrays import ArrayAxis
+
+        validator = ordering_validator_factory((ArrayAxis.Y, ArrayAxis.X))
+        for stagger in ("center", "left", "right", "inner", "outer"):
+            validator(_layout("Y", "X", stagger=stagger))  # should not raise
+
+    def test_factory_validator_for_single_axis(self) -> None:
+        from offline_particles.spatial_arrays import ArrayAxis
+
+        validator = ordering_validator_factory((ArrayAxis.X,))
+        validator(_layout("X"))  # should not raise
+        with pytest.raises(ValueError, match="Expected axes"):
+            validator(_layout("Y"))
+
+    def test_factory_validator_non_standard_ordering(self) -> None:
+        """Factory can create validators for orderings with no hand-written equivalent."""
+        from offline_particles.spatial_arrays import ArrayAxis
+
+        validator = ordering_validator_factory((ArrayAxis.X, ArrayAxis.Y, ArrayAxis.Z))
+        validator(_layout("X", "Y", "Z"))  # should not raise
+        with pytest.raises(ValueError, match="Expected axes"):
+            validator(_layout("Z", "Y", "X"))
+
