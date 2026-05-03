@@ -291,7 +291,7 @@ class AbstractOutputWriterBuilder(abc.ABC):
     def build(
         self,
         nparticles: dict[str, int],
-        time_type: np.dtype,
+        time_type: npt.DTypeLike,
     ) -> AbstractOutputWriter:
         """Build the output writer.
 
