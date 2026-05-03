@@ -37,7 +37,7 @@ class ZarrOutputWriter(AbstractOutputWriter):
         self,
         name: str,
         store: zarr.storage.StoreLike,
-        time_array: zarr.Array,
+        time_arrays: Mapping[str, zarr.Array],
         outputs: dict[str, ZarrOutputArray],
         static_outputs: dict[str, ZarrOutputArray],
     ) -> None:
@@ -45,13 +45,13 @@ class ZarrOutputWriter(AbstractOutputWriter):
 
         Args:
             store: The Zarr store to write to.
-            time_array: The Zarr array for time output.
+            time_arrays: A dictionary mapping particle sets to Zarr arrays for time output.
             outputs: A dictionary mapping output keys to ZarrOutputArrays for time-dependent outputs.
             static_outputs: A dictionary mapping output keys to ZarrOutputArrays for static outputs.
         """
         self._name = name
         self._store = store
-        self._time_array = time_array
+        self._time_arrays = types.MappingProxyType(time_arrays)
         self._outputs = types.MappingProxyType(outputs)
         self._static_outputs = types.MappingProxyType(static_outputs)
         self._output_count: int = 0
@@ -81,8 +81,12 @@ class ZarrOutputWriter(AbstractOutputWriter):
 
         Args:
             time: The current simulation time.
+
+        Note:
+            Each particle set group has its own time array.
         """
-        self._time_array.append(np.array([state.time]), axis=0)
+        for array in self._time_arrays.values():
+            array.append(np.array([state.time]), axis=0)
 
     def write_output(self, key: str, state: SimulationState) -> None:
         """Write output for a given variable at the current time step.
@@ -128,9 +132,12 @@ class ZarrOutputWriter(AbstractOutputWriter):
         expected_count = self._output_count + 1
 
         # check time output
-        time_count = self._time_array.shape[0]
-        if time_count != expected_count:
-            raise RuntimeError(f"Time output has {time_count} entries, expected {expected_count}.")
+        for particle_set, array in self._time_arrays.items():
+            time_count = array.shape[0]
+            if time_count != expected_count:
+                raise RuntimeError(
+                    f"Time output in group '{particle_set}' has {time_count} entries, expected {expected_count}."
+                )
 
         # check all other outputs
         for name, zoa in self._outputs.items():
@@ -259,17 +266,22 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         del self._static_outputs[key]
 
     def build(self, nparticles: dict[str, int], time_type: np.dtype = np.dtype(np.float64)) -> ZarrOutputWriter:
-        # initialise outputs
-        time_output = zarr.create_array(
-            self._store,
-            name=self._time_name,
-            shape=(0,),
-            dtype=time_type,
-            chunks=(1,),
-            dimension_names=(self._time_name,),
-            overwrite=self._overwrite,
-            **self._time_array_kwargs,
-        )
+        # open the zarr store
+
+        # initialise time array for each particle set group
+        time_arrays = {
+            particle_set: zarr.create_array(
+                self._store,
+                name=f"{particle_set}/{self._time_name}",
+                shape=(0,),
+                dtype=time_type,
+                chunks=(1,),
+                dimension_names=(self._time_name,),
+                overwrite=self._overwrite,
+                **self._time_array_kwargs,
+            )
+            for particle_set in nparticles
+        }
 
         # create output arrays
         outputs = {}
@@ -310,7 +322,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         return ZarrOutputWriter(
             name=self._name,
             store=self._store,
-            time_array=time_output,
+            time_arrays=time_arrays,
             outputs=outputs,
             static_outputs=static_outputs,
         )
@@ -320,6 +332,8 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
     ) -> zarr.Array:
         """Initialize Zarr array for output."""
 
+        particle_set = output.particle_set
+
         # set shape and chunks
         shape = (0, nparticles)
         chunks = (1, min(self._chunksize, nparticles))
@@ -327,12 +341,12 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         # create array
         array = zarr.create_array(
             self._store,
-            name=name,
+            name=f"{particle_set}/{name}",
             shape=shape,
             dtype=output.particle_property.dtype,
             chunks=chunks,
             attributes=output.attrs,
-            dimension_names=(self._time_name, output.particle_set),
+            dimension_names=(self._time_name, particle_set),
             overwrite=self._overwrite,
             **array_kwargs,
         )
@@ -343,6 +357,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
     ) -> zarr.Array:
         """Initialize Zarr array for a static (time-independent) output."""
 
+        particle_set = output.particle_set
         # set shape and chunks (1D: particles only)
         shape = (nparticles,)
         chunks = (max(1, min(self._chunksize, nparticles)),)
@@ -350,12 +365,12 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         # create array
         array = zarr.create_array(
             self._store,
-            name=name,
+            name=f"{particle_set}/{name}",
             shape=shape,
             dtype=output.particle_property.dtype,
             chunks=chunks,
             attributes=output.attrs,
-            dimension_names=(output.particle_set,),
+            dimension_names=(particle_set,),
             overwrite=self._overwrite,
             **array_kwargs,
         )
