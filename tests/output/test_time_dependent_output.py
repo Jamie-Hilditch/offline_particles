@@ -9,7 +9,6 @@ from offline_particles.events import SimulationState
 from offline_particles.output import Output, ZarrOutputBuilder
 from offline_particles.particles import Particles, ParticlesView
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -86,7 +85,7 @@ class TestZarrOutputBuilderBuild:
 
         group = zarr.open_group(store, mode="r")
         assert "time" in group["particles"]
-        arr = group["particles"]["time"]
+        arr = group["particles"]["time"]  # type: ignore[invalid-argument-type]
         assert isinstance(arr, zarr.Array)
         assert arr.shape == (0,)
 
@@ -119,7 +118,7 @@ class TestZarrOutputBuilderBuild:
         builder.build({"particles": 5})
 
         group = zarr.open_group(store, mode="r")
-        time_arr = group["particles"]["time"]
+        time_arr = group["particles"]["time"]  # type: ignore[invalid-argument-type]
         assert isinstance(time_arr, zarr.Array)
         dim_names = getattr(time_arr.metadata, "dimension_names", None)
         assert dim_names == ("time",)
@@ -131,7 +130,7 @@ class TestZarrOutputBuilderBuild:
         builder.build({"particles": 5})
 
         group = zarr.open_group(store, mode="r")
-        x_arr = group["particles"]["x"]
+        x_arr = group["particles"]["x"]  # type: ignore[invalid-argument-type]
         assert isinstance(x_arr, zarr.Array)
         dim_names = getattr(x_arr.metadata, "dimension_names", None)
         assert dim_names == ("time", "particles")
@@ -165,7 +164,7 @@ class TestZarrOutputWriterWriteTime:
         writer.write_time(state)
 
         group = zarr.open_group(store, mode="r")
-        np.testing.assert_array_equal(group["particles"]["time"][:], [5.0])
+        np.testing.assert_array_equal(group["particles"]["time"][:], [5.0])  # type: ignore[invalid-argument-type]
 
     def test_write_time_appends_multiple_values(self) -> None:
         store = zarr.storage.MemoryStore()
@@ -177,7 +176,7 @@ class TestZarrOutputWriterWriteTime:
             writer.write_time(state)
 
         group = zarr.open_group(store, mode="r")
-        np.testing.assert_array_equal(group["particles"]["time"][:], [0.0, 1.0, 2.0])
+        np.testing.assert_array_equal(group["particles"]["time"][:], [0.0, 1.0, 2.0])  # type: ignore[invalid-argument-type]
 
     def test_write_time_writes_to_all_particle_set_groups(self) -> None:
         store = zarr.storage.MemoryStore()
@@ -190,8 +189,8 @@ class TestZarrOutputWriterWriteTime:
         writer.write_time(state)
 
         group = zarr.open_group(store, mode="r")
-        np.testing.assert_array_equal(group["ps1"]["time"][:], [7.0])
-        np.testing.assert_array_equal(group["ps2"]["time"][:], [7.0])
+        np.testing.assert_array_equal(group["ps1"]["time"][:], [7.0])  # type: ignore[invalid-argument-type]
+        np.testing.assert_array_equal(group["ps2"]["time"][:], [7.0])  # type: ignore[invalid-argument-type]
 
 
 # ---------------------------------------------------------------------------
@@ -211,7 +210,7 @@ class TestZarrOutputWriterWriteOutput:
         writer.write_output("particles", "x", state)
 
         group = zarr.open_group(store, mode="r")
-        x_arr = group["particles"]["x"]
+        x_arr = group["particles"]["x"]  # type: ignore[invalid-argument-type]
         assert isinstance(x_arr, zarr.Array)
         assert x_arr.shape == (1, 3)
         np.testing.assert_array_equal(x_arr[0, :], values)
@@ -228,10 +227,10 @@ class TestZarrOutputWriterWriteOutput:
             writer.write_output("particles", "x", state)
 
         group = zarr.open_group(store, mode="r")
-        x_arr = group["particles"]["x"]
-        assert x_arr.shape == (3, 3)
+        x_arr = group["particles"]["x"]  # type: ignore[invalid-argument-type]
+        assert x_arr.shape == (3, 3)  # type: ignore[possibly-missing-attribute]
         for i in range(3):
-            np.testing.assert_array_equal(x_arr[i, :], [float(i)] * 3)
+            np.testing.assert_array_equal(x_arr[i, :], [float(i)] * 3)  # type: ignore[invalid-argument-type]
 
     def test_write_output_missing_key_raises(self) -> None:
         store = zarr.storage.MemoryStore()
@@ -257,8 +256,8 @@ class TestZarrOutputWriterWriteOutput:
         writer.write_output("ps2", "x", state)
 
         group = zarr.open_group(store, mode="r")
-        np.testing.assert_array_equal(group["ps1"]["x"][0, :], [1.0, 2.0, 3.0])
-        np.testing.assert_array_equal(group["ps2"]["x"][0, :], [4.0, 5.0])
+        np.testing.assert_array_equal(group["ps1"]["x"][0, :], [1.0, 2.0, 3.0])  # type: ignore[invalid-argument-type]
+        np.testing.assert_array_equal(group["ps2"]["x"][0, :], [4.0, 5.0])  # type: ignore[invalid-argument-type]
 
 
 # ---------------------------------------------------------------------------
@@ -360,7 +359,7 @@ class TestCreateOutputEvents:
             event(state)
 
         group = zarr.open_group(store, mode="r")
-        x_arr = group["particles"]["x"]
+        x_arr = group["particles"]["x"]  # type: ignore[invalid-argument-type]
         assert isinstance(x_arr, zarr.Array)
         np.testing.assert_array_equal(x_arr[0, :], values)
 
