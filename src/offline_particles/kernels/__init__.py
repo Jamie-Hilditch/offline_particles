@@ -17,7 +17,7 @@ Types
      - ``Callable[[ParticlePropertiesType, ScalarsType, FieldDataType], None]``
 """
 
-from . import common_inputs, roms, status, timed_activation, timestepping, validation
+from . import input_declarations, layout_validators, roms, status, timed_activation, timestepping, validation
 from ._kernels import (
     BoundKernel,
     FieldDataDeclaration,
@@ -34,7 +34,8 @@ from .status import Status, is_active, is_inactive
 from .validation import construct_validation_kernel
 
 __all__ = [
-    "common_inputs",
+    "input_declarations",
+    "layout_validators",
     "roms",
     "status",
     "timed_activation",

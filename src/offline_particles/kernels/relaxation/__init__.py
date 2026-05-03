@@ -3,7 +3,7 @@
 import numpy as np
 
 from .._kernels import BoundKernel, ParticleKernel, ParticlePropertyDeclaration, ScalarDeclaration
-from ..common_inputs import STATUS_DECLARATION
+from ..input_declarations import STATUS_DECLARATION
 from ._relaxation import (
     linear_damping_accumulation,
     linear_relaxation_accumulation,

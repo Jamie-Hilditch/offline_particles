@@ -24,6 +24,3 @@ def construct_time_declaration(time_dtype: npt.DTypeLike) -> ScalarDeclaration:
             the simulation clock's time array, e.g. np.dtype('datetime64[ns]').
     """
     return ScalarDeclaration("_time", np.dtype(time_dtype))
-
-
-# field data

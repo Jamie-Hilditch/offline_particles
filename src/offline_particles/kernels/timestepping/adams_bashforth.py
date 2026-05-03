@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 
 from .._kernels import BoundKernel, ParticleKernel, ParticlePropertyDeclaration
-from ..common_inputs import DT_DECLARATION, STATUS_DECLARATION
+from ..input_declarations import DT_DECLARATION, STATUS_DECLARATION
 from ._adams_bashforth import (
     ab2_bump_status,
     ab2_initialisation,

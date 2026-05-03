@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 
 from .._kernels import BoundKernel, ParticleKernel, ParticlePropertyDeclaration
-from ..common_inputs import DT_DECLARATION, STATUS_DECLARATION, construct_time_declaration
+from ..input_declarations import DT_DECLARATION, STATUS_DECLARATION, construct_time_declaration
 from ._timed_activation import (
     activate_released_particles,
     deactivate_retired_particles,

@@ -3,7 +3,7 @@
 import numpy as np
 
 from .._kernels import BoundKernel, ParticleKernel, ParticlePropertyDeclaration
-from ..common_inputs import STATUS_DECLARATION
+from ..input_declarations import STATUS_DECLARATION
 from ._base import (
     add_property,
     copy_property,

@@ -6,13 +6,8 @@ from ..kernels.interpolation import (
     construct_linear_interpolation_kernel,
     construct_trilinear_interpolation_kernel,
 )
+from ..spatial_arrays import ArrayAxis
 from ._output import Output
-
-DMASK_DIM_MAPPING_2D = {
-    (True, True, False): ("zidx", "yidx"),
-    (True, False, True): ("zidx", "xidx"),
-    (False, True, True): ("yidx", "xidx"),
-}
 
 
 def linearly_interpolate_fields(
@@ -26,9 +21,8 @@ def linearly_interpolate_fields(
     Args:
         fieldset: The fieldset containing the fields to interpolate.
         variables: The list of variable names to interpolate.
-        particle_field_prefix: The prefix for the particle array to store the output data.
+        particle_property_prefix: The prefix for the particle array to store the output data.
     """
-    dims = ("zidx", "yidx", "xidx")
     outputs = {}
 
     for var in variables:
@@ -36,21 +30,26 @@ def linearly_interpolate_fields(
             raise KeyError(f"Field '{var}' not found in fieldset.")
 
         field = fieldset[var]
-        dmask = field.dmask
-        ndim = field.nspatial_dims
         dtype = field.output_dtype
         particle_property = f"{particle_property_prefix}_{dtype}"
 
-        if ndim == 1:
-            dim = dims[dmask.index(True)]
-            kernel = construct_linear_interpolation_kernel(dim, particle_property, var)
-        elif ndim == 2:
-            dim = DMASK_DIM_MAPPING_2D[dmask]
-            kernel = construct_bilinear_interpolation_kernel(dim, particle_property, var)
-        elif ndim == 3:
-            kernel = construct_trilinear_interpolation_kernel(particle_property, var)
-        else:
-            raise ValueError(f"Field '{var}' has unsupported number of dimensions: {ndim}")
+        match field.axes:
+            case (ArrayAxis.Z, ArrayAxis.Y, ArrayAxis.X):
+                kernel = construct_trilinear_interpolation_kernel(particle_property, var)
+            case (ArrayAxis.Z, ArrayAxis.Y):
+                kernel = construct_bilinear_interpolation_kernel(("zidx", "yidx"), particle_property, var)
+            case (ArrayAxis.Z, ArrayAxis.X):
+                kernel = construct_bilinear_interpolation_kernel(("zidx", "xidx"), particle_property, var)
+            case (ArrayAxis.Y, ArrayAxis.X):
+                kernel = construct_bilinear_interpolation_kernel(("yidx", "xidx"), particle_property, var)
+            case (ArrayAxis.Z,):
+                kernel = construct_linear_interpolation_kernel("zidx", particle_property, var)
+            case (ArrayAxis.Y,):
+                kernel = construct_linear_interpolation_kernel("yidx", particle_property, var)
+            case (ArrayAxis.X,):
+                kernel = construct_linear_interpolation_kernel("xidx", particle_property, var)
+            case _:
+                raise ValueError(f"Field '{var}' has unsupported axes: {field.axes}")
 
         name = f"{particle_set}:{var}"
         outputs[name] = Output(particle_set, particle_property, kernel)

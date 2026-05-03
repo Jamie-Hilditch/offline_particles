@@ -4,6 +4,7 @@ import abc
 import dataclasses
 import enum
 import logging
+from typing import Iterable
 
 import dask.array as da
 import numpy as np
@@ -21,10 +22,9 @@ class Stagger(enum.StrEnum):
     RIGHT = "right"
     INNER = "inner"
     OUTER = "outer"
-    INVARIANT = "invariant"
 
     @property
-    def offset(self) -> float | None:
+    def offset(self) -> float:
         """Offset between centered indices and staggered indices."""
         match self:
             case Stagger.CENTER:
@@ -33,10 +33,8 @@ class Stagger(enum.StrEnum):
                 return 0.5
             case Stagger.RIGHT | Stagger.INNER:
                 return -0.5
-            case Stagger.INVARIANT:
-                return None
 
-    def expected_size(self, N: int) -> int | None:
+    def expected_size(self, N: int) -> int:
         """Expected size of dimension given size of centered dimension."""
         match self:
             case Stagger.CENTER | Stagger.LEFT | Stagger.RIGHT:
@@ -45,16 +43,6 @@ class Stagger(enum.StrEnum):
                 return N + 1
             case Stagger.INNER:
                 return N - 1
-            case Stagger.INVARIANT:
-                return None
-
-    @property
-    def is_invariant(self) -> bool:
-        return self is Stagger.INVARIANT
-
-    @property
-    def is_active(self) -> bool:
-        return self is not Stagger.INVARIANT
 
     @property
     def on_face(self) -> bool:
@@ -69,9 +57,6 @@ class Stagger(enum.StrEnum):
 ALL_STAGGERS = frozenset(Stagger)
 CENTERED_STAGGERS = frozenset({Stagger.CENTER})
 ON_FACE_STAGGERS = frozenset({s for s in Stagger if s.on_face})
-ACTIVE_STAGGERS = frozenset({s for s in Stagger if s.is_active})
-INVARIANT_STAGGERS = frozenset({Stagger.INVARIANT})
-INACTIVE_STAGGERS = frozenset({s for s in Stagger if not s.is_active})
 
 
 class ArrayAxis(enum.StrEnum):
@@ -124,6 +109,40 @@ class ArrayAxis(enum.StrEnum):
         raise ValueError(f"'{axis}' is not a valid ArrayAxis value or name")
 
 
+class ArrayLayout:
+    """Specification of a spatial array's axes and staggering."""
+
+    __slots__ = ("ndim", "axes", "staggers", "offsets")
+
+    # Type annotations for the type checker
+    ndim: int
+    axes: tuple[ArrayAxis, ...]
+    staggers: tuple[Stagger, ...]
+    offsets: tuple[float, ...]
+
+    def __init__(self, axes: Iterable[ArrayAxis | str], staggers: Iterable[Stagger | str]) -> None:
+        axes = tuple(ArrayAxis.parse(axis) for axis in axes)
+        staggers = tuple(Stagger(s) for s in staggers)
+
+        # validation
+        if len(axes) != len(staggers):
+            raise ValueError("Number of axes and staggers must match")
+        if len(set(axes)) != len(axes):
+            raise ValueError("Axes must be unique")
+
+        # set attributes
+        object.__setattr__(self, "ndim", len(axes))
+        object.__setattr__(self, "axes", axes)
+        object.__setattr__(self, "staggers", staggers)
+        object.__setattr__(self, "offsets", tuple(s.offset for s in staggers))
+
+    def __setattr__(self, name, value):
+        raise AttributeError("ArrayLayout is immutable")
+
+    def __delattr__(self, name):
+        raise AttributeError("ArrayLayout is immutable")
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class BBox:
     """Bounding box defined by min and max indices in each dimension."""
@@ -135,14 +154,17 @@ class BBox:
     xmin: float
     xmax: float
 
-    @property
-    def by_dimension(self) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float]]:
-        """Bounding box organized by dimension."""
-        return (
-            (self.zmin, self.zmax),
-            (self.ymin, self.ymax),
-            (self.xmin, self.xmax),
-        )
+    def axis_bounds(self, axis: ArrayAxis) -> tuple[float, float]:
+        """Get the bounding box limits for a specific axis."""
+        match axis:
+            case ArrayAxis.Z:
+                return self.zmin, self.zmax
+            case ArrayAxis.Y:
+                return self.ymin, self.ymax
+            case ArrayAxis.X:
+                return self.xmin, self.xmax
+            case _:
+                raise ValueError(f"Invalid axis: {axis}")
 
 
 class SpatialArray(abc.ABC):
@@ -150,74 +172,34 @@ class SpatialArray(abc.ABC):
 
     def __init__(
         self,
-        z_stagger: Stagger,
-        y_stagger: Stagger,
-        x_stagger: Stagger,
+        layout: ArrayLayout,
     ) -> None:
-        self._z_stagger = z_stagger
-        self._y_stagger = y_stagger
-        self._x_stagger = x_stagger
-        self._z_offset = z_stagger.offset
-        self._y_offset = y_stagger.offset
-        self._x_offset = x_stagger.offset
+        self._layout = layout
 
     @property
-    def z_stagger(self) -> Stagger:
-        """Staggering of the z dimension."""
-        return self._z_stagger
+    def layout(self) -> ArrayLayout:
+        """Layout specification of the spatial array."""
+        return self._layout
 
     @property
-    def y_stagger(self) -> Stagger:
-        """Staggering of the y dimension."""
-        return self._y_stagger
+    def ndim(self) -> int:
+        """Number of dimensions in the spatial array."""
+        return self._layout.ndim
 
     @property
-    def x_stagger(self) -> Stagger:
-        """Staggering of the x dimension."""
-        return self._x_stagger
+    def axes(self) -> tuple[ArrayAxis, ...]:
+        """Axes of the spatial array."""
+        return self._layout.axes
 
     @property
-    def stagger(self) -> tuple[Stagger, Stagger, Stagger]:
-        """Staggering of the (z, y, x) dimensions."""
-        return (self._z_stagger, self._y_stagger, self._x_stagger)
+    def staggers(self) -> tuple[Stagger, ...]:
+        """Staggering of the dimensions."""
+        return self._layout.staggers
 
     @property
-    def z_offset(self) -> float | None:
-        """Offset of the z dimension."""
-        return self._z_offset
-
-    @property
-    def y_offset(self) -> float | None:
-        """Offset of the y dimension."""
-        return self._y_offset
-
-    @property
-    def x_offset(self) -> float | None:
-        """Offset of the x dimension."""
-        return self._x_offset
-
-    @property
-    def offsets(self) -> tuple[float | None, float | None, float | None]:
-        """Offset of the (z, y, x) dimensions."""
-        return (self._z_offset, self._y_offset, self._x_offset)
-
-    @property
-    def dmask(self) -> tuple[bool, bool, bool]:
-        """Mask indicating which dimensions are active."""
-        return (
-            self._z_stagger.is_active,
-            self._y_stagger.is_active,
-            self._x_stagger.is_active,
-        )
-
-    @property
-    def active_offsets(self) -> tuple[float, ...]:
-        """Offsets for active dimensions only."""
-        return tuple(
-            offset
-            for offset, is_active in zip((self._z_offset, self._y_offset, self._x_offset), self.dmask)
-            if is_active
-        )
+    def offsets(self) -> tuple[float, ...]:
+        """Offsets for all dimensions."""
+        return self._layout.offsets
 
     @property
     @abc.abstractmethod
@@ -261,12 +243,15 @@ class NumpyArray(SpatialArray):
     def __init__(
         self,
         data: npt.ArrayLike,
-        z_stagger: Stagger,
-        y_stagger: Stagger,
-        x_stagger: Stagger,
+        layout: ArrayLayout,
     ) -> None:
-        super().__init__(z_stagger, y_stagger, x_stagger)
-        self._data = np.array(data)
+        super().__init__(layout)
+        self._data = np.asarray(data)
+
+        if self._data.ndim != self.layout.ndim:
+            raise ValueError(
+                f"Data array has {self._data.ndim} dimensions but layout specifies {self.layout.ndim} dimensions."
+            )
 
     @property
     def dtype(self) -> np.dtype:
@@ -299,7 +284,7 @@ class NumpyArray(SpatialArray):
             This accounts for both the grid staggering and any subsetting of the data array.
         """
         # Here all the data is in memory so we can just return the full data array and the indices unchanged
-        return self._data, self.active_offsets
+        return self._data, self.offsets
 
 
 class ChunkedDaskArray(SpatialArray):
@@ -308,25 +293,20 @@ class ChunkedDaskArray(SpatialArray):
     def __init__(
         self,
         data: da.Array,
-        z_stagger: Stagger,
-        y_stagger: Stagger,
-        x_stagger: Stagger,
+        layout: ArrayLayout,
     ) -> None:
-        super().__init__(z_stagger, y_stagger, x_stagger)
+        super().__init__(layout)
         if not isinstance(data, da.Array):
             raise TypeError(f"Expected a Dask array, got {type(data).__name__}")
-        if data.ndim != sum(self.dmask):
-            raise ValueError(
-                f"Data array has {data.ndim} dimensions but {sum(self.dmask)} active dimensions were specified."
-            )
+        if data.ndim != self.layout.ndim:
+            raise ValueError(f"Data array has {data.ndim} dimensions but {self.layout.ndim} dimensions were specified.")
         self._data = data
-        self._ndim = self._data.ndim
         self._shape = self._data.shape
         self._chunks = data.chunks
-        self._bounds = tuple(np.cumulative_sum(chunk, include_initial=True) for chunk in self._chunks)
+        self._chunk_boundaries = tuple(np.cumulative_sum(chunk, include_initial=True) for chunk in self._chunks)
         # placeholders for array and bounds of current subset
         self._subset: npt.NDArray[np.generic] = np.zeros((0,) * data.ndim, data.dtype)
-        self._subset_bounds: tuple[tuple[int, int], ...] = ((0, 0),) * self._ndim
+        self._subset_bounds: tuple[tuple[int, int], ...] = ((0, 0),) * self.ndim
 
     @property
     def dtype(self) -> np.dtype:
@@ -358,16 +338,19 @@ class ChunkedDaskArray(SpatialArray):
             Offsets to apply to the active particle indices in order to index into the returned data.
             This accounts for both the grid staggering and any subsetting of the data array.
         """
-        # loop through active dimensions and compute new bounds
-        active_bbox = tuple(
-            dim_bounds for dim_bounds, is_active in zip(bounding_box.by_dimension, self.dmask) if is_active
-        )
-        active_offsets = self.active_offsets
+        offsets = self.offsets
+
+        # get bounding box by axis
+        axis_bounds = (bounding_box.axis_bounds(axis) for axis in self.axes)
+
+        # compute new bounds for each axis based on the bounding box, stagger offsets, and chunk boundaries
         new_bounds = tuple(
-            _compute_new_bounds(db, offset, bounds)
-            for db, offset, bounds in zip(active_bbox, active_offsets, self._bounds)
+            _compute_new_bounds(axis_bound, offset, bounds)
+            for axis_bound, offset, bounds in zip(axis_bounds, offsets, self._chunk_boundaries)
         )
-        new_offsets = tuple(offset - lb for offset, (lb, _) in zip(active_offsets, new_bounds))
+
+        # compute new offsets given thee new bounds
+        new_offsets = tuple(offset - lb for offset, (lb, _) in zip(offsets, new_bounds))
 
         # if new bounds don't match existing update and load new subset
         if self._subset_bounds != new_bounds:
