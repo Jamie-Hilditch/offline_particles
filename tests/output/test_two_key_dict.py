@@ -153,17 +153,17 @@ class TestTwoKeyDictGetInnerMapping:
             inner["a"] = 99  # type: ignore[index]
 
 
-class TestTwoKeyDictGetOuterKeys:
-    def test_get_outer_keys_empty(self) -> None:
+class TestTwoKeyDictOuterKeys:
+    def test_outer_keys_empty(self) -> None:
         d: TwoKeyDict[str, str, int] = TwoKeyDict()
         assert len(d.outer_keys()) == 0
 
-    def test_get_outer_keys_single(self) -> None:
+    def test_outer_keys_single(self) -> None:
         d: TwoKeyDict[str, str, int] = TwoKeyDict()
         d["outer", "inner"] = 1
         assert list(d.outer_keys()) == ["outer"]
 
-    def test_get_outer_keys_multiple(self) -> None:
+    def test_outer_keys_multiple(self) -> None:
         d: TwoKeyDict[str, str, int] = TwoKeyDict()
         d["a", "x"] = 1
         d["b", "y"] = 2
@@ -171,7 +171,7 @@ class TestTwoKeyDictGetOuterKeys:
         outer_keys = d.outer_keys()
         assert set(outer_keys) == {"a", "b"}
 
-    def test_get_outer_keys_removed_after_delete(self) -> None:
+    def test_outer_keys_removed_after_delete(self) -> None:
         d: TwoKeyDict[str, str, int] = TwoKeyDict()
         d["a", "x"] = 1
         del d["a", "x"]
