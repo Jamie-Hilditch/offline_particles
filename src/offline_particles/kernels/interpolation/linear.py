@@ -150,6 +150,14 @@ def construct_linear_interpolation_kernel(
     idx_name = axis.particle_index_name
     validator = ordering_validator_factory((axis,))
 
+    # get types for field and output
+    field_dtype = np.dtype(field_dtype)
+    if output_dtype is None:
+        output_dtype = field_dtype
+    else:
+        output_dtype = np.dtype(output_dtype)
+
+    # select kernel function based on accumulate flag
     if accumulate:
         kernel_function = linear_interpolation_accumulation_kernel_function
     else:
@@ -160,10 +168,10 @@ def construct_linear_interpolation_kernel(
         particle_properties=[
             STATUS_DECLARATION,
             ParticlePropertyDeclaration("idx", np.float64),
-            ParticlePropertyDeclaration("output", np.dtype(output_dtype)),
+            ParticlePropertyDeclaration("output", output_dtype),
         ],
         field_data=[
-            FieldDataDeclaration("field", np.float64, [validator]),
+            FieldDataDeclaration("field", field_dtype, [validator]),
         ],
     )
 
