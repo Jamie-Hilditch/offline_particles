@@ -11,7 +11,6 @@ from ._output import Output
 
 def linearly_interpolate_fields(
     fieldset: Fieldset,
-    particle_set: str,
     *variables: str,
     particle_property_prefix: str = "_output",
 ) -> dict[str, Output]:
@@ -60,7 +59,6 @@ def linearly_interpolate_fields(
             case _:
                 raise ValueError(f"Field '{var}' has unsupported number of axes: {len(field.axes)}")
 
-        name = f"{particle_set}:{var}"
-        outputs[name] = Output(particle_set, particle_property, kernel)
+        outputs[var] = Output(particle_property, kernel)
 
     return outputs
