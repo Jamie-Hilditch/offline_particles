@@ -316,8 +316,12 @@ class Fieldset:
         for name in variables_to_include:
             da = ds[name].squeeze()  # remove any length-1 dimensions
             if time_dim not in da.dims:
+                if da.ndim == 0:
+                    continue  # skip scalar variables/coords with no spatial dimensions
                 fields[name] = StaticField.from_xarray(da, dims, ignore_missing_dims=True)
             else:
+                if da.ndim == 1:
+                    continue  # skip time-only variables/coords with no spatial dimensions
                 fields[name] = TimeDependentField.from_xarray(da, time_dim, dims, ignore_missing_dims=True)
 
         return cls(
