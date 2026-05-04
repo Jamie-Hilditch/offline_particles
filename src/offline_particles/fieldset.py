@@ -313,6 +313,8 @@ class Fieldset:
         variables_to_include = set(ds.data_vars)
         if include_coords:
             variables_to_include |= set(ds.coords)
+
+        # loop through variables to include and create fields, squeezing out any length-1 dimensions and skipping scalar variables/coords with no spatial dimensions
         for name in variables_to_include:
             da = ds[name].squeeze()  # remove any length-1 dimensions
             if time_dim not in da.dims:
