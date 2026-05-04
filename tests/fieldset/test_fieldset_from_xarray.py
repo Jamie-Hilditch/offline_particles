@@ -311,7 +311,7 @@ class TestFieldsetFromXarrayIncludeCoords:
         assert isinstance(fs["u"], TimeDependentField)
 
     def test_scalar_coord_excluded(self) -> None:
-        """A scalar (0-d) coordinate is skipped when include_coords=True because it has no spatial dimensions."""
+        """Scalar (0-d) coordinates are skipped when include_coords=True."""
         ds = xr.Dataset(
             {"u": xr.DataArray(np.ones((3, 4, 5, 6)), dims=["time", "z", "y", "x"])},
             coords={"scalar_coord": 42.0},
@@ -321,7 +321,7 @@ class TestFieldsetFromXarrayIncludeCoords:
         assert "scalar_coord" not in fs.fields
 
     def test_time_only_coord_excluded(self) -> None:
-        """A time-only coordinate is skipped when include_coords=True because it has no spatial dimensions."""
+        """Time-only coordinates are skipped when include_coords=True."""
         ds = xr.Dataset(
             {"u": xr.DataArray(np.ones((3, 4, 5, 6)), dims=["time", "z", "y", "x"])},
             coords={"time": np.arange(3, dtype=np.float64)},
