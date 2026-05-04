@@ -310,15 +310,14 @@ class TestFieldsetFromXarrayIncludeCoords:
         assert "u" in fs.fields
         assert isinstance(fs["u"], TimeDependentField)
 
-    def test_scalar_coord_excluded_after_squeeze(self) -> None:
-        """A scalar (0-d) coordinate is squeezed away and excluded as it has no spatial dims."""
+    def test_scalar_coord_included_as_static_field(self) -> None:
+        """A scalar (0-d) coordinate is included as a StaticField with no spatial dimensions."""
         ds = xr.Dataset(
             {"u": xr.DataArray(np.ones((3, 4, 5, 6)), dims=["time", "z", "y", "x"])},
             coords={"scalar_coord": 42.0},
         )
         fs = Fieldset.from_xarray(ds, "time", _DIMS, include_coords=True)
-        # scalar coordinate has no dims matching spatial dims → treated as static with no spatial dims
-        # it should be in fields (as a StaticField with zero spatial dimensions)
+        # scalar coordinate has no dims matching spatial dims → treated as a StaticField
         assert "scalar_coord" in fs.fields
 
 
