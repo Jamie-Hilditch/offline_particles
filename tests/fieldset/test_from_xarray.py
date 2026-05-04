@@ -64,14 +64,15 @@ class TestFieldsetFromXarrayBasic:
         assert isinstance(fs["timedep"], TimeDependentField)
 
     def test_static_only_dataset(self) -> None:
-        """Dataset with no time-dependent variables."""
+        """Dataset with no time-dependent variables (time dim still required as a coordinate)."""
         ds = xr.Dataset(
             {
                 "u": xr.DataArray(np.zeros((4, 5, 6), dtype=np.float64), dims=["z", "y", "x"]),
                 "v": xr.DataArray(np.ones((4, 5, 6), dtype=np.float64), dims=["z", "y", "x"]),
-            }
+            },
+            coords={"time": np.arange(3)},
         )
-        fs = Fieldset.from_xarray(ds, "time", _DIMS, z_size=4, y_size=5, x_size=6)
+        fs = Fieldset.from_xarray(ds, "time", _DIMS)
         assert isinstance(fs["u"], StaticField)
         assert isinstance(fs["v"], StaticField)
 

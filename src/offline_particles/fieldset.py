@@ -280,7 +280,7 @@ class Fieldset:
         dims = {dim_name: (ArrayAxis.parse(axis), Stagger(stagger)) for dim_name, (axis, stagger) in dims.items()}
 
         # get sizes of centered dimensions from dataset or from provided arguments
-        time_size = ds.dims[time_dim]
+        time_size = ds.sizes[time_dim]
         z_size = _get_dim_size(z_size, ds, dims, ArrayAxis.Z)
         y_size = _get_dim_size(y_size, ds, dims, ArrayAxis.Y)
         x_size = _get_dim_size(x_size, ds, dims, ArrayAxis.X)
@@ -291,7 +291,7 @@ class Fieldset:
 
         # check all dims have the correct sizes
         for dim_name, (axis, stagger) in dims.items():
-            dim_size = ds.dims[dim_name]
+            dim_size = ds.sizes[dim_name]
             match axis:
                 case ArrayAxis.Z:
                     expected_size = stagger.expected_size(z_size)
@@ -306,14 +306,14 @@ class Fieldset:
                     f"Dimension '{dim_name}' has size {dim_size}, expected {expected_size} based on stagger and provided size."
                 )
 
-        # create fields from variables in the dataset
+        # create fields from data variables in the dataset
         fields = {}
-        for name, variable in ds.variables.items():
-            variable = variable.squeeze()  # remove any length-1 dimensions
-            if time_dim not in variable.dims:
-                fields[name] = StaticField.from_xarray(variable.data, dims, ignore_missing_dims=True)
+        for name in ds.data_vars:
+            da = ds[name].squeeze()  # remove any length-1 dimensions
+            if time_dim not in da.dims:
+                fields[name] = StaticField.from_xarray(da, dims, ignore_missing_dims=True)
             else:
-                fields[name] = TimeDependentField.from_xarray(variable.data, time_dim, dims, ignore_missing_dims=True)
+                fields[name] = TimeDependentField.from_xarray(da, time_dim, dims, ignore_missing_dims=True)
 
         return cls(
             t_size=time_size,
@@ -372,5 +372,5 @@ def _get_dim_size(
             raise ValueError(
                 f"Size of centered {axis.name.lower()} dimension must be provided if not included in dims."
             )
-        size = ds.dims[dim_name]
+        size = ds.sizes[dim_name]
     return size
