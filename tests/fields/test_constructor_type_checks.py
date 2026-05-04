@@ -150,3 +150,30 @@ class TestTimeDependentFieldFromArraylike:
         with pytest.warns(UserWarning, match="dask.array.Array"):
             field = TimeDependentField.from_arraylike(data, AXES_ARGS, STAGGER_ARGS)
         assert isinstance(field, TimeDependentField)
+
+
+class TestZeroSpatialDimValidation:
+    """Fields must have at least one spatial dimension."""
+
+    def test_static_field_rejects_zero_spatial_dims_from_numpy(self) -> None:
+        """StaticField.from_numpy raises ValueError when no axes are provided."""
+        data = np.array(1.0)  # 0-d ndarray
+        with pytest.raises(ValueError, match="at least 1 spatial dimension"):
+            StaticField.from_numpy(data, (), ())  # type: ignore[arg-type]
+
+    def test_static_field_rejects_zero_spatial_dims_from_arraylike(self) -> None:
+        """StaticField.from_arraylike raises ValueError when no axes are provided."""
+        with pytest.raises(ValueError, match="at least 1 spatial dimension"):
+            StaticField.from_arraylike(1.0, (), ())  # type: ignore[arg-type]
+
+    def test_static_field_rejects_zero_spatial_dims_from_dask(self) -> None:
+        """StaticField.from_dask raises ValueError when no axes are provided."""
+        data = da.from_array(np.array(1.0))  # 0-d dask array
+        with pytest.raises(ValueError, match="at least 1 spatial dimension"):
+            StaticField.from_dask(data, (), ())  # type: ignore[arg-type]
+
+    def test_time_dependent_field_rejects_zero_spatial_dims(self) -> None:
+        """TimeDependentField raises ValueError for a time-only (1-D) array with no spatial dims."""
+        data = np.ones((3,), dtype=np.float64)
+        with pytest.raises(ValueError, match="at least 2 dimensions"):
+            TimeDependentField.from_numpy(data, (), ())

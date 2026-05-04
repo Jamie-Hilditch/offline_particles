@@ -4,8 +4,10 @@ import types
 from typing import Any, ItemsView, KeysView, Mapping, ValuesView
 
 import numpy as np
+import xarray as xr
 
-from .fields import Field, SimulationSize
+from .fields import Field, SimulationSize, StaticField, TimeDependentField
+from .spatial_arrays import ArrayAxis, Stagger
 
 
 class Fieldset:
@@ -230,6 +232,111 @@ class Fieldset:
             + f"\n\t{constant_str}\n\t{field_str}\n)"
         )
 
+    @classmethod
+    def from_xarray(
+        cls,
+        ds: xr.Dataset,
+        time_dim: str,
+        dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]],
+        *,
+        include_coords: bool = False,
+        z_size: int | None = None,
+        y_size: int | None = None,
+        x_size: int | None = None,
+        zidx_bounds: tuple[float, float] | None = None,
+        yidx_bounds: tuple[float, float] | None = None,
+        xidx_bounds: tuple[float, float] | None = None,
+    ) -> "Fieldset":
+        """Create a Fieldset from an xarray Dataset.
+
+        Parameters:
+            ds: xarray Dataset containing the fields and coordinates
+            time_dim: name of the time dimension in the dataset. Required even if there are no time-dependent fields.
+            dims : Mapping[str, tuple[ArrayAxis | str, Stagger | str]]
+            Mapping of spatial dimension names to ``(ArrayAxis, Stagger)`` tuples.
+            include_coords: whether to include coordinates as fields in the resulting Fieldset
+            z_size: size of the centered z dimension, optional (required if centered z dimension is not included in dims)
+            y_size: size of the centered y dimension, optional (required if centered y dimension is not included in dims)
+            x_size: size of the centered x dimension, optional (required if centered x dimension is not included in dims)
+            zidx_bounds: optional bounds of the z index (default: (0, z_size - 1))
+            yidx_bounds: optional bounds of the y index (default: (0, y_size - 1))
+            xidx_bounds: optional bounds of the x index (default: (0, x_size - 1))
+
+        Returns:
+            Fieldset object containing the fields from the dataset
+
+        Notes:
+            - The time dimension must be specified.
+            - Only variables with the specified dimensions will be included as fields in the resulting Fieldset.
+            - All length-1 dimensions will be squeezed out of the variables when creating fields.
+        """
+
+        # Validate that the dimensions exist
+        if time_dim not in ds.dims:
+            raise ValueError(f"Time dimension '{time_dim}' not found in dataset dimensions.")
+        for dim in dims:
+            if dim not in ds.dims:
+                raise ValueError(f"Spatial dimension '{dim}' not found in dataset dimensions.")
+
+        # convert string values in dims to ArrayAxis and Stagger enums
+        dims = {dim_name: (ArrayAxis.parse(axis), Stagger(stagger)) for dim_name, (axis, stagger) in dims.items()}
+
+        # get sizes of centered dimensions from dataset or from provided arguments
+        time_size = ds.sizes[time_dim]
+        z_size = _get_dim_size(z_size, ds, dims, ArrayAxis.Z)
+        y_size = _get_dim_size(y_size, ds, dims, ArrayAxis.Y)
+        x_size = _get_dim_size(x_size, ds, dims, ArrayAxis.X)
+
+        # Drop unwanted dimensions from the dataset
+        droppable_dims = set(ds.dims) - {time_dim} - set(dims.keys())
+        ds = ds.drop_dims(droppable_dims)
+
+        # check all dims have the correct sizes
+        for dim_name, (axis, stagger) in dims.items():
+            dim_size = ds.sizes[dim_name]
+            match axis:
+                case ArrayAxis.Z:
+                    expected_size = stagger.expected_size(z_size)
+                case ArrayAxis.Y:
+                    expected_size = stagger.expected_size(y_size)
+                case ArrayAxis.X:
+                    expected_size = stagger.expected_size(x_size)
+                case _:
+                    raise ValueError(f"Invalid ArrayAxis '{axis}' for dimension '{dim_name}'.")
+            if dim_size != expected_size:
+                raise ValueError(
+                    f"Dimension '{dim_name}' has size {dim_size}, expected {expected_size} based on stagger and provided size."
+                )
+
+        # create fields from data variables in the dataset
+        fields = {}
+        variables_to_include = set(ds.data_vars)
+        if include_coords:
+            variables_to_include |= set(ds.coords)
+
+        # loop through variables to include and create fields, squeezing out any length-1 dimensions and skipping scalar variables/coords with no spatial dimensions
+        for name in variables_to_include:
+            da = ds[name].squeeze()  # remove any length-1 dimensions
+            if time_dim not in da.dims:
+                if da.ndim == 0:
+                    continue  # skip scalar variables/coords with no spatial dimensions
+                fields[name] = StaticField.from_xarray(da, dims, ignore_missing_dims=True)
+            else:
+                if da.ndim == 1:
+                    continue  # skip time-only variables/coords with no spatial dimensions
+                fields[name] = TimeDependentField.from_xarray(da, time_dim, dims, ignore_missing_dims=True)
+
+        return cls(
+            t_size=time_size,
+            z_size=z_size,
+            y_size=y_size,
+            x_size=x_size,
+            fields=fields,
+            zidx_bounds=zidx_bounds,
+            yidx_bounds=yidx_bounds,
+            xidx_bounds=xidx_bounds,
+        )
+
 
 def _numpyify_constant(value: Any) -> np.generic:
     """Convert a value to a numpy scalar."""
@@ -240,3 +347,41 @@ def _numpyify_constant(value: Any) -> np.generic:
         return arr.item()
     except (ValueError, TypeError) as e:
         raise ValueError(f"Cannot convert value '{value}' to a numpy scalar.") from e
+
+
+def _get_centered_dim_name(dims: Mapping[str, tuple[ArrayAxis, Stagger]], axis: ArrayAxis) -> str | None:
+    """Get the name of the centered dimension from the dims mapping."""
+    for dim_name, (a, stagger) in dims.items():
+        if a == axis and stagger == Stagger.CENTER:
+            return dim_name
+    return None
+
+
+def _get_dim_size(
+    size: int | None, ds: xr.Dataset, dims: Mapping[str, tuple[ArrayAxis, Stagger]], axis: ArrayAxis
+) -> int:
+    """Get the size of a centered dimension from the dataset or from the provided size argument.
+
+    Parameters:
+    size: size of the centered dimension, optional (required if centered dimension is not included in dims)
+    ds: xarray Dataset containing the dimensions
+    dims: Mapping of spatial dimension names to (ArrayAxis, Stagger) tuples
+    axis: ArrayAxis for which to get the size of the centered dimension
+
+    Returns:
+    Size of the centered dimension
+
+    Raises:
+    ValueError: if size is not provided and the centered dimension is not included in dims
+    """
+    # get sizes of centered dimensions from dataset or from provided arguments
+    if size is not None:
+        size = int(size)
+    else:
+        dim_name = _get_centered_dim_name(dims, axis)
+        if dim_name is None:
+            raise ValueError(
+                f"Size of centered {axis.name.lower()} dimension must be provided if not included in dims."
+            )
+        size = ds.sizes[dim_name]
+    return size

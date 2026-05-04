@@ -150,6 +150,10 @@ class StaticField(Field):
             layout=data.layout,
             attrs=attrs,
         )
+        if data.layout.ndim < 1:
+            raise ValueError(
+                "StaticField requires at least 1 spatial dimension. For spatially invariant fields use a scalar."
+            )
         self._data = data
 
     @property
