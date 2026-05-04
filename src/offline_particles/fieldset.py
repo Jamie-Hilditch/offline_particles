@@ -239,6 +239,7 @@ class Fieldset:
         time_dim: str,
         dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]],
         *,
+        include_coords: bool = False,
         z_size: int | None = None,
         y_size: int | None = None,
         x_size: int | None = None,
@@ -253,6 +254,7 @@ class Fieldset:
             time_dim: name of the time dimension in the dataset. Required even if there are no time-dependent fields.
             dims : Mapping[str, tuple[ArrayAxis | str, Stagger | str]]
             Mapping of spatial dimension names to ``(ArrayAxis, Stagger)`` tuples.
+            include_coords: whether to include coordinates as fields in the resulting Fieldset
             z_size: size of the centered z dimension, optional (required if centered z dimension is not included in dims)
             y_size: size of the centered y dimension, optional (required if centered y dimension is not included in dims)
             x_size: size of the centered x dimension, optional (required if centered x dimension is not included in dims)
@@ -308,7 +310,10 @@ class Fieldset:
 
         # create fields from data variables in the dataset
         fields = {}
-        for name in ds.data_vars:
+        variables_to_include = set(ds.data_vars)
+        if include_coords:
+            variables_to_include |= set(ds.coords)
+        for name in variables_to_include:
             da = ds[name].squeeze()  # remove any length-1 dimensions
             if time_dim not in da.dims:
                 fields[name] = StaticField.from_xarray(da, dims, ignore_missing_dims=True)

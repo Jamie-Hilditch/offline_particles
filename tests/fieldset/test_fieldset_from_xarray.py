@@ -4,9 +4,8 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from offline_particles.fieldset import Fieldset
 from offline_particles.fields import StaticField, TimeDependentField
-
+from offline_particles.fieldset import Fieldset
 
 # ---------------------------------------------------------------------------
 # Helpers
