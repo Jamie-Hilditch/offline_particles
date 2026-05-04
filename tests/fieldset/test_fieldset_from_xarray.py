@@ -257,6 +257,72 @@ class TestFieldsetFromXarrayDropDims:
 
 
 # ---------------------------------------------------------------------------
+# include_coords flag
+# ---------------------------------------------------------------------------
+
+
+class TestFieldsetFromXarrayIncludeCoords:
+    def test_coords_excluded_by_default(self) -> None:
+        """Coordinates are not included in the fieldset when include_coords is False (default)."""
+        ds = xr.Dataset(
+            {"u": xr.DataArray(np.ones((3, 4, 5, 6)), dims=["time", "z", "y", "x"])},
+            coords={"depth": xr.DataArray(np.linspace(0, 100, 4), dims=["z"])},
+        )
+        fs = Fieldset.from_xarray(ds, "time", _DIMS)
+        assert "u" in fs.fields
+        assert "depth" not in fs.fields
+
+    def test_coords_included_when_flag_true(self) -> None:
+        """Coordinates are added as fields when include_coords=True."""
+        ds = xr.Dataset(
+            {"u": xr.DataArray(np.ones((3, 4, 5, 6)), dims=["time", "z", "y", "x"])},
+            coords={"depth": xr.DataArray(np.linspace(0, 100, 4), dims=["z"])},
+        )
+        fs = Fieldset.from_xarray(ds, "time", _DIMS, include_coords=True)
+        assert "u" in fs.fields
+        assert "depth" in fs.fields
+
+    def test_coord_becomes_static_field(self) -> None:
+        """A spatial-only coordinate becomes a StaticField."""
+        ds = xr.Dataset(
+            {"u": xr.DataArray(np.ones((3, 4, 5, 6)), dims=["time", "z", "y", "x"])},
+            coords={"depth": xr.DataArray(np.linspace(0, 100, 4), dims=["z"])},
+        )
+        fs = Fieldset.from_xarray(ds, "time", _DIMS, include_coords=True)
+        assert isinstance(fs["depth"], StaticField)
+
+    def test_time_dependent_coord_becomes_time_dependent_field(self) -> None:
+        """A coordinate with a time dimension becomes a TimeDependentField."""
+        ds = xr.Dataset(
+            {"u": xr.DataArray(np.ones((3, 4, 5, 6)), dims=["time", "z", "y", "x"])},
+            coords={"w": xr.DataArray(np.zeros((3, 4, 5, 6)), dims=["time", "z", "y", "x"])},
+        )
+        fs = Fieldset.from_xarray(ds, "time", _DIMS, include_coords=True)
+        assert isinstance(fs["w"], TimeDependentField)
+
+    def test_data_vars_still_included_with_coords(self) -> None:
+        """Data variables are included regardless of include_coords value."""
+        ds = xr.Dataset(
+            {"u": xr.DataArray(np.ones((3, 4, 5, 6)), dims=["time", "z", "y", "x"])},
+            coords={"depth": xr.DataArray(np.linspace(0, 100, 4), dims=["z"])},
+        )
+        fs = Fieldset.from_xarray(ds, "time", _DIMS, include_coords=True)
+        assert "u" in fs.fields
+        assert isinstance(fs["u"], TimeDependentField)
+
+    def test_scalar_coord_excluded_after_squeeze(self) -> None:
+        """A scalar (0-d) coordinate is squeezed away and excluded as it has no spatial dims."""
+        ds = xr.Dataset(
+            {"u": xr.DataArray(np.ones((3, 4, 5, 6)), dims=["time", "z", "y", "x"])},
+            coords={"scalar_coord": 42.0},
+        )
+        fs = Fieldset.from_xarray(ds, "time", _DIMS, include_coords=True)
+        # scalar coordinate has no dims matching spatial dims → treated as static with no spatial dims
+        # it should be in fields (as a StaticField with zero spatial dimensions)
+        assert "scalar_coord" in fs.fields
+
+
+# ---------------------------------------------------------------------------
 # Error cases
 # ---------------------------------------------------------------------------
 
