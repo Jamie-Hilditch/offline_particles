@@ -288,8 +288,8 @@ class Fieldset:
         x_size = _get_dim_size(x_size, ds, dims, ArrayAxis.X)
 
         # Drop unwanted dimensions from the dataset
-        dropable_dims = set(ds.dims) - {time_dim} - set(dims.keys())
-        ds = ds.drop_dims(dropable_dims)
+        droppable_dims = set(ds.dims) - {time_dim} - set(dims.keys())
+        ds = ds.drop_dims(droppable_dims)
 
         # check all dims have the correct sizes
         for dim_name, (axis, stagger) in dims.items():
