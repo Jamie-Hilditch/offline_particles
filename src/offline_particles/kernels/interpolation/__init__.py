@@ -1,5 +1,10 @@
 """Interpolation kernels."""
 
+from ._lagrange import (
+    lagrange2N_1D_factory,
+    lagrange2N_2D_factory,
+    lagrange2N_3D_factory,
+)
 from .linear import (
     construct_bilinear_interpolation_kernel,
     construct_linear_interpolation_kernel,
@@ -22,6 +27,9 @@ from .linear import (
 )
 
 __all__ = [
+    "lagrange2N_1D_factory",
+    "lagrange2N_2D_factory",
+    "lagrange2N_3D_factory",
     "construct_linear_interpolation_kernel",
     "construct_bilinear_interpolation_kernel",
     "construct_trilinear_interpolation_kernel",
