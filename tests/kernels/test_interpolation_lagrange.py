@@ -62,7 +62,8 @@ def test_lagrange_2d_exact_for_degree_2n_minus_1_polynomial(N: int) -> None:
         total = 0.0
         for a in range(degree + 1):
             for b in range(degree + 1):
-                total += (a + 1) * (b + 2) * (x0**a) * (x1**b)
+                if a + b <= degree:
+                    total += (a + 1) * (b + 2) * (x0**a) * (x1**b)
         return total
 
     grid0 = np.arange(48, dtype=np.float64) - I0
@@ -95,7 +96,8 @@ def test_lagrange_3d_exact_for_degree_2n_minus_1_polynomial(N: int) -> None:
         for a in range(degree + 1):
             for b in range(degree + 1):
                 for c in range(degree + 1):
-                    total += (a + 1) * (b + 2) * (c + 3) * (x0**a) * (x1**b) * (x2**c)
+                    if a + b + c <= degree:
+                        total += (a + 1) * (b + 2) * (c + 3) * (x0**a) * (x1**b) * (x2**c)
         return total
 
     grid0 = np.arange(28, dtype=np.float64) - I0
