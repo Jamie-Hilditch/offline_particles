@@ -34,6 +34,7 @@ def _truncate_index(idx: float, max_idx: int) -> int:
         return idx
 
 
+@functools.lru_cache(maxsize=None)
 def lagrange2N_1D_factory(
     N: int,
     accumulate: bool = False,
@@ -47,7 +48,25 @@ def lagrange2N_1D_factory(
     ],
     None,
 ]:
-    """Factory function creating a function implementing 1D Lagrange polynomial interpolation on a 2N point stencil."""
+    """Factory function creating a function implementing 1D Lagrange polynomial interpolation on a 2N point stencil.
+
+    Parameters
+    ----------
+    N : int
+        The number of points on either side of the lower index to use for interpolation. The total number of points used for interpolation will be 2N.
+    accumulate : bool, optional
+        Whether to accumulate the interpolated value to the output array instead of overwriting it. Default is False.
+
+    Returns
+    -------
+    Callable
+        A JIT compiled function implementing the 1D Lagrange polynomial interpolation.
+
+    Notes
+    -----
+    This factory function is cached such that the same function will be returned for the same values of N and accumulate.
+    This saves recompiling the function if reused.
+    """
 
     @numba.njit(parallel=True, nogil=True, fastmath=True)
     def impl(
@@ -91,6 +110,7 @@ def lagrange2N_1D_factory(
     return impl
 
 
+@functools.lru_cache(maxsize=None)
 def lagrange2N_2D_factory(
     N: int,
     accumulate: bool = False,
@@ -106,7 +126,25 @@ def lagrange2N_2D_factory(
     ],
     None,
 ]:
-    """Factory function creating a function implementing 2D Lagrange polynomial interpolation on a 2N point stencil."""
+    """Factory function creating a function implementing 2D Lagrange polynomial interpolation on a 2N point stencil.
+
+    Parameters
+    ----------
+    N : int
+        The number of points on either side of the lower index to use for interpolation. The total number of points used for interpolation will be 2N.
+    accumulate : bool, optional
+        Whether to accumulate the interpolated value to the output array instead of overwriting it. Default is False.
+
+    Returns
+    -------
+    Callable
+        A JIT compiled function implementing the 2D Lagrange polynomial interpolation.
+
+    Notes
+    -----
+    This factory function is cached such that the same function will be returned for the same values of N and accumulate.
+    This saves recompiling the function if reused.
+    """
 
     @numba.njit(parallel=True, nogil=True, fastmath=True)
     def impl(
@@ -159,6 +197,7 @@ def lagrange2N_2D_factory(
     return impl
 
 
+@functools.lru_cache(maxsize=None)
 def lagrange2N_3D_factory(
     N: int,
     accumulate: bool = False,
@@ -176,7 +215,25 @@ def lagrange2N_3D_factory(
     ],
     None,
 ]:
-    """Factory function creating a function implementing 3D Lagrange polynomial interpolation on a 2N point stencil."""
+    """Factory function creating a function implementing 3D Lagrange polynomial interpolation on a 2N point stencil.
+
+    Parameters
+    ----------
+    N : int
+        The number of points on either side of the lower index to use for interpolation. The total number of points used for interpolation will be 2N.
+    accumulate : bool, optional
+        Whether to accumulate the interpolated value to the output array instead of overwriting it. Default is False.
+
+    Returns
+    -------
+    Callable
+        A JIT compiled function implementing the 3D Lagrange polynomial interpolation.
+
+    Notes
+    -----
+    This factory function is cached such that the same function will be returned for the same values of N and accumulate.
+    This saves recompiling the function if reused.
+    """
 
     @numba.njit(parallel=True, nogil=True, fastmath=True)
     def impl(
