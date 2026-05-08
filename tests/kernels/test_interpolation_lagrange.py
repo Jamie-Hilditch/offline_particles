@@ -1,6 +1,7 @@
 """Tests for Lagrange interpolation kernel factories."""
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 
 from offline_particles.kernels.interpolation import lagrange2N_1D_factory, lagrange2N_2D_factory, lagrange2N_3D_factory
@@ -58,7 +59,7 @@ def test_lagrange_2d_exact_for_degree_2n_minus_1_polynomial(N: int) -> None:
     I0, local0 = _stencil_origin_and_local_position(idx0[0], N)
     I1, local1 = _stencil_origin_and_local_position(idx1[0], N)
 
-    def polynomial(x0: np.ndarray | float, x1: np.ndarray | float) -> np.ndarray | float:
+    def polynomial(x0, x1):
         total = 0.0
         for a in range(degree + 1):
             for b in range(degree + 1):
@@ -69,7 +70,7 @@ def test_lagrange_2d_exact_for_degree_2n_minus_1_polynomial(N: int) -> None:
     grid0 = np.arange(48, dtype=np.float64) - I0
     grid1 = np.arange(40, dtype=np.float64) - I1
     mesh0, mesh1 = np.meshgrid(grid0, grid1, indexing="ij")
-    field = polynomial(mesh0, mesh1)
+    field: npt.NDArray[np.float64] = polynomial(mesh0, mesh1)
 
     status = np.zeros(1, dtype=np.uint8)
     output = np.array([np.nan], dtype=np.float64)
@@ -91,7 +92,7 @@ def test_lagrange_3d_exact_for_degree_2n_minus_1_polynomial(N: int) -> None:
     I1, local1 = _stencil_origin_and_local_position(idx1[0], N)
     I2, local2 = _stencil_origin_and_local_position(idx2[0], N)
 
-    def polynomial(x0: np.ndarray | float, x1: np.ndarray | float, x2: np.ndarray | float) -> np.ndarray | float:
+    def polynomial(x0, x1, x2):
         total = 0.0
         for a in range(degree + 1):
             for b in range(degree + 1):
@@ -104,7 +105,7 @@ def test_lagrange_3d_exact_for_degree_2n_minus_1_polynomial(N: int) -> None:
     grid1 = np.arange(24, dtype=np.float64) - I1
     grid2 = np.arange(20, dtype=np.float64) - I2
     mesh0, mesh1, mesh2 = np.meshgrid(grid0, grid1, grid2, indexing="ij")
-    field = polynomial(mesh0, mesh1, mesh2)
+    field: npt.NDArray[np.float64] = polynomial(mesh0, mesh1, mesh2)
 
     status = np.zeros(1, dtype=np.uint8)
     output = np.array([np.nan], dtype=np.float64)
