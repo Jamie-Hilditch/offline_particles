@@ -72,27 +72,27 @@ __all__ = [
 
 # aliases and special cases of Lagrange interpolation functions
 #: linear interpolation is a special case of 1D Lagrange interpolation with N=1
-linear_interpolation_factory = functools.partial(lagrange2N_1D_factory, N=1)
+linear_interpolation_factory = functools.partial(lagrange2N_1D_factory, 1)
 #: bilinear interpolation is a special case of 2D Lagrange interpolation with N=1
-bilinear_interpolation_factory = functools.partial(lagrange2N_2D_factory, N=1)
+bilinear_interpolation_factory = functools.partial(lagrange2N_2D_factory, 1)
 #: trilinear interpolation is a special case of 3D Lagrange interpolation with N=1
-trilinear_interpolation_factory = functools.partial(lagrange2N_3D_factory, N=1)
+trilinear_interpolation_factory = functools.partial(lagrange2N_3D_factory, 1)
 #: cubic interpolation is a special case of 1D Lagrange interpolation with N=2
-cubic_interpolation_factory = functools.partial(lagrange2N_1D_factory, N=2)
+cubic_interpolation_factory = functools.partial(lagrange2N_1D_factory, 2)
 #: bicubic interpolation is a special case of 2D Lagrange interpolation with N=2
-bicubic_interpolation_factory = functools.partial(lagrange2N_2D_factory, N=2)
+bicubic_interpolation_factory = functools.partial(lagrange2N_2D_factory, 2)
 #: tricubic interpolation is a special case of 3D Lagrange interpolation with N=2
-tricubic_interpolation_factory = functools.partial(lagrange2N_3D_factory, N=2)
+tricubic_interpolation_factory = functools.partial(lagrange2N_3D_factory, 2)
 
 #: linear interpolation function for a single particle
-linear_interpolation_particle = lagrange2N_1D_particle_factory(N=1)
+linear_interpolation_particle = lagrange2N_1D_particle_factory(1)
 #: bilinear interpolation function for a single particle
-bilinear_interpolation_particle = lagrange2N_2D_particle_factory(N=1)
+bilinear_interpolation_particle = lagrange2N_2D_particle_factory(1)
 #: trilinear interpolation function for a single particle
-trilinear_interpolation_particle = lagrange2N_3D_particle_factory(N=1)
+trilinear_interpolation_particle = lagrange2N_3D_particle_factory(1)
 #: cubic interpolation function for a single particle
-cubic_interpolation_particle = lagrange2N_1D_particle_factory(N=2)
+cubic_interpolation_particle = lagrange2N_1D_particle_factory(2)
 #: bicubic interpolation function for a single particle
-bicubic_interpolation_particle = lagrange2N_2D_particle_factory(N=2)
+bicubic_interpolation_particle = lagrange2N_2D_particle_factory(2)
 #: tricubic interpolation function for a single particle
-tricubic_interpolation_particle = lagrange2N_3D_particle_factory(N=2)
+tricubic_interpolation_particle = lagrange2N_3D_particle_factory(2)
