@@ -2,9 +2,9 @@
 
 from ..fieldset import Fieldset
 from ..kernels.interpolation import (
-    construct_bilinear_interpolation_kernel,
-    construct_linear_interpolation_kernel,
-    construct_trilinear_interpolation_kernel,
+    construct_1D_interpolation_kernel,
+    construct_2D_interpolation_kernel,
+    construct_3D_interpolation_kernel,
 )
 from ._output import Output
 
@@ -33,7 +33,7 @@ def linearly_interpolate_fields(
 
         match field.axes:
             case (axis,):
-                kernel = construct_linear_interpolation_kernel(
+                kernel = construct_1D_interpolation_kernel(
                     axis=axis,
                     output=particle_property,
                     field=var,
@@ -41,7 +41,7 @@ def linearly_interpolate_fields(
                     output_dtype=dtype,
                 )
             case (axis0, axis1):
-                kernel = construct_bilinear_interpolation_kernel(
+                kernel = construct_2D_interpolation_kernel(
                     axes=(axis0, axis1),
                     output=particle_property,
                     field=var,
@@ -49,7 +49,7 @@ def linearly_interpolate_fields(
                     output_dtype=dtype,
                 )
             case (axis0, axis1, axis2):
-                kernel = construct_trilinear_interpolation_kernel(
+                kernel = construct_3D_interpolation_kernel(
                     axes=(axis0, axis1, axis2),
                     output=particle_property,
                     field=var,
