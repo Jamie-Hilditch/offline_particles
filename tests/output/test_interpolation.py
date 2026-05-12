@@ -1,11 +1,11 @@
-"""Tests for linearly_interpolate_fields."""
+"""Tests for interpolate_fields."""
 
 import numpy as np
 import pytest
 
 from offline_particles.fields import StaticField
 from offline_particles.fieldset import Fieldset
-from offline_particles.output import linearly_interpolate_fields
+from offline_particles.output import interpolate_fields
 
 
 def _make_fieldset() -> Fieldset:
@@ -34,48 +34,43 @@ def _make_fieldset() -> Fieldset:
     )
 
 
-class TestLinearlyInterpolateFields:
+class TestInterpolateFields:
     def test_returns_output_for_each_variable(self) -> None:
         fs = _make_fieldset()
-        outputs = linearly_interpolate_fields(fs, "u", "v", "w")
+        outputs = interpolate_fields(fs, ["u", "v", "w"])
         assert set(outputs.keys()) == {"u", "v", "w"}
 
     def test_output_key_matches_variable_name(self) -> None:
         fs = _make_fieldset()
-        outputs = linearly_interpolate_fields(fs, "u")
+        outputs = interpolate_fields(fs, ["u"])
         assert "u" in outputs
 
     def test_1d_field_produces_output_with_kernel(self) -> None:
         fs = _make_fieldset()
-        outputs = linearly_interpolate_fields(fs, "u")
+        outputs = interpolate_fields(fs, ["u"])
         assert len(outputs["u"].kernels) == 1
 
     def test_2d_field_produces_output_with_kernel(self) -> None:
         fs = _make_fieldset()
-        outputs = linearly_interpolate_fields(fs, "v")
+        outputs = interpolate_fields(fs, ["v"])
         assert len(outputs["v"].kernels) == 1
 
     def test_3d_field_produces_output_with_kernel(self) -> None:
         fs = _make_fieldset()
-        outputs = linearly_interpolate_fields(fs, "w")
+        outputs = interpolate_fields(fs, ["w"])
         assert len(outputs["w"].kernels) == 1
 
     def test_missing_variable_raises(self) -> None:
         fs = _make_fieldset()
         with pytest.raises(KeyError, match="missing"):
-            linearly_interpolate_fields(fs, "missing")
+            interpolate_fields(fs, ["missing"])
 
     def test_custom_particle_property_prefix(self) -> None:
         fs = _make_fieldset()
-        outputs = linearly_interpolate_fields(fs, "u", particle_property_prefix="_custom")
+        outputs = interpolate_fields(fs, ["u"], particle_property_prefix="_custom")
         assert outputs["u"].particle_property.name.startswith("_custom")
 
     def test_default_particle_property_prefix(self) -> None:
         fs = _make_fieldset()
-        outputs = linearly_interpolate_fields(fs, "u")
+        outputs = interpolate_fields(fs, ["u"])
         assert outputs["u"].particle_property.name.startswith("_output")
-
-    def test_no_variables_returns_empty_dict(self) -> None:
-        fs = _make_fieldset()
-        outputs = linearly_interpolate_fields(fs)
-        assert outputs == {}

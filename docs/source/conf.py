@@ -123,7 +123,7 @@ def apply_output_module_overrides(app):
         Output,
         ZarrOutputBuilder,
         ZarrOutputWriter,
-        linearly_interpolate_fields,
+        interpolate_fields,
     )
 
     _module = output_module.__name__
@@ -133,7 +133,7 @@ def apply_output_module_overrides(app):
         Output,
         ZarrOutputBuilder,
         ZarrOutputWriter,
-        linearly_interpolate_fields,
+        interpolate_fields,
     ]:
         _obj.__module__ = _module
 
