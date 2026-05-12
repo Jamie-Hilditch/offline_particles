@@ -5,7 +5,7 @@ import pytest
 
 from offline_particles.fields import StaticField
 from offline_particles.fieldset import Fieldset
-from offline_particles.output import interpolate_fields
+from offline_particles.output import _interpolation, interpolate_fields
 
 
 def _make_fieldset() -> Fieldset:
@@ -74,3 +74,37 @@ class TestInterpolateFields:
         fs = _make_fieldset()
         outputs = interpolate_fields(fs, ["u"])
         assert outputs["u"].particle_property.name.startswith("_output")
+
+    def test_variables_can_be_supplied_as_any_iterable(self) -> None:
+        fs = _make_fieldset()
+        variables = (var for var in ("u", "v", "w"))
+        outputs = interpolate_fields(fs, variables)
+        assert set(outputs.keys()) == {"u", "v", "w"}
+
+    @pytest.mark.parametrize("N", [1, 2, 3])
+    def test_custom_N_is_forwarded_to_interpolation_kernel_factories(self, monkeypatch, N: int) -> None:
+        fs = _make_fieldset()
+        calls: list[int] = []
+        orig_1d = _interpolation.construct_1D_interpolation_kernel
+        orig_2d = _interpolation.construct_2D_interpolation_kernel
+        orig_3d = _interpolation.construct_3D_interpolation_kernel
+
+        def wrapped_1d(*args, **kwargs):
+            calls.append(kwargs["N"])
+            return orig_1d(*args, **kwargs)
+
+        def wrapped_2d(*args, **kwargs):
+            calls.append(kwargs["N"])
+            return orig_2d(*args, **kwargs)
+
+        def wrapped_3d(*args, **kwargs):
+            calls.append(kwargs["N"])
+            return orig_3d(*args, **kwargs)
+
+        monkeypatch.setattr(_interpolation, "construct_1D_interpolation_kernel", wrapped_1d)
+        monkeypatch.setattr(_interpolation, "construct_2D_interpolation_kernel", wrapped_2d)
+        monkeypatch.setattr(_interpolation, "construct_3D_interpolation_kernel", wrapped_3d)
+
+        interpolate_fields(fs, ["u", "v", "w"], N=N)
+
+        assert calls == [N, N, N]
