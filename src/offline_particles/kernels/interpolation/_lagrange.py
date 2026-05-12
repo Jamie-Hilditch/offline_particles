@@ -49,6 +49,8 @@ def lagrange2N_1D_particle_factory(N: int) -> Callable[[np.float64, npt.NDArray[
     -----
     This factory function is cached such that the same function will be returned for the same value of N. This saves recompiling the function if reused.
     """
+    if N <= 0:
+        raise ValueError("N must be a positive integer.")
 
     @numba.njit(nogil=True, fastmath=True)
     def impl(
@@ -116,6 +118,8 @@ def lagrange2N_1D_factory(
     This factory function is cached such that the same function will be returned for the same values of N and accumulate.
     This saves recompiling the function if reused.
     """
+    if N <= 0:
+        raise ValueError("N must be a positive integer.")
     single_particle_interpolator = lagrange2N_1D_particle_factory(N)
 
     @numba.njit(parallel=True, nogil=True, fastmath=True)
@@ -145,6 +149,8 @@ def lagrange2N_1D_factory(
 @functools.lru_cache(maxsize=None)
 def lagrange2N_2D_particle_factory(N: int) -> Callable[[np.float64, np.float64, npt.NDArray[np.generic]], np.generic]:
     """Factory function for 2D Lagrange polynomial interpolation of a single particle on a 2N point stencil."""
+    if N <= 0:
+        raise ValueError("N must be a positive integer.")
 
     @numba.njit(nogil=True, fastmath=True)
     def impl(
@@ -221,6 +227,9 @@ def lagrange2N_2D_factory(
     This factory function is cached such that the same function will be returned for the same values of N and accumulate.
     This saves recompiling the function if reused.
     """
+    if N <= 0:
+        raise ValueError("N must be a positive integer.")
+
     single_particle_interpolator = lagrange2N_2D_particle_factory(N)
 
     @numba.njit(parallel=True, nogil=True, fastmath=True)
@@ -255,6 +264,9 @@ def lagrange2N_3D_particle_factory(
     N: int,
 ) -> Callable[[np.float64, np.float64, np.float64, npt.NDArray[np.generic]], np.generic]:
     """Factory function for 3D Lagrange polynomial interpolation of a single particle on a 2N point stencil."""
+
+    if N <= 0:
+        raise ValueError("N must be a positive integer.")
 
     @numba.njit(nogil=True, fastmath=True)
     def impl(
@@ -339,6 +351,8 @@ def lagrange2N_3D_factory(
     This factory function is cached such that the same function will be returned for the same values of N and accumulate.
     This saves recompiling the function if reused.
     """
+    if N <= 0:
+        raise ValueError("N must be a positive integer.")
     single_particle_interpolator = lagrange2N_3D_particle_factory(N)
 
     @numba.njit(parallel=True, nogil=True, fastmath=True)
