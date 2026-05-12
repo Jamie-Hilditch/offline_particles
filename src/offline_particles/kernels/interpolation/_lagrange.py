@@ -48,7 +48,7 @@ def _lagrange_basis_polynomial(N: int) -> Callable[[float, int], float]:
 
 
 @functools.lru_cache(maxsize=None)
-def lagrange2N_1D_particle_factory(N: int) -> Callable[[np.float64, npt.NDArray[np.generic]], np.generic]:
+def lagrange2N_1D_particle_factory(N: int) -> Callable[[npt.NDArray[np.generic], np.float64, int], np.generic]:
     """Factory function for 1D Lagrange polynomial interpolation of a single particle on a 2N point stencil.
 
     Parameters
@@ -169,7 +169,9 @@ def lagrange2N_1D_factory(
 
 
 @functools.lru_cache(maxsize=None)
-def lagrange2N_2D_particle_factory(N: int) -> Callable[[np.float64, np.float64, npt.NDArray[np.generic]], np.generic]:
+def lagrange2N_2D_particle_factory(
+    N: int,
+) -> Callable[[npt.NDArray[np.generic], np.float64, np.float64, int, int], np.generic]:
     """Factory function for 2D Lagrange polynomial interpolation of a single particle on a 2N point stencil.
 
     Parameters
@@ -347,7 +349,7 @@ def lagrange2N_2D_factory(
 @functools.lru_cache(maxsize=None)
 def lagrange2N_3D_particle_factory(
     N: int,
-) -> Callable[[np.float64, np.float64, np.float64, npt.NDArray[np.generic]], np.generic]:
+) -> Callable[[npt.NDArray[np.generic], np.float64, np.float64, np.float64, int, int, int], np.generic]:
     """Factory function for 3D Lagrange polynomial interpolation of a single particle on a 2N point stencil.
 
     Parameters
