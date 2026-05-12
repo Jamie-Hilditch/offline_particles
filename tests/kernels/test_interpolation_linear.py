@@ -29,7 +29,7 @@ from offline_particles.spatial_arrays import ArrayAxis
 
 
 class TestConstructLinearInterpolationKernel:
-    """Tests for construct_linear_interpolation_kernel."""
+    """Tests for construct_1D_interpolation_kernel."""
 
     def test_returns_bound_kernel(self) -> None:
         kernel = construct_1D_interpolation_kernel("Z", "temperature", "temp_field")
