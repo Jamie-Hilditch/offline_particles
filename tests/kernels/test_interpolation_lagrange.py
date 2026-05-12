@@ -134,7 +134,7 @@ def test_lagrange_1d_single_particle_matches_parallel_wrapper() -> None:
     offset = 0.25
 
     parallel_impl(status, idx, output, field, offset)
-    expected = single_impl(idx[0] + offset, field)
+    expected = single_impl(field, idx[0] + offset, field.shape[0] - 6)
 
     assert output[0] == pytest.approx(expected)
 
@@ -152,7 +152,7 @@ def test_lagrange_2d_single_particle_matches_parallel_wrapper() -> None:
     offset1 = -0.2
 
     parallel_impl(status, idx0, idx1, output, field, offset0, offset1)
-    expected = single_impl(idx0[0] + offset0, idx1[0] + offset1, field)
+    expected = single_impl(field, idx0[0] + offset0, idx1[0] + offset1, field.shape[0] - 4, field.shape[1] - 4)
 
     assert output[0] == pytest.approx(expected)
 
@@ -172,7 +172,15 @@ def test_lagrange_3d_single_particle_matches_parallel_wrapper() -> None:
     offset2 = 0.05
 
     parallel_impl(status, idx0, idx1, idx2, output, field, offset0, offset1, offset2)
-    expected = single_impl(idx0[0] + offset0, idx1[0] + offset1, idx2[0] + offset2, field)
+    expected = single_impl(
+        field,
+        idx0[0] + offset0,
+        idx1[0] + offset1,
+        idx2[0] + offset2,
+        field.shape[0] - 4,
+        field.shape[1] - 4,
+        field.shape[2] - 4,
+    )
 
     assert output[0] == pytest.approx(expected)
 
