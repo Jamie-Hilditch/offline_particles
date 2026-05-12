@@ -206,7 +206,7 @@ def test_lagrange_factory_results_are_cached() -> None:
     ],
 )
 @pytest.mark.parametrize("invalid_n", [0, -1])
-def test_lagrange_factories_reject_non_positive_N(factory, invalid_n: int) -> None:
+def test_lagrange_factories_reject_nonpositive_N(factory, invalid_n: int) -> None:
     with pytest.raises(ValueError, match="N must be a positive integer"):
         factory(invalid_n)
 
@@ -245,6 +245,17 @@ def test_lagrange_2d_rejects_field_smaller_than_stencil(shape: tuple[int, int]) 
         impl(status, idx0, idx1, output, field, 0.0, 0.0)
 
 
+def test_lagrange_2d_accepts_field_matching_stencil_size() -> None:
+    impl = lagrange2N_2D_factory(N=2)
+    status = np.zeros(1, dtype=np.uint8)
+    idx0 = np.array([0.5], dtype=np.float64)
+    idx1 = np.array([0.5], dtype=np.float64)
+    output = np.zeros(1, dtype=np.float64)
+    field = np.ones((4, 4), dtype=np.float64)
+
+    impl(status, idx0, idx1, output, field, 0.0, 0.0)
+
+
 @pytest.mark.parametrize("shape", [(3, 4, 4), (4, 3, 4), (4, 4, 3), (3, 3, 4)])
 def test_lagrange_3d_rejects_field_smaller_than_stencil(shape: tuple[int, int, int]) -> None:
     impl = lagrange2N_3D_factory(N=2)
@@ -257,3 +268,15 @@ def test_lagrange_3d_rejects_field_smaller_than_stencil(shape: tuple[int, int, i
 
     with pytest.raises(ValueError, match="at least 2N points in each dimension"):
         impl(status, idx0, idx1, idx2, output, field, 0.0, 0.0, 0.0)
+
+
+def test_lagrange_3d_accepts_field_matching_stencil_size() -> None:
+    impl = lagrange2N_3D_factory(N=2)
+    status = np.zeros(1, dtype=np.uint8)
+    idx0 = np.array([0.5], dtype=np.float64)
+    idx1 = np.array([0.5], dtype=np.float64)
+    idx2 = np.array([0.5], dtype=np.float64)
+    output = np.zeros(1, dtype=np.float64)
+    field = np.ones((4, 4, 4), dtype=np.float64)
+
+    impl(status, idx0, idx1, idx2, output, field, 0.0, 0.0, 0.0)
