@@ -87,7 +87,7 @@ def construct_1D_interpolation_kernel(
         output_dtype = np.dtype(output_dtype)
 
     # select kernel function implementation based on accumulate flag
-    kernel_function_impl = lagrange2N_1D_factory(N=N, accumulate=accumulate)
+    kernel_function_impl = lagrange2N_1D_factory(N, accumulate)
 
     # wrap the kernel function implementation into the standard kernel function signature expected by ParticleKernel
     def kernel_function(
@@ -186,7 +186,7 @@ def construct_2D_interpolation_kernel(
         output_dtype = np.dtype(output_dtype)
 
     # select kernel function implementation
-    kernel_function_impl = lagrange2N_2D_factory(N=N, accumulate=accumulate)
+    kernel_function_impl = lagrange2N_2D_factory(N, accumulate)
 
     # wrap the kernel function implementation into the standard kernel function signature expected by ParticleKernel
     def kernel_function(
@@ -291,7 +291,7 @@ def construct_3D_interpolation_kernel(
         output_dtype = np.dtype(output_dtype)
 
     # select kernel function implementation
-    kernel_function_impl = lagrange2N_3D_factory(N=N, accumulate=accumulate)
+    kernel_function_impl = lagrange2N_3D_factory(N, accumulate)
 
     # wrap the kernel function implementation into the standard kernel function signature expected by ParticleKernel
     def kernel_function(
