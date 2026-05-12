@@ -32,6 +32,22 @@ def _truncate_index(idx: float, max_idx: int) -> int:
 
 
 @functools.lru_cache(maxsize=None)
+def _lagrange_basis_polynomial(N: int) -> Callable[[float, int], float]:
+    """Return a function that computes the j-th Lagrange basis polynomial of degree 2N-1 at x."""
+
+    @numba.njit(nogil=True, fastmath=True)
+    def impl(x: float, j: int) -> float:
+        lbp = 1.0
+        for k in range(2 * N):
+            if j == k:
+                continue
+            lbp *= (x - k) / (j - k)
+        return lbp
+
+    return impl
+
+
+@functools.lru_cache(maxsize=None)
 def lagrange2N_1D_particle_factory(N: int) -> Callable[[np.float64, npt.NDArray[np.generic]], np.generic]:
     """Factory function for 1D Lagrange polynomial interpolation of a single particle on a 2N point stencil.
 
@@ -58,6 +74,8 @@ def lagrange2N_1D_particle_factory(N: int) -> Callable[[np.float64, npt.NDArray[
     if N <= 0:
         raise ValueError("N must be a positive integer.")
 
+    lagrange_2N = _lagrange_basis_polynomial(N)
+
     @numba.njit(nogil=True, fastmath=True)
     def impl(
         field_array: npt.NDArray[np.generic],
@@ -65,27 +83,19 @@ def lagrange2N_1D_particle_factory(N: int) -> Callable[[np.float64, npt.NDArray[
         max_idx: int,  # max index for the lower index to avoid out-of-bounds
     ) -> np.generic:
         """Implementation of a 2N point Lagrange interpolating polynomial in 1D for a single particle."""
+        # work in the field array's dtype to avoid unnecessary casts and preserve precision
+        scalar_t = field_array.dtype.type
+
         # get integer and fractional parts of the index
         shifted_idx = offset_idx - N
         I0 = _truncate_index(shifted_idx, max_idx)
         x0 = N + shifted_idx - I0
 
-        # compute the Lagrange basis polynomials
-        # ∏_{j=0,1,...,2N-1 j!=k} (x0 - j) / (k - j)
-        l0 = np.ones((2 * N,), dtype=np.float64)
-        for k in range(
-            2 * N
-        ):  # np.nditer might look cleaner but Claude doesn't think numba can unroll the loops in that case
-            for j in range(2 * N):
-                if j == k:
-                    continue
-                l0[k] *= (x0 - j) / (k - j)
-
-        value = field_array[0] * 0  # initialise to zero but preserve dtype of field
-        # compute interpolated value
+        # accumulate value
+        value = scalar_t(0.0)
         for i in range(2 * N):
-            value += l0[i] * field_array[I0 + i]
-
+            l0 = scalar_t(lagrange_2N(x0, i))
+            value += l0 * field_array[I0 + i]
         return value
 
     return impl
@@ -185,6 +195,9 @@ def lagrange2N_2D_particle_factory(N: int) -> Callable[[np.float64, np.float64, 
     if N <= 0:
         raise ValueError("N must be a positive integer.")
 
+    stencil_size = 2 * N
+    lagrange_2N = _lagrange_basis_polynomial(N)
+
     @numba.njit(nogil=True, fastmath=True)
     def impl(
         field_array: npt.NDArray[np.generic],
@@ -194,6 +207,9 @@ def lagrange2N_2D_particle_factory(N: int) -> Callable[[np.float64, np.float64, 
         max_idx_1: int,
     ) -> np.generic:
         """Implementation of a 2N point Lagrange interpolating polynomial in 2D for a single particle."""
+        # work in the field array's dtype to avoid unnecessary casts and preserve precision
+        scalar_t = field_array.dtype.type
+
         # get integer and fractional parts of the index
         shifted_idx_0 = offset_idx_0 - N
         shifted_idx_1 = offset_idx_1 - N
@@ -202,23 +218,52 @@ def lagrange2N_2D_particle_factory(N: int) -> Callable[[np.float64, np.float64, 
         x0 = N + shifted_idx_0 - I0
         x1 = N + shifted_idx_1 - I1
 
-        # compute the Lagrange basis polynomials
-        # ∏_{j=0,1,...,2N-1 j!=k} (x0 - j) / (k - j)
-        l0 = np.ones((2 * N,), dtype=np.float64)
-        l1 = np.ones((2 * N,), dtype=np.float64)
-        for k in range(
-            2 * N
-        ):  # np.nditer might look cleaner but Claude doesn't think numba can unroll the loops in that case
-            for j in range(2 * N):
-                if j == k:
-                    continue
-                l0[k] *= (x0 - j) / (k - j)
-                l1[k] *= (x1 - j) / (k - j)
+        # compute lagrange basis polynomial weights
+        # the branching is ugly but N is a compile-time constant and with this numba can use registers for N = 1, 2 and 3
+        if N == 1:
+            l0 = (scalar_t(lagrange_2N(x0, 0)), scalar_t(lagrange_2N(x0, 1)))
+            l1 = (scalar_t(lagrange_2N(x1, 0)), scalar_t(lagrange_2N(x1, 1)))
+        elif N == 2:
+            l0 = (
+                scalar_t(lagrange_2N(x0, 0)),
+                scalar_t(lagrange_2N(x0, 1)),
+                scalar_t(lagrange_2N(x0, 2)),
+                scalar_t(lagrange_2N(x0, 3)),
+            )
+            l1 = (
+                scalar_t(lagrange_2N(x1, 0)),
+                scalar_t(lagrange_2N(x1, 1)),
+                scalar_t(lagrange_2N(x1, 2)),
+                scalar_t(lagrange_2N(x1, 3)),
+            )
+        elif N == 3:
+            l0 = (
+                scalar_t(lagrange_2N(x0, 0)),
+                scalar_t(lagrange_2N(x0, 1)),
+                scalar_t(lagrange_2N(x0, 2)),
+                scalar_t(lagrange_2N(x0, 3)),
+                scalar_t(lagrange_2N(x0, 4)),
+                scalar_t(lagrange_2N(x0, 5)),
+            )
+            l1 = (
+                scalar_t(lagrange_2N(x1, 0)),
+                scalar_t(lagrange_2N(x1, 1)),
+                scalar_t(lagrange_2N(x1, 2)),
+                scalar_t(lagrange_2N(x1, 3)),
+                scalar_t(lagrange_2N(x1, 4)),
+                scalar_t(lagrange_2N(x1, 5)),
+            )
+        else:
+            l0 = np.empty(stencil_size, dtype=scalar_t)
+            l1 = np.empty(stencil_size, dtype=scalar_t)
+            for i in range(stencil_size):
+                l0[i] = lagrange_2N(x0, i)
+                l1[i] = lagrange_2N(x1, i)
 
-        value = field_array[0, 0] * 0  # initialise to zero but preserve dtype of field
-        # compute interpolated value
-        for i in range(2 * N):
-            for j in range(2 * N):
+        # accumulate value
+        value = scalar_t(0.0)
+        for i in range(stencil_size):
+            for j in range(stencil_size):
                 value += l0[i] * l1[j] * field_array[I0 + i, I1 + j]
         return value
 
@@ -329,6 +374,9 @@ def lagrange2N_3D_particle_factory(
     if N <= 0:
         raise ValueError("N must be a positive integer.")
 
+    stencil_size = 2 * N
+    lagrange_2N = _lagrange_basis_polynomial(N)
+
     @numba.njit(nogil=True, fastmath=True)
     def impl(
         field_array: npt.NDArray[np.generic],
@@ -340,6 +388,9 @@ def lagrange2N_3D_particle_factory(
         max_idx_2: int,
     ) -> np.generic:
         """Implementation of a 2N point Lagrange interpolating polynomial in 3D for a single particle."""
+        # work in the field array's dtype to avoid unnecessary casts and preserve precision
+        scalar_t = field_array.dtype.type
+
         # get integer and fractional parts of the index
         shifted_idx_0 = offset_idx_0 - N
         shifted_idx_1 = offset_idx_1 - N
@@ -351,24 +402,70 @@ def lagrange2N_3D_particle_factory(
         x1 = N + shifted_idx_1 - I1
         x2 = N + shifted_idx_2 - I2
 
-        l0 = np.ones((2 * N,), dtype=np.float64)
-        l1 = np.ones((2 * N,), dtype=np.float64)
-        l2 = np.ones((2 * N,), dtype=np.float64)
-        for k in range(
-            2 * N
-        ):  # np.nditer might look cleaner but Claude doesn't think numba can unroll the loops in that case
-            for j in range(2 * N):
-                if j == k:
-                    continue
-                l0[k] *= (x0 - j) / (k - j)
-                l1[k] *= (x1 - j) / (k - j)
-                l2[k] *= (x2 - j) / (k - j)
+        # compute lagrange basis polynomial weights
+        # the branching is ugly but N is a compile-time constant and with this numba can use registers for N = 1, 2 and 3
+        if N == 1:
+            l0 = (scalar_t(lagrange_2N(x0, 0)), scalar_t(lagrange_2N(x0, 1)))
+            l1 = (scalar_t(lagrange_2N(x1, 0)), scalar_t(lagrange_2N(x1, 1)))
+            l2 = (scalar_t(lagrange_2N(x2, 0)), scalar_t(lagrange_2N(x2, 1)))
+        elif N == 2:
+            l0 = (
+                scalar_t(lagrange_2N(x0, 0)),
+                scalar_t(lagrange_2N(x0, 1)),
+                scalar_t(lagrange_2N(x0, 2)),
+                scalar_t(lagrange_2N(x0, 3)),
+            )
+            l1 = (
+                scalar_t(lagrange_2N(x1, 0)),
+                scalar_t(lagrange_2N(x1, 1)),
+                scalar_t(lagrange_2N(x1, 2)),
+                scalar_t(lagrange_2N(x1, 3)),
+            )
+            l2 = (
+                scalar_t(lagrange_2N(x2, 0)),
+                scalar_t(lagrange_2N(x2, 1)),
+                scalar_t(lagrange_2N(x2, 2)),
+                scalar_t(lagrange_2N(x2, 3)),
+            )
+        elif N == 3:
+            l0 = (
+                scalar_t(lagrange_2N(x0, 0)),
+                scalar_t(lagrange_2N(x0, 1)),
+                scalar_t(lagrange_2N(x0, 2)),
+                scalar_t(lagrange_2N(x0, 3)),
+                scalar_t(lagrange_2N(x0, 4)),
+                scalar_t(lagrange_2N(x0, 5)),
+            )
+            l1 = (
+                scalar_t(lagrange_2N(x1, 0)),
+                scalar_t(lagrange_2N(x1, 1)),
+                scalar_t(lagrange_2N(x1, 2)),
+                scalar_t(lagrange_2N(x1, 3)),
+                scalar_t(lagrange_2N(x1, 4)),
+                scalar_t(lagrange_2N(x1, 5)),
+            )
+            l2 = (
+                scalar_t(lagrange_2N(x2, 0)),
+                scalar_t(lagrange_2N(x2, 1)),
+                scalar_t(lagrange_2N(x2, 2)),
+                scalar_t(lagrange_2N(x2, 3)),
+                scalar_t(lagrange_2N(x2, 4)),
+                scalar_t(lagrange_2N(x2, 5)),
+            )
+        else:
+            l0 = np.empty(stencil_size, dtype=scalar_t)
+            l1 = np.empty(stencil_size, dtype=scalar_t)
+            l2 = np.empty(stencil_size, dtype=scalar_t)
+            for i in range(stencil_size):
+                l0[i] = lagrange_2N(x0, i)
+                l1[i] = lagrange_2N(x1, i)
+                l2[i] = lagrange_2N(x2, i)
 
-        # compute interpolated value
-        value = field_array[0, 0, 0] * 0  # initialise to zero but preserve dtype of field
+        # accumulate value
+        value = scalar_t(0.0)
         for i in range(2 * N):
             for j in range(2 * N):
-                for k in range(2 * N):  # noqa: E741
+                for k in range(2 * N):
                     value += l0[i] * l1[j] * l2[k] * field_array[I0 + i, I1 + j, I2 + k]
         return value
 
