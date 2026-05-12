@@ -48,7 +48,7 @@ def _lagrange_basis_polynomial(N: int) -> Callable[[float, int], float]:
 
 
 @functools.lru_cache(maxsize=None)
-def lagrange2N_1D_particle_factory(N: int) -> Callable[[npt.NDArray[np.generic], np.float64, int], np.generic]:
+def lagrange2N_1D_particle_factory(N: int) -> Callable[[npt.NDArray[np.inexact], np.float64, int], np.inexact]:
     """Factory function for 1D Lagrange polynomial interpolation of a single particle on a 2N point stencil.
 
     Parameters
@@ -78,10 +78,10 @@ def lagrange2N_1D_particle_factory(N: int) -> Callable[[npt.NDArray[np.generic],
 
     @numba.njit(nogil=True, fastmath=True)
     def impl(
-        field_array: npt.NDArray[np.generic],
+        field_array: npt.NDArray[np.inexact],
         offset_idx: np.float64,
         max_idx: int,  # max index for the lower index to avoid out-of-bounds
-    ) -> np.generic:
+    ) -> np.inexact:
         """Implementation of a 2N point Lagrange interpolating polynomial in 1D for a single particle."""
         # work in the field array's dtype to avoid unnecessary casts and preserve precision
         scalar_t = field_array.dtype.type
@@ -109,8 +109,8 @@ def lagrange2N_1D_factory(
     [
         npt.NDArray[np.uint8],
         npt.NDArray[np.float64],
-        npt.NDArray[np.generic],
-        npt.NDArray[np.generic],
+        npt.NDArray[np.inexact],
+        npt.NDArray[np.inexact],
         float,
     ],
     None,
@@ -142,8 +142,8 @@ def lagrange2N_1D_factory(
     def impl(
         status: npt.NDArray[np.uint8],
         idx: npt.NDArray[np.float64],
-        output: npt.NDArray[np.generic],
-        field_array: npt.NDArray[np.generic],
+        output: npt.NDArray[np.inexact],
+        field_array: npt.NDArray[np.inexact],
         offset: float,
     ) -> None:
         """Implementation of a 2N point Lagrange interpolating polynomial in 1D."""
@@ -171,7 +171,7 @@ def lagrange2N_1D_factory(
 @functools.lru_cache(maxsize=None)
 def lagrange2N_2D_particle_factory(
     N: int,
-) -> Callable[[npt.NDArray[np.generic], np.float64, np.float64, int, int], np.generic]:
+) -> Callable[[npt.NDArray[np.inexact], np.float64, np.float64, int, int], np.inexact]:
     """Factory function for 2D Lagrange polynomial interpolation of a single particle on a 2N point stencil.
 
     Parameters
@@ -202,12 +202,12 @@ def lagrange2N_2D_particle_factory(
 
     @numba.njit(nogil=True, fastmath=True)
     def impl(
-        field_array: npt.NDArray[np.generic],
+        field_array: npt.NDArray[np.inexact],
         offset_idx_0: np.float64,
         offset_idx_1: np.float64,
         max_idx_0: int,
         max_idx_1: int,
-    ) -> np.generic:
+    ) -> np.inexact:
         """Implementation of a 2N point Lagrange interpolating polynomial in 2D for a single particle."""
         # work in the field array's dtype to avoid unnecessary casts and preserve precision
         scalar_t = field_array.dtype.type
@@ -281,8 +281,8 @@ def lagrange2N_2D_factory(
         npt.NDArray[np.uint8],
         npt.NDArray[np.float64],
         npt.NDArray[np.float64],
-        npt.NDArray[np.generic],
-        npt.NDArray[np.generic],
+        npt.NDArray[np.inexact],
+        npt.NDArray[np.inexact],
         float,
         float,
     ],
@@ -317,8 +317,8 @@ def lagrange2N_2D_factory(
         status: npt.NDArray[np.uint8],
         idx0: npt.NDArray[np.float64],
         idx1: npt.NDArray[np.float64],
-        output: npt.NDArray[np.generic],
-        field_array: npt.NDArray[np.generic],
+        output: npt.NDArray[np.inexact],
+        field_array: npt.NDArray[np.inexact],
         offset0: float,
         offset1: float,
     ) -> None:
@@ -349,7 +349,7 @@ def lagrange2N_2D_factory(
 @functools.lru_cache(maxsize=None)
 def lagrange2N_3D_particle_factory(
     N: int,
-) -> Callable[[npt.NDArray[np.generic], np.float64, np.float64, np.float64, int, int, int], np.generic]:
+) -> Callable[[npt.NDArray[np.inexact], np.float64, np.float64, np.float64, int, int, int], np.inexact]:
     """Factory function for 3D Lagrange polynomial interpolation of a single particle on a 2N point stencil.
 
     Parameters
@@ -381,14 +381,14 @@ def lagrange2N_3D_particle_factory(
 
     @numba.njit(nogil=True, fastmath=True)
     def impl(
-        field_array: npt.NDArray[np.generic],
+        field_array: npt.NDArray[np.inexact],
         offset_idx_0: np.float64,
         offset_idx_1: np.float64,
         offset_idx_2: np.float64,
         max_idx_0: int,
         max_idx_1: int,
         max_idx_2: int,
-    ) -> np.generic:
+    ) -> np.inexact:
         """Implementation of a 2N point Lagrange interpolating polynomial in 3D for a single particle."""
         # work in the field array's dtype to avoid unnecessary casts and preserve precision
         scalar_t = field_array.dtype.type
@@ -484,8 +484,8 @@ def lagrange2N_3D_factory(
         npt.NDArray[np.float64],
         npt.NDArray[np.float64],
         npt.NDArray[np.float64],
-        npt.NDArray[np.generic],
-        npt.NDArray[np.generic],
+        npt.NDArray[np.inexact],
+        npt.NDArray[np.inexact],
         float,
         float,
         float,
@@ -521,8 +521,8 @@ def lagrange2N_3D_factory(
         idx0: npt.NDArray[np.float64],
         idx1: npt.NDArray[np.float64],
         idx2: npt.NDArray[np.float64],
-        output: npt.NDArray[np.generic],
-        field_array: npt.NDArray[np.generic],
+        output: npt.NDArray[np.inexact],
+        field_array: npt.NDArray[np.inexact],
         offset0: float,
         offset1: float,
         offset2: float,
