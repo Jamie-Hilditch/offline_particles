@@ -110,7 +110,7 @@ class TestConstructLinearInterpolationKernel:
 
 
 class TestConstructBilinearInterpolationKernel:
-    """Tests for construct_bilinear_interpolation_kernel."""
+    """Tests for construct_2D_interpolation_kernel."""
 
     def test_returns_bound_kernel(self) -> None:
         kernel = construct_2D_interpolation_kernel(("Z", "Y"), "temperature", "temp_field")
