@@ -1,4 +1,4 @@
-"""Linear interpolation kernels."""
+"""Constructors for 2N-point Lagrange interpolation kernels."""
 
 import functools
 
