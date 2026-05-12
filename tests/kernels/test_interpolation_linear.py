@@ -29,7 +29,7 @@ from offline_particles.spatial_arrays import ArrayAxis
 
 
 class TestConstructLinearInterpolationKernel:
-    """Tests for construct_linear_interpolation_kernel."""
+    """Tests for construct_1D_interpolation_kernel."""
 
     def test_returns_bound_kernel(self) -> None:
         kernel = construct_1D_interpolation_kernel("Z", "temperature", "temp_field")
@@ -110,7 +110,7 @@ class TestConstructLinearInterpolationKernel:
 
 
 class TestConstructBilinearInterpolationKernel:
-    """Tests for construct_bilinear_interpolation_kernel."""
+    """Tests for construct_2D_interpolation_kernel."""
 
     def test_returns_bound_kernel(self) -> None:
         kernel = construct_2D_interpolation_kernel(("Z", "Y"), "temperature", "temp_field")
@@ -199,7 +199,7 @@ class TestConstructBilinearInterpolationKernel:
 
 
 class TestConstructTrilinearInterpolationKernel:
-    """Tests for construct_trilinear_interpolation_kernel."""
+    """Tests for construct_3D_interpolation_kernel."""
 
     def test_returns_bound_kernel(self) -> None:
         kernel = construct_3D_interpolation_kernel(("Z", "Y", "X"), "temperature", "temp_field")
