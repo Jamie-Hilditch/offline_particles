@@ -5,6 +5,7 @@ import pytest
 
 from offline_particles.kernels._kernels import BoundKernel
 from offline_particles.kernels.interpolation import (
+    _kernel_constructors,
     construct_1D_interpolation_kernel,
     construct_2D_interpolation_kernel,
     construct_3D_interpolation_kernel,
@@ -90,6 +91,23 @@ class TestConstructLinearInterpolationKernel:
         field_decl = kernel.kernel.field_data["field"]
         assert len(field_decl._layout_validators) == 1
 
+    def test_passes_N_and_accumulate_to_factory(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        called = {}
+
+        def fake_factory(N: int, accumulate: bool = False):
+            called["N"] = N
+            called["accumulate"] = accumulate
+
+            def kernel_function_impl(*args):  # noqa: ANN002, ANN003
+                return None
+
+            return kernel_function_impl
+
+        monkeypatch.setattr(_kernel_constructors, "lagrange2N_1D_factory", fake_factory)
+
+        construct_1D_interpolation_kernel("Z", "temperature", "temp_field", N=4, accumulate=True)
+        assert called == {"N": 4, "accumulate": True}
+
 
 class TestConstructBilinearInterpolationKernel:
     """Tests for construct_bilinear_interpolation_kernel."""
@@ -161,6 +179,23 @@ class TestConstructBilinearInterpolationKernel:
         kernel = construct_2D_interpolation_kernel(("Z", "Y"), "temperature", "temp_field")
         field_decl = kernel.kernel.field_data["field"]
         assert len(field_decl._layout_validators) == 1
+
+    def test_passes_N_and_accumulate_to_factory(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        called = {}
+
+        def fake_factory(N: int, accumulate: bool = False):
+            called["N"] = N
+            called["accumulate"] = accumulate
+
+            def kernel_function_impl(*args):  # noqa: ANN002, ANN003
+                return None
+
+            return kernel_function_impl
+
+        monkeypatch.setattr(_kernel_constructors, "lagrange2N_2D_factory", fake_factory)
+
+        construct_2D_interpolation_kernel(("Z", "Y"), "temperature", "temp_field", N=3, accumulate=True)
+        assert called == {"N": 3, "accumulate": True}
 
 
 class TestConstructTrilinearInterpolationKernel:
@@ -237,6 +272,23 @@ class TestConstructTrilinearInterpolationKernel:
         kernel = construct_3D_interpolation_kernel(("Z", "Y", "X"), "temperature", "temp_field")
         field_decl = kernel.kernel.field_data["field"]
         assert len(field_decl._layout_validators) == 1
+
+    def test_passes_N_and_accumulate_to_factory(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        called = {}
+
+        def fake_factory(N: int, accumulate: bool = False):
+            called["N"] = N
+            called["accumulate"] = accumulate
+
+            def kernel_function_impl(*args):  # noqa: ANN002, ANN003
+                return None
+
+            return kernel_function_impl
+
+        monkeypatch.setattr(_kernel_constructors, "lagrange2N_3D_factory", fake_factory)
+
+        construct_3D_interpolation_kernel(("Z", "Y", "X"), "temperature", "temp_field", N=2, accumulate=True)
+        assert called == {"N": 2, "accumulate": True}
 
 
 class TestConvenienceConstructors:

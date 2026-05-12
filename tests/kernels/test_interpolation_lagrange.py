@@ -4,7 +4,14 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
-from offline_particles.kernels.interpolation import lagrange2N_1D_factory, lagrange2N_2D_factory, lagrange2N_3D_factory
+from offline_particles.kernels.interpolation import (
+    lagrange2N_1D_factory,
+    lagrange2N_1D_particle_factory,
+    lagrange2N_2D_factory,
+    lagrange2N_2D_particle_factory,
+    lagrange2N_3D_factory,
+    lagrange2N_3D_particle_factory,
+)
 
 
 def _stencil_origin_and_local_position(idx: float, N: int, offset: float = 0.0) -> tuple[int, float]:
@@ -114,3 +121,66 @@ def test_lagrange_3d_exact_for_degree_2n_minus_1_polynomial(N: int) -> None:
 
     expected = polynomial(local0, local1, local2)
     assert output[0] == pytest.approx(expected, rel=1e-10, abs=1e-10)
+
+
+def test_lagrange_1d_single_particle_matches_parallel_wrapper() -> None:
+    parallel_impl = lagrange2N_1D_factory(N=3)
+    single_impl = lagrange2N_1D_particle_factory(N=3)
+
+    field = np.linspace(-1.0, 1.0, 64)
+    status = np.zeros(1, dtype=np.uint8)
+    idx = np.array([12.375], dtype=np.float64)
+    output = np.array([np.nan], dtype=np.float64)
+    offset = 0.25
+
+    parallel_impl(status, idx, output, field, offset)
+    expected = single_impl(idx[0] + offset, field)
+
+    assert output[0] == pytest.approx(expected)
+
+
+def test_lagrange_2d_single_particle_matches_parallel_wrapper() -> None:
+    parallel_impl = lagrange2N_2D_factory(N=2)
+    single_impl = lagrange2N_2D_particle_factory(N=2)
+
+    field = np.arange(40 * 48, dtype=np.float64).reshape(40, 48)
+    status = np.zeros(1, dtype=np.uint8)
+    idx0 = np.array([13.375], dtype=np.float64)
+    idx1 = np.array([15.625], dtype=np.float64)
+    output = np.array([np.nan], dtype=np.float64)
+    offset0 = 0.1
+    offset1 = -0.2
+
+    parallel_impl(status, idx0, idx1, output, field, offset0, offset1)
+    expected = single_impl(idx0[0] + offset0, idx1[0] + offset1, field)
+
+    assert output[0] == pytest.approx(expected)
+
+
+def test_lagrange_3d_single_particle_matches_parallel_wrapper() -> None:
+    parallel_impl = lagrange2N_3D_factory(N=2)
+    single_impl = lagrange2N_3D_particle_factory(N=2)
+
+    field = np.arange(20 * 18 * 16, dtype=np.float64).reshape(20, 18, 16)
+    status = np.zeros(1, dtype=np.uint8)
+    idx0 = np.array([9.125], dtype=np.float64)
+    idx1 = np.array([8.625], dtype=np.float64)
+    idx2 = np.array([7.25], dtype=np.float64)
+    output = np.array([np.nan], dtype=np.float64)
+    offset0 = 0.15
+    offset1 = -0.25
+    offset2 = 0.05
+
+    parallel_impl(status, idx0, idx1, idx2, output, field, offset0, offset1, offset2)
+    expected = single_impl(idx0[0] + offset0, idx1[0] + offset1, idx2[0] + offset2, field)
+
+    assert output[0] == pytest.approx(expected)
+
+
+def test_lagrange_factory_results_are_cached() -> None:
+    assert lagrange2N_1D_particle_factory(2) is lagrange2N_1D_particle_factory(2)
+    assert lagrange2N_2D_particle_factory(2) is lagrange2N_2D_particle_factory(2)
+    assert lagrange2N_3D_particle_factory(2) is lagrange2N_3D_particle_factory(2)
+    assert lagrange2N_1D_factory(2, accumulate=True) is lagrange2N_1D_factory(2, accumulate=True)
+    assert lagrange2N_2D_factory(2, accumulate=True) is lagrange2N_2D_factory(2, accumulate=True)
+    assert lagrange2N_3D_factory(2, accumulate=True) is lagrange2N_3D_factory(2, accumulate=True)
