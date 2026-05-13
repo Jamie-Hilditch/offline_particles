@@ -13,7 +13,7 @@ from ...kernels.roms import (
     construct_compute_zidx_kernel,
     construct_horizontal_idx_tendency_kernel_from_velocity_field,
 )
-from ...kernels.timestepping import construct_ab3_update_kernel, construct_ab_bump_status_kernel
+from ...kernels.timestepping import construct_ab3_update_kernel
 from ...kernels.validation import construct_validation_kernel
 from ...timestepping import ABTimestepper
 
@@ -135,9 +135,6 @@ def roms_ab3_timestepper(
     if buoyant_particles or linear_damping or quadratic_damping:
         ab_kernels.append(construct_ab3_update_kernel("w_rel", "_dw_rel0", "_dw_rel1", "_dw_rel2"))
 
-    # finally add the status bump kernel
-    ab_kernels.append(construct_ab_bump_status_kernel())
-
     # post step kernel to update zidx after advection
     post_step_kernels = [construct_compute_zidx_kernel()]
 
@@ -146,8 +143,10 @@ def roms_ab3_timestepper(
 
     timestepper = ABTimestepper(
         index_padding=index_padding,
+        order=3,
     )
     timestepper.add_pre_step_kernels(*pre_step_kernels)
-    timestepper.add_ab_kernels(*tendency_kernels, *ab_kernels)
+    timestepper.add_tendency_kernels(*tendency_kernels)
+    timestepper.add_ab_update_kernels(*ab_kernels)
     timestepper.add_post_step_kernels(*post_step_kernels)
     return timestepper
