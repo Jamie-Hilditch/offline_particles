@@ -103,7 +103,7 @@ def ab_bump_status(status: npt.NDArray[np.uint8]) -> None:
             status[i] = _MULTISTEP_1
 
 
-def ab_initialisation_factory(order: int) -> Callable[npt.NDArray[np.uint8], None]:
+def ab_initialisation_factory(order: int) -> Callable[[npt.NDArray[np.uint8]], None]:
     """Factory function to create an Adams-Bashforth initialisation kernel for a given order.
 
     Args:
