@@ -25,7 +25,12 @@ import numpy as np
 import numpy.typing as npt
 
 from .kernels import BoundKernel
-from .kernels.timestepping import construct_ab3_initialisation_kernel
+from .kernels.timestepping import (
+    construct_ab2_update_kernel,
+    construct_ab3_update_kernel,
+    construct_ab_bump_status_kernel,
+    construct_ab_initialisation_kernel,
+)
 from .launcher import Launcher, ScalarSource, Time_info, Tinfo
 from .particles import Particles
 
@@ -446,27 +451,76 @@ class ABTimestepper(Timestepper):
 
     def __init__(
         self,
+        order: int = 3,
         *,
         index_padding: int = 0,
     ) -> None:
         super().__init__()
-        self._ab_kernels = []
+        self._tendency_kernels = []
+        self._ab_update_kernels = []
+        self._bump_status_kernel = construct_ab_bump_status_kernel()
         self._index_padding = index_padding
+        self._order = order
 
-        # Add AB3 initialisation kernel
-        self.add_initialisation_kernels(construct_ab3_initialisation_kernel())
+        # validate order
+        if self._order not in (2, 3):
+            raise ValueError("Only orders 2 and 3 are currently supported for ABTimestepper.")
 
-    def add_ab_kernels(self, *kernels: BoundKernel) -> None:
-        """Add kernels to be launched during Adams-Bashforth step."""
-        self._ab_kernels.extend(kernels)
+        # Add initialisation kernel
+        self.add_initialisation_kernels(construct_ab_initialisation_kernel(order))
+
+    def add_tendency_kernels(self, *kernels: BoundKernel) -> None:
+        """Add kernels to be launched during tendency accumulation."""
+        self._tendency_kernels.extend(kernels)
+
+    def add_ab_update_kernels(self, *kernels: BoundKernel) -> None:
+        """Add kernels to be launched during Adams-Bashforth update step."""
+        self._ab_update_kernels.extend(kernels)
+
+    def add_prognostic_property_kernel(
+        self,
+        prop: str,
+        dprop_0: str | None = None,
+        dprop_1: str | None = None,
+        dprop_2: str | None = None,
+        *,
+        dtype: npt.DTypeLike = np.float64,
+    ) -> None:
+        """Create and add an Adams-Bashforth update kernel for the specified prognostic property.
+
+        Args:
+            prop: The name of the prognostic property.
+            dprop_0: The name of the first derivative of the prognostic property. If None, defaults to prop + "_d0".
+            dprop_1: The name of the second derivative of the prognostic property. If None, defaults to prop + "_d1".
+            dprop_2: The name of the third derivative of the prognostic property. If None, defaults to prop + "_d2".
+            dtype: The data type of the prognostic property and its derivatives. Defaults to np.float64.
+        """
+        dprop_0 = dprop_0 or f"{prop}_d0"
+        dprop_1 = dprop_1 or f"{prop}_d1"
+        dprop_2 = dprop_2 or f"{prop}_d2"
+
+        if self._order == 2:
+            kernel = construct_ab2_update_kernel(prop, dprop_0, dprop_1, dtype=dtype)
+        else:  # self._order == 3
+            kernel = construct_ab3_update_kernel(prop, dprop_0, dprop_1, dprop_2, dtype=dtype)
+
+        self.add_ab_update_kernels(kernel)
 
     @property
     def kernels(self) -> Iterator[BoundKernel]:
         """Get the kernels used by this timestepper."""
-        return itertools.chain(super().kernels, self._ab_kernels)
+        return itertools.chain(
+            super().kernels, self._tendency_kernels, self._ab_update_kernels, [self._bump_status_kernel]
+        )
 
     def run_step(self, particles: Particles, launcher: Launcher, clock: Clock) -> None:
         """Launch the Adams-Bashforth kernel to timestep the particles."""
-        # Launch Adams-Bashforth kernel
-        for kernel in self._ab_kernels:
+
+        # first launch tendency kernels to compute tendencies and store in dprop_0
+        for kernel in self._tendency_kernels:
             launcher.launch_kernel(kernel, particles, clock.tinfo)
+        # then the Adams-Bashforth update kernels
+        for kernel in self._ab_update_kernels:
+            launcher.launch_kernel(kernel, particles, clock.tinfo)
+        # finally bump the particle status
+        launcher.launch_kernel(self._bump_status_kernel, particles, clock.tinfo)
