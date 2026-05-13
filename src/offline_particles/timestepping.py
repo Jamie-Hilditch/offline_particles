@@ -478,7 +478,13 @@ class ABTimestepper(Timestepper):
         self._ab_update_kernels.extend(kernels)
 
     def add_prognostic_property_kernel(
-        self, prop: str, dprop_0: str | None = None, dprop_1: str | None = None, dprop_2: str | None = None
+        self,
+        prop: str,
+        dprop_0: str | None = None,
+        dprop_1: str | None = None,
+        dprop_2: str | None = None,
+        *,
+        dtype: npt.DTypeLike = np.float64,
     ) -> None:
         """Create and add an Adams-Bashforth update kernel for the specified prognostic property.
 
@@ -487,15 +493,16 @@ class ABTimestepper(Timestepper):
             dprop_0: The name of the first derivative of the prognostic property. If None, defaults to prop + "_d0".
             dprop_1: The name of the second derivative of the prognostic property. If None, defaults to prop + "_d1".
             dprop_2: The name of the third derivative of the prognostic property. If None, defaults to prop + "_d2".
+            dtype: The data type of the prognostic property and its derivatives. Defaults to np.float64.
         """
         dprop_0 = dprop_0 or f"{prop}_d0"
         dprop_1 = dprop_1 or f"{prop}_d1"
         dprop_2 = dprop_2 or f"{prop}_d2"
 
         if self._order == 2:
-            kernel = construct_ab2_update_kernel(prop, dprop_0, dprop_1)
+            kernel = construct_ab2_update_kernel(prop, dprop_0, dprop_1, dtype=dtype)
         else:  # self._order == 3
-            kernel = construct_ab3_update_kernel(prop, dprop_0, dprop_1, dprop_2)
+            kernel = construct_ab3_update_kernel(prop, dprop_0, dprop_1, dprop_2, dtype=dtype)
 
         self.add_ab_update_kernels(kernel)
 
