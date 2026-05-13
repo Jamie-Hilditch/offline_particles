@@ -25,7 +25,7 @@ import numpy as np
 import numpy.typing as npt
 
 from .kernels import BoundKernel
-from .kernels.timestepping import construct_ab3_initialisation_kernel
+from .kernels.timestepping import construct_ab_initialisation_kernel
 from .launcher import Launcher, ScalarSource, Time_info, Tinfo
 from .particles import Particles
 
@@ -454,7 +454,7 @@ class ABTimestepper(Timestepper):
         self._index_padding = index_padding
 
         # Add AB3 initialisation kernel
-        self.add_initialisation_kernels(construct_ab3_initialisation_kernel())
+        self.add_initialisation_kernels(construct_ab_initialisation_kernel(3))
 
     def add_ab_kernels(self, *kernels: BoundKernel) -> None:
         """Add kernels to be launched during Adams-Bashforth step."""

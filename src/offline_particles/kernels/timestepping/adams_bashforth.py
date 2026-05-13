@@ -3,38 +3,42 @@
 import numpy as np
 import numpy.typing as npt
 
-from .._kernels import BoundKernel, ParticleKernel, ParticlePropertyDeclaration
-from ..input_declarations import DT_DECLARATION, STATUS_DECLARATION
-from ._adams_bashforth import (
-    ab2_bump_status,
-    ab2_initialisation,
-    ab2_update_float32,
-    ab2_update_float64,
-    ab3_bump_status,
-    ab3_initialisation,
-    ab3_update_float32,
-    ab3_update_float64,
+from .._kernels import (
+    BoundKernel,
+    FieldDataType,
+    ParticleKernel,
+    ParticlePropertiesType,
+    ParticlePropertyDeclaration,
+    ScalarsType,
 )
+from ..input_declarations import DT_DECLARATION, STATUS_DECLARATION
+from ._adams_bashforth import ab2_update, ab3_update, ab_bump_status, ab_initialisation_factory
 
 
 # particle property declarations for Adams-Bashforth
-def _particle_property_declarations(dtype: type[np.float32] | type[np.float64]) -> list[ParticlePropertyDeclaration]:
+def _particle_property_declarations(dtype: np.inexact, order: int) -> list[ParticlePropertyDeclaration]:
     """Helper function to create particle property declarations for Adams-Bashforth kernels.
 
     Args:
         dtype: Data type of the particle properties (np.float32 or np.float64).
+        order: Order of the Adams-Bashforth scheme.
     """
     prop_declaration = ParticlePropertyDeclaration("prop", np.dtype(dtype))
     dprop_0_declaration = ParticlePropertyDeclaration("dprop_0", np.dtype(dtype))
     dprop_1_declaration = ParticlePropertyDeclaration("dprop_1", np.dtype(dtype))
     dprop_2_declaration = ParticlePropertyDeclaration("dprop_2", np.dtype(dtype))
-    return [
+
+    declarations = [
         STATUS_DECLARATION,
         prop_declaration,
         dprop_0_declaration,
         dprop_1_declaration,
-        dprop_2_declaration,
     ]
+
+    if order > 2:
+        declarations.append(dprop_2_declaration)
+
+    return declarations
 
 
 def construct_ab2_update_kernel(
@@ -52,15 +56,23 @@ def construct_ab2_update_kernel(
         BoundKernel implementing the AB2 update.
     """
     dtype = np.dtype(dtype)
-    if dtype == np.float32:
-        ab2_update = ab2_update_float32
-    elif dtype == np.float64:
-        ab2_update = ab2_update_float64
-    else:
-        raise ValueError("Unsupported dtype for Adams-Bashforth 2 kernel. Use np.float32 or np.float64.")
+
+    def kernel_function(
+        particle_properties: ParticlePropertiesType,
+        scalars: ScalarsType,
+        fields: FieldDataType,
+    ) -> None:
+        """Adams-Bashforth 2 update kernel function to be used in the ParticleKernel."""
+        prop = particle_properties["prop"]
+        dprop_0 = particle_properties["dprop_0"]
+        dprop_1 = particle_properties["dprop_1"]
+        dt = scalars["dt"]
+
+        ab2_update(particle_properties["status"], prop, dprop_0, dprop_1, dt)
+
     kernel = ParticleKernel(
-        ab2_update,
-        particle_properties=_particle_property_declarations(dtype.type)[:4],
+        kernel_function,
+        particle_properties=_particle_property_declarations(dtype.type, 2),
         scalars=[DT_DECLARATION],
     )
     return BoundKernel(
@@ -73,38 +85,8 @@ def construct_ab2_update_kernel(
     )
 
 
-def construct_ab2_bump_status_kernel() -> BoundKernel:
-    """Construct an Adams-Bashforth 2 bump status kernel.
-
-    Returns:
-        BoundKernel implementing the AB2 bump status.
-    """
-
-    kernel = ParticleKernel(
-        ab2_bump_status,
-        particle_properties=[STATUS_DECLARATION],
-    )
-    return BoundKernel(kernel)
-
-
-def construct_ab2_initialisation_kernel() -> BoundKernel:
-    """Construct an Adams-Bashforth 2 initialisation kernel.
-
-    Returns:
-        BoundKernel implementing the AB2 initialisation.
-    """
-
-    kernel = ParticleKernel(
-        ab2_initialisation,
-        particle_properties=[
-            STATUS_DECLARATION,
-        ],
-    )
-    return BoundKernel(kernel)
-
-
 def construct_ab3_update_kernel(
-    prop: str, dprop_0: str, dprop_1: str, dprop_2: str, dtype: npt.DTypeLike = np.float64
+    prop: str, dprop_0: str, dprop_1: str, dprop_2: str, dtype: npt.DTypeLike = np.float32
 ) -> BoundKernel:
     """Construct an Adams-Bashforth 3 update kernel for a given property.
 
@@ -119,13 +101,24 @@ def construct_ab3_update_kernel(
         BoundKernel implementing the AB3 update.
     """
     dtype = np.dtype(dtype)
-    if dtype == np.float32:
-        ab3_update = ab3_update_float32
-    elif dtype == np.float64:
-        ab3_update = ab3_update_float64
+
+    def kernel_function(
+        particle_properties: ParticlePropertiesType,
+        scalars: ScalarsType,
+        fields: FieldDataType,
+    ) -> None:
+        """Adams-Bashforth 3 update kernel function to be used in the ParticleKernel."""
+        prop = particle_properties["prop"]
+        dprop_0 = particle_properties["dprop_0"]
+        dprop_1 = particle_properties["dprop_1"]
+        dprop_2 = particle_properties["dprop_2"]
+        dt = scalars["dt"]
+
+        ab3_update(particle_properties["status"], prop, dprop_0, dprop_1, dprop_2, dt)
+
     kernel = ParticleKernel(
-        ab3_update,
-        particle_properties=_particle_property_declarations(dtype.type),
+        kernel_function,
+        particle_properties=_particle_property_declarations(dtype.type, 3),
         scalars=[DT_DECLARATION],
     )
     return BoundKernel(
@@ -139,29 +132,41 @@ def construct_ab3_update_kernel(
     )
 
 
-def construct_ab3_bump_status_kernel() -> BoundKernel:
-    """Construct an Adams-Bashforth 3 bump status kernel.
+def construct_ab_bump_status_kernel() -> BoundKernel:
+    """Construct a kernel that bumps the Adams-Bashforth status.
 
     Returns:
-        BoundKernel implementing the AB3 bump status.
+        BoundKernel implementing AB bump status.
     """
 
+    def kernel_function(
+        particle_properties: ParticlePropertiesType,
+        scalars: ScalarsType,
+        fields: FieldDataType,
+    ) -> None:
+        """Adams-Bashforth bump status kernel function to be used in the ParticleKernel."""
+        ab_bump_status(particle_properties["status"])
+
     kernel = ParticleKernel(
-        ab3_bump_status,
+        kernel_function,
         particle_properties=[STATUS_DECLARATION],
     )
     return BoundKernel(kernel)
 
 
-def construct_ab3_initialisation_kernel() -> BoundKernel:
-    """Construct an Adams-Bashforth 3 initialisation kernel.
+def construct_ab_initialisation_kernel(order: int) -> BoundKernel:
+    """Construct an Adams-Bashforth initialisation kernel.
+
+    Args:
+        order: The order of the Adams-Bashforth method (2 or 3).
 
     Returns:
-        BoundKernel implementing the AB3 initialisation.
+        BoundKernel implementing the AB initialisation.
     """
+    kernel_function = ab_initialisation_factory(order)
 
     kernel = ParticleKernel(
-        ab3_initialisation,
+        kernel_function,
         particle_properties=[
             STATUS_DECLARATION,
         ],
