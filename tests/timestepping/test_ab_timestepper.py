@@ -18,10 +18,10 @@ def _make_clock() -> Clock:
 def _make_particles() -> Particles:
     particles = Particles(
         3,
-        status=np.uint8,
-        zidx=np.float64,
-        yidx=np.float64,
-        xidx=np.float64,
+        status=np.dtype(np.uint8),
+        zidx=np.dtype(np.float64),
+        yidx=np.dtype(np.float64),
+        xidx=np.dtype(np.float64),
     )
     particles["status"][:] = np.array(
         [
@@ -101,10 +101,10 @@ class TestABTimestepperExecution:
         timestepper.add_ab_update_kernels(ab_update)
 
         launcher = _RecordingLauncher()
-        particles = object()
+        particles = _make_particles()
         clock = _make_clock()
 
-        timestepper.run_step(particles, launcher, clock)
+        timestepper.run_step(particles, launcher, clock)  # type: ignore
 
         launched_kernels = [call[0] for call in launcher.calls]
         assert launched_kernels[:-1] == [tendency_0, tendency_1, ab_update]
