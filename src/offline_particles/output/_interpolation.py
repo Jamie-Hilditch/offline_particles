@@ -13,7 +13,7 @@ from ._output import Output
 
 def interpolate_fields(
     fieldset: Fieldset,
-    variables: Iterable[str],
+    variables: str | Iterable[str],
     N: int = 1,
     particle_property_prefix: str = "_output",
 ) -> dict[str, Output]:
@@ -21,11 +21,14 @@ def interpolate_fields(
 
     Args:
         fieldset: The fieldset containing the fields to interpolate.
-        variables: An iterable of variable names to interpolate.
+        variables: A string or an iterable of variable names to interpolate.
         N: The half width of the Lagrange interpolation stencil. Defaults to 1, which corresponds to linear interpolation.
         particle_property_prefix: The prefix for the particle array to store the output data.
     """
     outputs = {}
+
+    if isinstance(variables, str):
+        variables = [variables]
 
     for var in variables:
         if var not in fieldset:

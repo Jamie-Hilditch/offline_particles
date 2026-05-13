@@ -30,7 +30,7 @@ def _make_fieldset() -> Fieldset:
         3,
         4,
         5,
-        fields={"u": field_1d, "v": field_2d, "w": field_3d},
+        fields={"u": field_1d, "v": field_2d, "w": field_3d, "salt": field_3d},
     )
 
 
@@ -39,6 +39,11 @@ class TestInterpolateFields:
         fs = _make_fieldset()
         outputs = interpolate_fields(fs, ["u", "v", "w"])
         assert set(outputs.keys()) == {"u", "v", "w"}
+
+    def test_passing_single_variable_as_string(self) -> None:
+        fs = _make_fieldset()
+        outputs = interpolate_fields(fs, "salt")
+        assert set(outputs.keys()) == {"salt"}
 
     def test_output_key_matches_variable_name(self) -> None:
         fs = _make_fieldset()
