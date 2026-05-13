@@ -1,4 +1,6 @@
-"""Generate output by linearly interpolating field data to particle positions."""
+"""Generate output by interpolating field data to particle positions using Lagrange polynomials."""
+
+from typing import Iterable
 
 from ..fieldset import Fieldset
 from ..kernels.interpolation import (
@@ -9,19 +11,24 @@ from ..kernels.interpolation import (
 from ._output import Output
 
 
-def linearly_interpolate_fields(
+def interpolate_fields(
     fieldset: Fieldset,
-    *variables: str,
+    variables: str | Iterable[str],
+    N: int = 1,
     particle_property_prefix: str = "_output",
 ) -> dict[str, Output]:
-    """Output variables that linearly interpolate field data.
+    """Output variables that interpolate field data using Lagrange polynomials.
 
     Args:
         fieldset: The fieldset containing the fields to interpolate.
-        variables: The list of variable names to interpolate.
+        variables: A string or an iterable of variable names to interpolate.
+        N: The half width of the Lagrange interpolation stencil. Defaults to 1, which corresponds to linear interpolation.
         particle_property_prefix: The prefix for the particle array to store the output data.
     """
     outputs = {}
+
+    if isinstance(variables, str):
+        variables = [variables]
 
     for var in variables:
         if var not in fieldset:
@@ -39,6 +46,7 @@ def linearly_interpolate_fields(
                     field=var,
                     field_dtype=dtype,
                     output_dtype=dtype,
+                    N=N,
                 )
             case (axis0, axis1):
                 kernel = construct_2D_interpolation_kernel(
@@ -47,6 +55,7 @@ def linearly_interpolate_fields(
                     field=var,
                     field_dtype=dtype,
                     output_dtype=dtype,
+                    N=N,
                 )
             case (axis0, axis1, axis2):
                 kernel = construct_3D_interpolation_kernel(
@@ -55,6 +64,7 @@ def linearly_interpolate_fields(
                     field=var,
                     field_dtype=dtype,
                     output_dtype=dtype,
+                    N=N,
                 )
             case _:
                 raise ValueError(f"Field '{var}' has unsupported number of axes: {len(field.axes)}")
