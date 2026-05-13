@@ -59,8 +59,6 @@ class Launcher:
     """Class to launch bound kernels."""
 
     def __init__(self, fieldset: Fieldset, history_size: int) -> None:
-        super().__init__()
-
         self._scalar_data_sources: dict[str, ScalarProvider] = {}
         self._fieldset = fieldset
         self._index_padding = 0
