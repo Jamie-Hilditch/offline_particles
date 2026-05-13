@@ -86,7 +86,7 @@ def construct_ab2_update_kernel(
 
 
 def construct_ab3_update_kernel(
-    prop: str, dprop_0: str, dprop_1: str, dprop_2: str, dtype: npt.DTypeLike = np.float32
+    prop: str, dprop_0: str, dprop_1: str, dprop_2: str, dtype: npt.DTypeLike = np.float64
 ) -> BoundKernel:
     """Construct an Adams-Bashforth 3 update kernel for a given property.
 
