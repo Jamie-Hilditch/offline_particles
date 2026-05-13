@@ -131,7 +131,7 @@ class TestABStatusKernels:
             (3, np.uint8(Status.MULTISTEP_2)),
         ],
     )
-    def test_initialisation_sets_multistep_status_for_active_particles_only(self, order: int, expected_status: np.uint8) -> None:
+    def test_initialisation_sets_multistep_status_for_active_only(self, order: int, expected_status: np.uint8) -> None:
         kernel = construct_ab_initialisation_kernel(order)
 
         status = np.array(

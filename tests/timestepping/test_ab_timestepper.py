@@ -35,7 +35,7 @@ def _make_particles() -> Particles:
 
 
 def _make_noop_kernel() -> BoundKernel:
-    def _noop(pp, sc, fd) -> None:  # noqa: ANN001, ANN202
+    def _noop(pp, sc, fd) -> None:  # noqa: ANN001
         pass
 
     return BoundKernel(ParticleKernel(_noop))
