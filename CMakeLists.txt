@@ -26,7 +26,6 @@ set(EXTENSION_MODULES
     kernels.roms.horizontal_advection.linear_interpolation
     kernels.roms.vertical_coordinate.vertical_coordinate
     kernels.status._status
-    kernels.timestepping._adams_bashforth
     kernels.validation._validation
 )
 
