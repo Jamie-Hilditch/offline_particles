@@ -66,7 +66,7 @@ def construct_ab2_update_kernel(
         prop = particle_properties["prop"]
         dprop_0 = particle_properties["dprop_0"]
         dprop_1 = particle_properties["dprop_1"]
-        dt = scalars["dt"]
+        dt = scalars["_dt"]
 
         ab2_update(particle_properties["status"], prop, dprop_0, dprop_1, dt)
 
@@ -112,7 +112,7 @@ def construct_ab3_update_kernel(
         dprop_0 = particle_properties["dprop_0"]
         dprop_1 = particle_properties["dprop_1"]
         dprop_2 = particle_properties["dprop_2"]
-        dt = scalars["dt"]
+        dt = scalars["_dt"]
 
         ab3_update(particle_properties["status"], prop, dprop_0, dprop_1, dprop_2, dt)
 
@@ -163,7 +163,14 @@ def construct_ab_initialisation_kernel(order: int) -> BoundKernel:
     Returns:
         BoundKernel implementing the AB initialisation.
     """
-    kernel_function = ab_initialisation_factory(order)
+    kernel_function_impl = ab_initialisation_factory(order)
+
+    def kernel_function(
+        particle_properties: ParticlePropertiesType,
+        scalars: ScalarsType,
+        fields: FieldDataType,
+    ) -> None:
+        kernel_function_impl(particle_properties["status"])
 
     kernel = ParticleKernel(
         kernel_function,
