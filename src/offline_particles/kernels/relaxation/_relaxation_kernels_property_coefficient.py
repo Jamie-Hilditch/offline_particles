@@ -52,7 +52,7 @@ def construct_relaxation_kernel_property_coefficient_constant_target(
     prop: str,
     dprop: str,
     relaxation_coefficient: str,
-    target: np.inexact,
+    target: np.inexact | float,
     dtype: npt.DTypeLike = np.float64,
     form: Literal["linear", "quadratic"] = "linear",
 ) -> BoundKernel:
@@ -66,7 +66,7 @@ def construct_relaxation_kernel_property_coefficient_constant_target(
         The binding of the particle property to which the relaxation forcing will be applied.
     relaxation_coefficient : str
         The binding of the property coefficient for the relaxation forcing.
-    target : np.inexact
+    target : np.inexact | float
         The target value for the relaxation forcing.
     form : Literal["linear", "quadratic"], optional
         The form of the relaxation forcing, either "linear" or "quadratic". Default is "linear".

@@ -29,6 +29,8 @@ from ._relaxation_kernels_scalar_coefficient import (
 __all__ = [
     "construct_linear_relaxation_kernel",
     "construct_quadratic_relaxation_kernel",
+    "construct_linear_damping_kernel",
+    "construct_quadratic_damping_kernel",
 ]
 
 
@@ -37,14 +39,15 @@ def construct_linear_relaxation_kernel(
     dprop: str,
     dtype: npt.DTypeLike = np.float64,
     *,
-    constant_coefficient: np.inexact | None = None,
+    constant_coefficient: np.inexact | float | None = None,
     property_coefficient: str | None = None,
     scalar_coefficient: str | None = None,
-    constant_target: np.inexact | None = None,
+    constant_target: np.inexact | float | None = None,
     property_target: str | None = None,
     scalar_target: str | None = None,
     field_target: str | None = None,
     array_layout: ArrayLayout | None = None,
+    interpolation_half_width: int = 1,
 ) -> BoundKernel:
     """Construct a kernel for applying linear relaxation to a particle property.
 
@@ -56,13 +59,13 @@ def construct_linear_relaxation_kernel(
         The binding for the particle property to store the rate of change of `prop`.
     dtype : npt.DTypeLike, optional
         The data type of the particle properties, coefficient and target values, by default np.float64.
-    constant_coefficient : np.inexact | None, optional
+    constant_coefficient : np.inexact | float | None, optional
         A constant coefficient for the relaxation, by default None.
     property_coefficient : str | None, optional
         The binding for a particle property to use as the relaxation coefficient, by default None.
     scalar_coefficient : str | None, optional
         The binding for a scalar field to use as the relaxation coefficient, by default None.
-    constant_target : np.inexact | None, optional
+    constant_target : np.inexact | float | None, optional
         A constant target value for the relaxation, by default None.
     property_target : str | None, optional
         The binding for a particle property to use as the target value for the relaxation, by default None.
@@ -72,6 +75,9 @@ def construct_linear_relaxation_kernel(
         The binding for a field to use as the target value for the relaxation, by default None.
     array_layout : ArrayLayout | None, optional
         The layout of the particle properties in memory, by default None.
+    interpolation_half_width : int, optional
+        The half-width of the interpolation stencil to use when interpolating the field target to particle positions.
+        By default 1, corresponding to linear interpolation. This parameter is only used when `field_target` is specified.
 
     Returns
     -------
@@ -115,7 +121,13 @@ def construct_linear_relaxation_kernel(
         case (c, None, None), (None, None, None, t) if c is not None and t is not None:
             # cast array_layout to ArrayLayout to satisfy type checker, since we already checked that array_layout is not None
             return construct_relaxation_kernel_constant_coefficient_field_target(
-                prop, dprop, c, t, cast(ArrayLayout, array_layout), dtype
+                prop,
+                dprop,
+                c,
+                t,
+                cast(ArrayLayout, array_layout),
+                dtype,
+                interpolation_half_width=interpolation_half_width,
             )
 
         # property coefficient
@@ -128,7 +140,13 @@ def construct_linear_relaxation_kernel(
         case (None, c, None), (None, None, None, t) if c is not None and t is not None:
             # cast array_layout to ArrayLayout to satisfy type checker, since we already checked that array_layout is not None
             return construct_relaxation_kernel_property_coefficient_field_target(
-                prop, dprop, c, t, cast(ArrayLayout, array_layout), dtype
+                prop,
+                dprop,
+                c,
+                t,
+                cast(ArrayLayout, array_layout),
+                dtype,
+                interpolation_half_width=interpolation_half_width,
             )
 
         # scalar coefficient
@@ -141,7 +159,13 @@ def construct_linear_relaxation_kernel(
         case (None, None, c), (None, None, None, t) if c is not None and t is not None:
             # cast array_layout to ArrayLayout to satisfy type checker, since we already checked that array_layout is not None
             return construct_relaxation_kernel_scalar_coefficient_field_target(
-                prop, dprop, c, t, cast(ArrayLayout, array_layout), dtype
+                prop,
+                dprop,
+                c,
+                t,
+                cast(ArrayLayout, array_layout),
+                dtype,
+                interpolation_half_width=interpolation_half_width,
             )
 
         case _:
@@ -156,14 +180,15 @@ def construct_quadratic_relaxation_kernel(
     dprop: str,
     dtype: npt.DTypeLike = np.float64,
     *,
-    constant_coefficient: np.inexact | None = None,
+    constant_coefficient: np.inexact | float | None = None,
     property_coefficient: str | None = None,
     scalar_coefficient: str | None = None,
-    constant_target: np.inexact | None = None,
+    constant_target: np.inexact | float | None = None,
     property_target: str | None = None,
     scalar_target: str | None = None,
     field_target: str | None = None,
     array_layout: ArrayLayout | None = None,
+    interpolation_half_width: int = 1,
 ) -> BoundKernel:
     """Construct a kernel for applying quadratic relaxation to a particle property.
 
@@ -175,13 +200,13 @@ def construct_quadratic_relaxation_kernel(
         The binding for the particle property to store the rate of change of `prop`.
     dtype : npt.DTypeLike, optional
         The data type of the particle properties, coefficient and target values, by default np.float64.
-    constant_coefficient : np.inexact | None, optional
+    constant_coefficient : np.inexact | float | None, optional
         A constant coefficient for the relaxation, by default None.
     property_coefficient : str | None, optional
         The binding for a particle property to use as the relaxation coefficient, by default None.
     scalar_coefficient : str | None, optional
         The binding for a scalar field to use as the relaxation coefficient, by default None.
-    constant_target : np.inexact | None, optional
+    constant_target : np.inexact | float | None, optional
         A constant target value for the relaxation, by default None.
     property_target : str | None, optional
         The binding for a particle property to use as the target value for the relaxation, by default None.
@@ -191,6 +216,9 @@ def construct_quadratic_relaxation_kernel(
         The binding for a field to use as the target value for the relaxation, by default None.
     array_layout : ArrayLayout | None, optional
         The layout of the particle properties in memory, by default None.
+    interpolation_half_width : int, optional
+        The half-width of the interpolation stencil to use when interpolating the field target to particle positions.
+        By default 1, corresponding to linear interpolation. This parameter is only used when `field_target` is specified.
 
     Returns
     -------
@@ -240,7 +268,14 @@ def construct_quadratic_relaxation_kernel(
         case (c, None, None), (None, None, None, t) if c is not None and t is not None:
             # cast array_layout to ArrayLayout to satisfy type checker, since we already checked that array_layout is not None
             return construct_relaxation_kernel_constant_coefficient_field_target(
-                prop, dprop, c, t, cast(ArrayLayout, array_layout), dtype, form="quadratic"
+                prop,
+                dprop,
+                c,
+                t,
+                cast(ArrayLayout, array_layout),
+                dtype,
+                interpolation_half_width=interpolation_half_width,
+                form="quadratic",
             )
 
         # property coefficient
@@ -259,7 +294,14 @@ def construct_quadratic_relaxation_kernel(
         case (None, c, None), (None, None, None, t) if c is not None and t is not None:
             # cast array_layout to ArrayLayout to satisfy type checker, since we already checked that array_layout is not None
             return construct_relaxation_kernel_property_coefficient_field_target(
-                prop, dprop, c, t, cast(ArrayLayout, array_layout), dtype, form="quadratic"
+                prop,
+                dprop,
+                c,
+                t,
+                cast(ArrayLayout, array_layout),
+                dtype,
+                interpolation_half_width=interpolation_half_width,
+                form="quadratic",
             )
 
         # scalar coefficient
@@ -278,7 +320,14 @@ def construct_quadratic_relaxation_kernel(
         case (None, None, c), (None, None, None, t) if c is not None and t is not None:
             # cast array_layout to ArrayLayout to satisfy type checker, since we already checked that array_layout is not None
             return construct_relaxation_kernel_scalar_coefficient_field_target(
-                prop, dprop, c, t, cast(ArrayLayout, array_layout), dtype, form="quadratic"
+                prop,
+                dprop,
+                c,
+                t,
+                cast(ArrayLayout, array_layout),
+                dtype,
+                interpolation_half_width=interpolation_half_width,
+                form="quadratic",
             )
 
         case _:
@@ -286,3 +335,126 @@ def construct_quadratic_relaxation_kernel(
                 "Exactly one coefficient (constant/property/scalar) and "
                 "one target (constant/property/scalar/field) must be provided."
             )
+
+
+#################
+# Special cases #
+#################
+
+
+def construct_linear_damping_kernel(
+    prop: str,
+    dprop: str,
+    dtype: npt.DTypeLike = np.float64,
+    *,
+    constant_coefficient: np.inexact | None = None,
+    property_coefficient: str | None = None,
+    scalar_coefficient: str | None = None,
+) -> BoundKernel:
+    """Construct a kernel for applying linear damping to a particle property.
+
+    Parameters
+    ----------
+    prop : str
+        The binding for the particle property to relax.
+    dprop : str
+        The binding for the particle property to store the rate of change of `prop`.
+    dtype : npt.DTypeLike, optional
+        The data type of the particle properties, coefficient and target values, by default np.float64.
+    constant_coefficient : np.inexact | None, optional
+        A constant coefficient for the relaxation, by default None.
+    property_coefficient : str | None, optional
+        The binding for a particle property to use as the relaxation coefficient, by default None.
+    scalar_coefficient : str | None, optional
+        The binding for a scalar field to use as the relaxation coefficient, by default None.
+
+    Returns
+    -------
+    BoundKernel
+        A kernel that applies linear damping to the specified particle property.
+
+    Raises
+    ------
+    ValueError
+        If zero or more than one of `constant_coefficient`, `property_coefficient`, or `scalar_coefficient` is provided.
+
+    Notes
+    -----
+    This is a special case of linear relaxation where the target value is zero.
+    Exactly one of `constant_coefficient`, `property_coefficient`, or `scalar_coefficient` must be provided.
+    The kernel will apply the damping according to the specified coefficient.
+
+    Linear damping is defined as:
+    ```math
+    d prop / d t = - coefficient * prop
+    ```
+    where `coefficient` is the damping coefficient and `prop` is the current value of the property.
+    """
+    return construct_linear_relaxation_kernel(
+        prop,
+        dprop,
+        dtype=dtype,
+        constant_coefficient=constant_coefficient,
+        property_coefficient=property_coefficient,
+        scalar_coefficient=scalar_coefficient,
+        constant_target=0.0,
+    )
+
+
+def construct_quadratic_damping_kernel(
+    prop: str,
+    dprop: str,
+    dtype: npt.DTypeLike = np.float64,
+    *,
+    constant_coefficient: np.inexact | None = None,
+    property_coefficient: str | None = None,
+    scalar_coefficient: str | None = None,
+) -> BoundKernel:
+    """Construct a kernel for applying quadratic damping to a particle property.
+
+    Parameters
+    ----------
+    prop : str
+        The binding for the particle property to relax.
+    dprop : str
+        The binding for the particle property to store the rate of change of `prop`.
+    dtype : npt.DTypeLike, optional
+        The data type of the particle properties, coefficient and target values, by default np.float64.
+    constant_coefficient : np.inexact | None, optional
+        A constant coefficient for the relaxation, by default None.
+    property_coefficient : str | None, optional
+        The binding for a particle property to use as the relaxation coefficient, by default None.
+    scalar_coefficient : str | None, optional
+        The binding for a scalar field to use as the relaxation coefficient, by default None.
+
+    Returns
+    -------
+    BoundKernel
+        A kernel that applies quadratic damping to the specified particle property.
+
+    Raises
+    ------
+    ValueError
+        If zero or more than one of `constant_coefficient`, `property_coefficient`, or `scalar_coefficient` is provided.
+
+    Notes
+    -----
+    This is a special case of quadratic relaxation where the target value is zero.
+    Exactly one of `constant_coefficient`, `property_coefficient`, or `scalar_coefficient` must be provided.
+    The kernel will apply the damping according to the specified coefficient.
+
+    Quadratic damping is defined as:
+    ```math
+    d prop / d t = - coefficient * prop * |prop|
+    ```
+    where `coefficient` is the damping coefficient and `prop` is the current value of the property.
+    """
+    return construct_quadratic_relaxation_kernel(
+        prop,
+        dprop,
+        dtype=dtype,
+        constant_coefficient=constant_coefficient,
+        property_coefficient=property_coefficient,
+        scalar_coefficient=scalar_coefficient,
+        constant_target=0.0,
+    )
