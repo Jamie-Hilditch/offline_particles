@@ -347,7 +347,7 @@ def construct_linear_damping_kernel(
     dprop: str,
     dtype: npt.DTypeLike = np.float64,
     *,
-    constant_coefficient: np.inexact | None = None,
+    constant_coefficient: np.inexact | float | None = None,
     property_coefficient: str | None = None,
     scalar_coefficient: str | None = None,
 ) -> BoundKernel:
@@ -361,7 +361,7 @@ def construct_linear_damping_kernel(
         The binding for the particle property to store the rate of change of `prop`.
     dtype : npt.DTypeLike, optional
         The data type of the particle properties, coefficient and target values, by default np.float64.
-    constant_coefficient : np.inexact | None, optional
+    constant_coefficient : np.inexact | float | None, optional
         A constant coefficient for the relaxation, by default None.
     property_coefficient : str | None, optional
         The binding for a particle property to use as the relaxation coefficient, by default None.
@@ -409,7 +409,7 @@ def construct_quadratic_damping_kernel(
     dprop: str,
     dtype: npt.DTypeLike = np.float64,
     *,
-    constant_coefficient: np.inexact | None = None,
+    constant_coefficient: np.inexact | float | None = None,
     property_coefficient: str | None = None,
     scalar_coefficient: str | None = None,
 ) -> BoundKernel:
@@ -423,7 +423,7 @@ def construct_quadratic_damping_kernel(
         The binding for the particle property to store the rate of change of `prop`.
     dtype : npt.DTypeLike, optional
         The data type of the particle properties, coefficient and target values, by default np.float64.
-    constant_coefficient : np.inexact | None, optional
+    constant_coefficient : np.inexact | float | None, optional
         A constant coefficient for the relaxation, by default None.
     property_coefficient : str | None, optional
         The binding for a particle property to use as the relaxation coefficient, by default None.

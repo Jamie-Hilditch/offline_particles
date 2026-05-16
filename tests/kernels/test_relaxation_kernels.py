@@ -292,15 +292,11 @@ def test_relaxation_public_api_accepts_only_valid_argument_combinations(form: st
 
     for coefficient_mask in range(1 << len(coefficient_arguments)):
         selected_coefficient_arguments = [
-            coefficient_arguments[i]
-            for i in range(len(coefficient_arguments))
-            if coefficient_mask & (1 << i)
+            coefficient_arguments[i] for i in range(len(coefficient_arguments)) if coefficient_mask & (1 << i)
         ]
         for target_mask in range(1 << len(target_arguments)):
             selected_target_arguments = [
-                target_arguments[i]
-                for i in range(len(target_arguments))
-                if target_mask & (1 << i)
+                target_arguments[i] for i in range(len(target_arguments)) if target_mask & (1 << i)
             ]
             has_field_target = any(name == "field_target" for name, _ in selected_target_arguments)
             array_layout_options = (False, True) if has_field_target else (False,)
@@ -347,11 +343,11 @@ def test_damping_public_api_accepts_only_valid_argument_combinations(form: str) 
             if coefficient_mask & (1 << i)
         }
         if len(kwargs) == 1:
-            kernel = _construct_damping_public_kernel(form, **kwargs)
+            kernel = _construct_damping_public_kernel(form, **kwargs)  # type: ignore[arg-type]
             assert isinstance(kernel, BoundKernel)
         else:
             with pytest.raises(
                 ValueError,
                 match="Exactly one coefficient \\(constant/property/scalar\\) must be provided\\.",
             ):
-                _construct_damping_public_kernel(form, **kwargs)
+                _construct_damping_public_kernel(form, **kwargs)  # type: ignore[arg-type]
