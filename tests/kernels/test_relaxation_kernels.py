@@ -56,7 +56,7 @@ def _construct_relaxation_kernel(
     else:
         raise ValueError(f"invalid target_kind={target_kind}")
 
-    return constructor(**kwargs)
+    return constructor(**kwargs)  # type: ignore[arg-type]
 
 
 def _expected_increment(form: str, coefficient: float, target: float, prop: float) -> float:
