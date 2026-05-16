@@ -5,8 +5,8 @@ from ...kernels.base import construct_add_property_kernel
 from ...kernels.buoyancy import construct_buoyancy_force_accumulation_kernel
 from ...kernels.interpolation import construct_ZYX_interpolation_kernel
 from ...kernels.relaxation import (
-    construct_linear_damping_accumulation_kernel,
-    construct_quadratic_damping_accumulation_kernel,
+    construct_linear_relaxation_kernel,
+    construct_quadratic_relaxation_kernel,
 )
 from ...kernels.roms import (
     construct_compute_z_kernel,
@@ -118,11 +118,11 @@ def roms_ab3_timestepper(
         )
     if linear_damping:
         tendency_kernels.append(
-            construct_linear_damping_accumulation_kernel("_dw_rel0", "w_rel", linear_damping_coefficient)
+            construct_linear_relaxation_kernel("_dw_rel0", "w_rel", scalar_coefficient=linear_damping_coefficient)
         )
     if quadratic_damping:
         tendency_kernels.append(
-            construct_quadratic_damping_accumulation_kernel("_dw_rel0", "w_rel", quadratic_damping_coefficient)
+            construct_quadratic_relaxation_kernel("_dw_rel0", "w_rel", scalar_coefficient=quadratic_damping_coefficient)
         )
 
     # AB3 steps
