@@ -1168,7 +1168,8 @@ def _quadratic_relaxation_property_coefficient_scalar_target() -> Callable[
             if status[i] & INACTIVE_FLAG:
                 continue
 
-            dprop[i] -= relaxation_coefficient[i] * (prop[i] - target)
+            diff = prop[i] - target
+            dprop[i] -= relaxation_coefficient[i] * diff * np.abs(diff)
 
     return impl
 
@@ -1404,7 +1405,8 @@ def _quadratic_relaxation_scalar_coefficient_property_target() -> Callable[
             if status[i] & INACTIVE_FLAG:
                 continue
 
-            dprop[i] -= relaxation_coefficient * (prop[i] - target[i])
+            diff = prop[i] - target[i]
+            dprop[i] -= relaxation_coefficient * diff * np.abs(diff)
 
     return impl
 
@@ -1433,7 +1435,8 @@ def _quadratic_relaxation_scalar_coefficient_scalar_target() -> Callable[
             if status[i] & INACTIVE_FLAG:
                 continue
 
-            dprop[i] -= relaxation_coefficient * (prop[i] - target)
+            diff = prop[i] - target
+            dprop[i] -= relaxation_coefficient * diff * np.abs(diff)
 
     return impl
 
