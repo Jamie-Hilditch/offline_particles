@@ -306,7 +306,7 @@ def test_relaxation_public_api_accepts_only_valid_argument_combinations(form: st
             array_layout_options = (False, True) if has_field_target else (False,)
 
             for include_array_layout in array_layout_options:
-                kwargs: dict[str, np.float64 | str | ArrayLayout] = dict(selected_coefficient_arguments)
+                kwargs = dict(selected_coefficient_arguments)
                 kwargs.update(selected_target_arguments)
                 if include_array_layout:
                     kwargs["array_layout"] = ArrayLayout(("X",), ("center",))
@@ -341,8 +341,10 @@ def test_damping_public_api_accepts_only_valid_argument_combinations(form: str) 
     )
 
     for coefficient_mask in range(1 << len(coefficient_arguments)):
-        kwargs: dict[str, np.float64 | str] = {
-            name: value for i, (name, value) in enumerate(coefficient_arguments) if coefficient_mask & (1 << i)
+        kwargs = {
+            coefficient_arguments[i][0]: coefficient_arguments[i][1]
+            for i in range(len(coefficient_arguments))
+            if coefficient_mask & (1 << i)
         }
         if len(kwargs) == 1:
             kernel = _construct_damping_public_kernel(form, **kwargs)
