@@ -149,13 +149,9 @@ def test_relaxation_kernels_cover_all_nonfield_combinations(
         decl_name: particle_properties[binding]
         for decl_name, binding in bound_kernel.particle_property_bindings.items()
     }
-    kernel_scalars = {
-        decl_name: scalars[binding]
-        for decl_name, binding in bound_kernel.scalar_bindings.items()
-    }
+    kernel_scalars = {decl_name: scalars[binding] for decl_name, binding in bound_kernel.scalar_bindings.items()}
     kernel_field_data = {
-        decl_name: field_data[binding]
-        for decl_name, binding in bound_kernel.field_data_bindings.items()
+        decl_name: field_data[binding] for decl_name, binding in bound_kernel.field_data_bindings.items()
     }
 
     bound_kernel.kernel(kernel_particle_properties, kernel_scalars, kernel_field_data)
@@ -193,13 +189,9 @@ def test_relaxation_kernels_cover_all_field_target_combinations(
         decl_name: particle_properties[binding]
         for decl_name, binding in bound_kernel.particle_property_bindings.items()
     }
-    kernel_scalars = {
-        decl_name: scalars[binding]
-        for decl_name, binding in bound_kernel.scalar_bindings.items()
-    }
+    kernel_scalars = {decl_name: scalars[binding] for decl_name, binding in bound_kernel.scalar_bindings.items()}
     kernel_field_data = {
-        decl_name: field_data[binding]
-        for decl_name, binding in bound_kernel.field_data_bindings.items()
+        decl_name: field_data[binding] for decl_name, binding in bound_kernel.field_data_bindings.items()
     }
 
     bound_kernel.kernel(kernel_particle_properties, kernel_scalars, kernel_field_data)
