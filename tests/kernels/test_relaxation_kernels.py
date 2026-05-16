@@ -278,12 +278,12 @@ def test_relaxation_kernels_cover_all_field_target_combinations(
 
 @pytest.mark.parametrize("form", _FORMS)
 def test_relaxation_public_api_accepts_only_valid_argument_combinations(form: str) -> None:
-    coefficient_arguments: tuple[tuple[str, np.inexact | float | str], ...] = (
+    coefficient_arguments: tuple[tuple[str, np.float64 | str], ...] = (
         ("constant_coefficient", np.float64(0.2)),
         ("property_coefficient", "my_relaxation_coefficient"),
         ("scalar_coefficient", "my_relaxation_coefficient"),
     )
-    target_arguments: tuple[tuple[str, np.inexact | float | str], ...] = (
+    target_arguments: tuple[tuple[str, np.float64 | str], ...] = (
         ("constant_target", np.float64(1.1)),
         ("property_target", "my_target"),
         ("scalar_target", "my_target"),
@@ -306,7 +306,7 @@ def test_relaxation_public_api_accepts_only_valid_argument_combinations(form: st
             array_layout_options = (False, True) if has_field_target else (False,)
 
             for include_array_layout in array_layout_options:
-                kwargs: dict[str, np.inexact | float | str | ArrayLayout] = dict(selected_coefficient_arguments)
+                kwargs: dict[str, np.float64 | str | ArrayLayout] = dict(selected_coefficient_arguments)
                 kwargs.update(selected_target_arguments)
                 if include_array_layout:
                     kwargs["array_layout"] = ArrayLayout(("X",), ("center",))
@@ -334,14 +334,14 @@ def test_relaxation_public_api_accepts_only_valid_argument_combinations(form: st
 
 @pytest.mark.parametrize("form", _FORMS)
 def test_damping_public_api_accepts_only_valid_argument_combinations(form: str) -> None:
-    coefficient_arguments: tuple[tuple[str, np.inexact | float | str], ...] = (
+    coefficient_arguments: tuple[tuple[str, np.float64 | str], ...] = (
         ("constant_coefficient", np.float64(0.2)),
         ("property_coefficient", "my_relaxation_coefficient"),
         ("scalar_coefficient", "my_relaxation_coefficient"),
     )
 
     for coefficient_mask in range(1 << len(coefficient_arguments)):
-        kwargs: dict[str, np.inexact | float | str] = {
+        kwargs: dict[str, np.float64 | str] = {
             name: value for i, (name, value) in enumerate(coefficient_arguments) if coefficient_mask & (1 << i)
         }
         if len(kwargs) == 1:
