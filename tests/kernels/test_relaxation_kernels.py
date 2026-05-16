@@ -336,8 +336,8 @@ def test_relaxation_public_api_accepts_only_valid_argument_combinations(form: st
 def test_damping_public_api_accepts_only_valid_argument_combinations(form: str) -> None:
     coefficient_arguments: tuple[tuple[str, np.float64 | str], ...] = (
         ("constant_coefficient", np.float64(0.2)),
-        ("property_coefficient", "my_relaxation_coefficient"),
-        ("scalar_coefficient", "my_relaxation_coefficient"),
+        ("property_coefficient", "my_damping_coefficient"),
+        ("scalar_coefficient", "my_damping_coefficient"),
     )
 
     for coefficient_mask in range(1 << len(coefficient_arguments)):
