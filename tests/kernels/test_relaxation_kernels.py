@@ -1,11 +1,16 @@
 """Tests for linear and quadratic relaxation kernel constructors."""
 
+import re
+
 import numpy as np
 import pytest
 
 from offline_particles.fields import FieldData
+from offline_particles.kernels._kernels import BoundKernel
 from offline_particles.kernels.relaxation import (
+    construct_linear_damping_kernel,
     construct_linear_relaxation_kernel,
+    construct_quadratic_damping_kernel,
     construct_quadratic_relaxation_kernel,
 )
 from offline_particles.kernels.status import INACTIVE_FLAG
@@ -22,6 +27,77 @@ _FIELD_LAYOUTS = (
 
 _CONST_COEFF = 0.3
 _CONST_TARGET = 1.2
+
+
+def _construct_relaxation_public_kernel(
+    form: str,
+    *,
+    constant_coefficient: np.inexact | float | None = None,
+    property_coefficient: str | None = None,
+    scalar_coefficient: str | None = None,
+    constant_target: np.inexact | float | None = None,
+    property_target: str | None = None,
+    scalar_target: str | None = None,
+    field_target: str | None = None,
+    array_layout: ArrayLayout | None = None,
+) -> BoundKernel:
+    if form == "linear":
+        return construct_linear_relaxation_kernel(
+            "my_prop",
+            "my_dprop",
+            constant_coefficient=constant_coefficient,
+            property_coefficient=property_coefficient,
+            scalar_coefficient=scalar_coefficient,
+            constant_target=constant_target,
+            property_target=property_target,
+            scalar_target=scalar_target,
+            field_target=field_target,
+            array_layout=array_layout,
+        )
+
+    if form == "quadratic":
+        return construct_quadratic_relaxation_kernel(
+            "my_prop",
+            "my_dprop",
+            constant_coefficient=constant_coefficient,
+            property_coefficient=property_coefficient,
+            scalar_coefficient=scalar_coefficient,
+            constant_target=constant_target,
+            property_target=property_target,
+            scalar_target=scalar_target,
+            field_target=field_target,
+            array_layout=array_layout,
+        )
+
+    raise ValueError(f"invalid form={form}")
+
+
+def _construct_damping_public_kernel(
+    form: str,
+    *,
+    constant_coefficient: np.inexact | float | None = None,
+    property_coefficient: str | None = None,
+    scalar_coefficient: str | None = None,
+) -> BoundKernel:
+    if form == "linear":
+        return construct_linear_damping_kernel(
+            "my_prop",
+            "my_dprop",
+            constant_coefficient=constant_coefficient,
+            property_coefficient=property_coefficient,
+            scalar_coefficient=scalar_coefficient,
+        )
+
+    if form == "quadratic":
+        return construct_quadratic_damping_kernel(
+            "my_prop",
+            "my_dprop",
+            constant_coefficient=constant_coefficient,
+            property_coefficient=property_coefficient,
+            scalar_coefficient=scalar_coefficient,
+        )
+
+    raise ValueError(f"invalid form={form}")
 
 
 def _construct_relaxation_kernel(
@@ -198,3 +274,85 @@ def test_relaxation_kernels_cover_all_field_target_combinations(
 
     assert particle_properties["my_dprop"][0] == pytest.approx(expected_active)
     assert particle_properties["my_dprop"][1] == pytest.approx(-0.8)
+
+
+@pytest.mark.parametrize("form", _FORMS)
+def test_relaxation_public_api_accepts_only_valid_argument_combinations(form: str) -> None:
+    coefficient_arguments: tuple[tuple[str, np.inexact | float | str], ...] = (
+        ("constant_coefficient", np.float64(0.2)),
+        ("property_coefficient", "my_relaxation_coefficient"),
+        ("scalar_coefficient", "my_relaxation_coefficient"),
+    )
+    target_arguments: tuple[tuple[str, np.inexact | float | str], ...] = (
+        ("constant_target", np.float64(1.1)),
+        ("property_target", "my_target"),
+        ("scalar_target", "my_target"),
+        ("field_target", "my_target"),
+    )
+
+    for coefficient_mask in range(1 << len(coefficient_arguments)):
+        selected_coefficient_arguments = [
+            coefficient_arguments[i]
+            for i in range(len(coefficient_arguments))
+            if coefficient_mask & (1 << i)
+        ]
+        for target_mask in range(1 << len(target_arguments)):
+            selected_target_arguments = [
+                target_arguments[i]
+                for i in range(len(target_arguments))
+                if target_mask & (1 << i)
+            ]
+            has_field_target = any(name == "field_target" for name, _ in selected_target_arguments)
+            array_layout_options = (False, True) if has_field_target else (False,)
+
+            for include_array_layout in array_layout_options:
+                kwargs: dict[str, np.inexact | float | str | ArrayLayout] = dict(selected_coefficient_arguments)
+                kwargs.update(selected_target_arguments)
+                if include_array_layout:
+                    kwargs["array_layout"] = ArrayLayout(("X",), ("center",))
+
+                valid = (
+                    len(selected_coefficient_arguments) == 1
+                    and len(selected_target_arguments) == 1
+                    and (not has_field_target or include_array_layout)
+                )
+                if valid:
+                    kernel = _construct_relaxation_public_kernel(form, **kwargs)
+                    assert isinstance(kernel, BoundKernel)
+                else:
+                    expected_error_message = (
+                        "`array_layout` must be provided when using a field target."
+                        if has_field_target and not include_array_layout
+                        else (
+                            "Exactly one coefficient (constant/property/scalar) and "
+                            "one target (constant/property/scalar/field) must be provided."
+                        )
+                    )
+                    with pytest.raises(ValueError, match=re.escape(expected_error_message)):
+                        _construct_relaxation_public_kernel(form, **kwargs)
+
+
+@pytest.mark.parametrize("form", _FORMS)
+def test_damping_public_api_accepts_only_valid_argument_combinations(form: str) -> None:
+    coefficient_arguments: tuple[tuple[str, np.inexact | float | str], ...] = (
+        ("constant_coefficient", np.float64(0.2)),
+        ("property_coefficient", "my_relaxation_coefficient"),
+        ("scalar_coefficient", "my_relaxation_coefficient"),
+    )
+
+    for coefficient_mask in range(1 << len(coefficient_arguments)):
+        kwargs: dict[str, np.inexact | float | str] = {
+            name: value for i, (name, value) in enumerate(coefficient_arguments) if coefficient_mask & (1 << i)
+        }
+        if len(kwargs) == 1:
+            kernel = _construct_damping_public_kernel(form, **kwargs)
+            assert isinstance(kernel, BoundKernel)
+        else:
+            with pytest.raises(
+                ValueError,
+                match=(
+                    "Exactly one coefficient \\(constant/property/scalar\\) and "
+                    "one target \\(constant/property/scalar/field\\) must be provided\\."
+                ),
+            ):
+                _construct_damping_public_kernel(form, **kwargs)
