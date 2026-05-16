@@ -97,7 +97,7 @@ def _linear_relaxation_constant_coefficient_property_target(
 
 def _linear_relaxation_constant_coefficient_scalar_target(
     relaxation_coefficient: np.inexact,
-) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], np.inexact], None]:
+) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], np.generic], None]:
     """Construct a function to apply linear relaxation with constant coefficient and scalar target."""
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -105,7 +105,7 @@ def _linear_relaxation_constant_coefficient_scalar_target(
         status: npt.NDArray[np.uint8],
         prop: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
-        target: np.inexact,
+        target: np.generic,
     ) -> None:
         for i in range(status.size):
             if status[i] & INACTIVE_FLAG:
@@ -362,7 +362,7 @@ def _linear_relaxation_property_coefficient_scalar_target() -> Callable[
         npt.NDArray[np.inexact],
         npt.NDArray[np.inexact],
         npt.NDArray[np.inexact],
-        np.inexact,
+        np.generic,
     ],
     None,
 ]:
@@ -374,7 +374,7 @@ def _linear_relaxation_property_coefficient_scalar_target() -> Callable[
         prop: npt.NDArray[np.inexact],
         relaxation_coefficient: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
-        target: np.inexact,
+        target: np.generic,
     ) -> None:
         for i in range(status.size):
             if status[i] & INACTIVE_FLAG:
@@ -569,7 +569,7 @@ def _linear_relaxation_property_coefficient_3D_field_target(
 
 def _linear_relaxation_scalar_coefficient_constant_target(
     target: np.inexact,
-) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], np.inexact], None]:
+) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], np.generic], None]:
     """Construct a function to apply linear relaxation with scalar coefficient and constant target."""
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -577,7 +577,7 @@ def _linear_relaxation_scalar_coefficient_constant_target(
         status: npt.NDArray[np.uint8],
         prop: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
-        relaxation_coefficient: np.inexact,
+        relaxation_coefficient: np.generic,
     ) -> None:
         for i in range(status.size):
             if status[i] & INACTIVE_FLAG:
@@ -594,7 +594,7 @@ def _linear_relaxation_scalar_coefficient_property_target() -> Callable[
         npt.NDArray[np.inexact],
         npt.NDArray[np.inexact],
         npt.NDArray[np.inexact],
-        np.inexact,
+        np.generic,
     ],
     None,
 ]:
@@ -606,7 +606,7 @@ def _linear_relaxation_scalar_coefficient_property_target() -> Callable[
         prop: npt.NDArray[np.inexact],
         target: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
-        relaxation_coefficient: np.inexact,
+        relaxation_coefficient: np.generic,
     ) -> None:
         for i in range(status.size):
             if status[i] & INACTIVE_FLAG:
@@ -622,8 +622,8 @@ def _linear_relaxation_scalar_coefficient_scalar_target() -> Callable[
         npt.NDArray[np.uint8],
         npt.NDArray[np.inexact],
         npt.NDArray[np.inexact],
-        np.inexact,
-        np.inexact,
+        np.generic,
+        np.generic,
     ],
     None,
 ]:
@@ -634,8 +634,8 @@ def _linear_relaxation_scalar_coefficient_scalar_target() -> Callable[
         status: npt.NDArray[np.uint8],
         prop: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
-        relaxation_coefficient: np.inexact,
-        target: np.inexact,
+        relaxation_coefficient: np.generic,
+        target: np.generic,
     ) -> None:
         for i in range(status.size):
             if status[i] & INACTIVE_FLAG:
@@ -654,7 +654,7 @@ def _linear_relaxation_scalar_coefficient_1D_field_target(
         npt.NDArray[np.float64],
         npt.NDArray[np.inexact],
         npt.NDArray[np.inexact],
-        np.inexact,
+        np.generic,
         npt.NDArray[np.inexact],
         float,
     ],
@@ -676,7 +676,7 @@ def _linear_relaxation_scalar_coefficient_1D_field_target(
         idx: npt.NDArray[np.float64],
         prop: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
-        relaxation_coefficient: np.inexact,
+        relaxation_coefficient: np.generic,
         target_array: npt.NDArray[np.inexact],
         offset: float,
     ) -> None:
@@ -709,7 +709,7 @@ def _linear_relaxation_scalar_coefficient_2D_field_target(
         npt.NDArray[np.float64],
         npt.NDArray[np.inexact],
         npt.NDArray[np.inexact],
-        np.inexact,
+        np.generic,
         npt.NDArray[np.inexact],
         float,
         float,
@@ -733,7 +733,7 @@ def _linear_relaxation_scalar_coefficient_2D_field_target(
         idx1: npt.NDArray[np.float64],
         prop: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
-        relaxation_coefficient: np.inexact,
+        relaxation_coefficient: np.generic,
         target_array: npt.NDArray[np.inexact],
         offset0: float,
         offset1: float,
@@ -770,7 +770,7 @@ def _linear_relaxation_scalar_coefficient_3D_field_target(
         npt.NDArray[np.float64],
         npt.NDArray[np.inexact],
         npt.NDArray[np.inexact],
-        np.inexact,
+        np.generic,
         npt.NDArray[np.inexact],
         float,
         float,
@@ -796,7 +796,7 @@ def _linear_relaxation_scalar_coefficient_3D_field_target(
         idx2: npt.NDArray[np.float64],
         prop: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
-        relaxation_coefficient: np.inexact,
+        relaxation_coefficient: np.generic,
         target_array: npt.NDArray[np.inexact],
         offset0: float,
         offset1: float,
@@ -879,7 +879,7 @@ def _quadratic_relaxation_constant_coefficient_property_target(
 
 def _quadratic_relaxation_constant_coefficient_scalar_target(
     relaxation_coefficient: np.inexact,
-) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], np.inexact], None]:
+) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], np.generic], None]:
     """Construct a function to apply quadratic relaxation with constant coefficient and scalar target."""
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -887,7 +887,7 @@ def _quadratic_relaxation_constant_coefficient_scalar_target(
         status: npt.NDArray[np.uint8],
         prop: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
-        target: np.inexact,
+        target: np.generic,
     ) -> None:
         for i in range(status.size):
             if status[i] & INACTIVE_FLAG:
@@ -1150,7 +1150,7 @@ def _quadratic_relaxation_property_coefficient_scalar_target() -> Callable[
         npt.NDArray[np.inexact],
         npt.NDArray[np.inexact],
         npt.NDArray[np.inexact],
-        np.inexact,
+        np.generic,
     ],
     None,
 ]:
@@ -1162,7 +1162,7 @@ def _quadratic_relaxation_property_coefficient_scalar_target() -> Callable[
         prop: npt.NDArray[np.inexact],
         relaxation_coefficient: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
-        target: np.inexact,
+        target: np.generic,
     ) -> None:
         for i in range(status.size):
             if status[i] & INACTIVE_FLAG:
@@ -1360,7 +1360,7 @@ def _quadratic_relaxation_property_coefficient_3D_field_target(
 
 def _quadratic_relaxation_scalar_coefficient_constant_target(
     target: np.inexact,
-) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], np.inexact], None]:
+) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], np.generic], None]:
     """Construct a function to apply quadratic relaxation with scalar coefficient and constant target."""
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -1368,7 +1368,7 @@ def _quadratic_relaxation_scalar_coefficient_constant_target(
         status: npt.NDArray[np.uint8],
         prop: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
-        relaxation_coefficient: np.inexact,
+        relaxation_coefficient: np.generic,
     ) -> None:
         for i in range(status.size):
             if status[i] & INACTIVE_FLAG:
@@ -1386,7 +1386,7 @@ def _quadratic_relaxation_scalar_coefficient_property_target() -> Callable[
         npt.NDArray[np.inexact],
         npt.NDArray[np.inexact],
         npt.NDArray[np.inexact],
-        np.inexact,
+        np.generic,
     ],
     None,
 ]:
@@ -1398,7 +1398,7 @@ def _quadratic_relaxation_scalar_coefficient_property_target() -> Callable[
         prop: npt.NDArray[np.inexact],
         target: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
-        relaxation_coefficient: np.inexact,
+        relaxation_coefficient: np.generic,
     ) -> None:
         for i in range(status.size):
             if status[i] & INACTIVE_FLAG:
@@ -1414,8 +1414,8 @@ def _quadratic_relaxation_scalar_coefficient_scalar_target() -> Callable[
         npt.NDArray[np.uint8],
         npt.NDArray[np.inexact],
         npt.NDArray[np.inexact],
-        np.inexact,
-        np.inexact,
+        np.generic,
+        np.generic,
     ],
     None,
 ]:
@@ -1426,8 +1426,8 @@ def _quadratic_relaxation_scalar_coefficient_scalar_target() -> Callable[
         status: npt.NDArray[np.uint8],
         prop: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
-        relaxation_coefficient: np.inexact,
-        target: np.inexact,
+        relaxation_coefficient: np.generic,
+        target: np.generic,
     ) -> None:
         for i in range(status.size):
             if status[i] & INACTIVE_FLAG:
@@ -1446,7 +1446,7 @@ def _quadratic_relaxation_scalar_coefficient_1D_field_target(
         npt.NDArray[np.float64],
         npt.NDArray[np.inexact],
         npt.NDArray[np.inexact],
-        np.inexact,
+        np.generic,
         npt.NDArray[np.inexact],
         float,
     ],
@@ -1468,7 +1468,7 @@ def _quadratic_relaxation_scalar_coefficient_1D_field_target(
         idx: npt.NDArray[np.float64],
         prop: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
-        relaxation_coefficient: np.inexact,
+        relaxation_coefficient: np.generic,
         target_array: npt.NDArray[np.inexact],
         offset: float,
     ) -> None:
@@ -1502,7 +1502,7 @@ def _quadratic_relaxation_scalar_coefficient_2D_field_target(
         npt.NDArray[np.float64],
         npt.NDArray[np.inexact],
         npt.NDArray[np.inexact],
-        np.inexact,
+        np.generic,
         npt.NDArray[np.inexact],
         float,
         float,
@@ -1526,7 +1526,7 @@ def _quadratic_relaxation_scalar_coefficient_2D_field_target(
         idx1: npt.NDArray[np.float64],
         prop: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
-        relaxation_coefficient: np.inexact,
+        relaxation_coefficient: np.generic,
         target_array: npt.NDArray[np.inexact],
         offset0: float,
         offset1: float,
@@ -1564,7 +1564,7 @@ def _quadratic_relaxation_scalar_coefficient_3D_field_target(
         npt.NDArray[np.float64],
         npt.NDArray[np.inexact],
         npt.NDArray[np.inexact],
-        np.inexact,
+        np.generic,
         npt.NDArray[np.inexact],
         float,
         float,
@@ -1590,7 +1590,7 @@ def _quadratic_relaxation_scalar_coefficient_3D_field_target(
         idx2: npt.NDArray[np.float64],
         prop: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
-        relaxation_coefficient: np.inexact,
+        relaxation_coefficient: np.generic,
         target_array: npt.NDArray[np.inexact],
         offset0: float,
         offset1: float,
