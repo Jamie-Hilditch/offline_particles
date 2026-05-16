@@ -390,6 +390,9 @@ def construct_linear_damping_kernel(
     ```
     where `coefficient` is the damping coefficient and `prop` is the current value of the property.
     """
+    if sum(c is not None for c in (constant_coefficient, property_coefficient, scalar_coefficient)) != 1:
+        raise ValueError("Exactly one coefficient (constant/property/scalar) must be provided.")
+
     return construct_linear_relaxation_kernel(
         prop,
         dprop,
@@ -449,6 +452,9 @@ def construct_quadratic_damping_kernel(
     ```
     where `coefficient` is the damping coefficient and `prop` is the current value of the property.
     """
+    if sum(c is not None for c in (constant_coefficient, property_coefficient, scalar_coefficient)) != 1:
+        raise ValueError("Exactly one coefficient (constant/property/scalar) must be provided.")
+
     return construct_quadratic_relaxation_kernel(
         prop,
         dprop,

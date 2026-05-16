@@ -352,9 +352,6 @@ def test_damping_public_api_accepts_only_valid_argument_combinations(form: str) 
         else:
             with pytest.raises(
                 ValueError,
-                match=(
-                    "Exactly one coefficient \\(constant/property/scalar\\) and "
-                    "one target \\(constant/property/scalar/field\\) must be provided\\."
-                ),
+                match="Exactly one coefficient \\(constant/property/scalar\\) must be provided\\.",
             ):
                 _construct_damping_public_kernel(form, **kwargs)
