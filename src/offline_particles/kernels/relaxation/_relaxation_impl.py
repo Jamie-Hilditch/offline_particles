@@ -65,7 +65,7 @@ def _linear_relaxation_constant_coefficient_constant_target(
         prop: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
     ) -> None:
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -86,7 +86,7 @@ def _linear_relaxation_constant_coefficient_property_target(
         target: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
     ) -> None:
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -107,7 +107,7 @@ def _linear_relaxation_constant_coefficient_scalar_target(
         dprop: npt.NDArray[np.inexact],
         target: np.generic,
     ) -> None:
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -157,7 +157,7 @@ def _linear_relaxation_constant_coefficient_1D_field_target(
                 "Target array must have at least 2N points in the relevant dimension to avoid out-of-bounds memory access."
             )
 
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -216,7 +216,7 @@ def _linear_relaxation_constant_coefficient_2D_field_target(
                 "Target array must have at least 2N points in each dimension to avoid out-of-bounds memory access."
             )
 
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -281,7 +281,7 @@ def _linear_relaxation_constant_coefficient_3D_field_target(
                 "Target array must have at least 2N points in each dimension to avoid out-of-bounds memory access."
             )
 
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -318,7 +318,7 @@ def _linear_relaxation_property_coefficient_constant_target(
         relaxation_coefficient: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
     ) -> None:
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -347,7 +347,7 @@ def _linear_relaxation_property_coefficient_property_target() -> Callable[
         target: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
     ) -> None:
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -376,7 +376,7 @@ def _linear_relaxation_property_coefficient_scalar_target() -> Callable[
         dprop: npt.NDArray[np.inexact],
         target: np.generic,
     ) -> None:
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -426,7 +426,7 @@ def _linear_relaxation_property_coefficient_1D_field_target(
                 "Target array must have at least 2N points in the relevant dimension to avoid out-of-bounds memory access."
             )
 
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -485,7 +485,7 @@ def _linear_relaxation_property_coefficient_2D_field_target(
                 "Target array must have at least 2N points in each dimension to avoid out-of-bounds memory access."
             )
 
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -550,7 +550,7 @@ def _linear_relaxation_property_coefficient_3D_field_target(
                 "Target array must have at least 2N points in each dimension to avoid out-of-bounds memory access."
             )
 
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -579,7 +579,7 @@ def _linear_relaxation_scalar_coefficient_constant_target(
         dprop: npt.NDArray[np.inexact],
         relaxation_coefficient: np.generic,
     ) -> None:
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -608,7 +608,7 @@ def _linear_relaxation_scalar_coefficient_property_target() -> Callable[
         dprop: npt.NDArray[np.inexact],
         relaxation_coefficient: np.generic,
     ) -> None:
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -637,7 +637,7 @@ def _linear_relaxation_scalar_coefficient_scalar_target() -> Callable[
         relaxation_coefficient: np.generic,
         target: np.generic,
     ) -> None:
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -687,7 +687,7 @@ def _linear_relaxation_scalar_coefficient_1D_field_target(
                 "Target array must have at least 2N points in the relevant dimension to avoid out-of-bounds memory access."
             )
 
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -746,7 +746,7 @@ def _linear_relaxation_scalar_coefficient_2D_field_target(
                 "Target array must have at least 2N points in each dimension to avoid out-of-bounds memory access."
             )
 
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -811,7 +811,7 @@ def _linear_relaxation_scalar_coefficient_3D_field_target(
                 "Target array must have at least 2N points in each dimension to avoid out-of-bounds memory access."
             )
 
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -845,7 +845,7 @@ def _quadratic_relaxation_constant_coefficient_constant_target(
         prop: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
     ) -> None:
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -867,7 +867,7 @@ def _quadratic_relaxation_constant_coefficient_property_target(
         target: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
     ) -> None:
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -889,7 +889,7 @@ def _quadratic_relaxation_constant_coefficient_scalar_target(
         dprop: npt.NDArray[np.inexact],
         target: np.generic,
     ) -> None:
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -940,7 +940,7 @@ def _quadratic_relaxation_constant_coefficient_1D_field_target(
                 "Target array must have at least 2N points in the relevant dimension to avoid out-of-bounds memory access."
             )
 
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -1000,7 +1000,7 @@ def _quadratic_relaxation_constant_coefficient_2D_field_target(
                 "Target array must have at least 2N points in each dimension to avoid out-of-bounds memory access."
             )
 
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -1066,7 +1066,7 @@ def _quadratic_relaxation_constant_coefficient_3D_field_target(
                 "Target array must have at least 2N points in each dimension to avoid out-of-bounds memory access."
             )
 
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -1104,7 +1104,7 @@ def _quadratic_relaxation_property_coefficient_constant_target(
         relaxation_coefficient: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
     ) -> None:
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -1134,7 +1134,7 @@ def _quadratic_relaxation_property_coefficient_property_target() -> Callable[
         target: npt.NDArray[np.inexact],
         dprop: npt.NDArray[np.inexact],
     ) -> None:
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -1164,7 +1164,7 @@ def _quadratic_relaxation_property_coefficient_scalar_target() -> Callable[
         dprop: npt.NDArray[np.inexact],
         target: np.generic,
     ) -> None:
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -1215,7 +1215,7 @@ def _quadratic_relaxation_property_coefficient_1D_field_target(
                 "Target array must have at least 2N points in the relevant dimension to avoid out-of-bounds memory access."
             )
 
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -1275,7 +1275,7 @@ def _quadratic_relaxation_property_coefficient_2D_field_target(
                 "Target array must have at least 2N points in each dimension to avoid out-of-bounds memory access."
             )
 
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -1341,7 +1341,7 @@ def _quadratic_relaxation_property_coefficient_3D_field_target(
                 "Target array must have at least 2N points in each dimension to avoid out-of-bounds memory access."
             )
 
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -1371,7 +1371,7 @@ def _quadratic_relaxation_scalar_coefficient_constant_target(
         dprop: npt.NDArray[np.inexact],
         relaxation_coefficient: np.generic,
     ) -> None:
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -1401,7 +1401,7 @@ def _quadratic_relaxation_scalar_coefficient_property_target() -> Callable[
         dprop: npt.NDArray[np.inexact],
         relaxation_coefficient: np.generic,
     ) -> None:
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -1431,7 +1431,7 @@ def _quadratic_relaxation_scalar_coefficient_scalar_target() -> Callable[
         relaxation_coefficient: np.generic,
         target: np.generic,
     ) -> None:
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -1482,7 +1482,7 @@ def _quadratic_relaxation_scalar_coefficient_1D_field_target(
                 "Target array must have at least 2N points in the relevant dimension to avoid out-of-bounds memory access."
             )
 
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -1542,7 +1542,7 @@ def _quadratic_relaxation_scalar_coefficient_2D_field_target(
                 "Target array must have at least 2N points in each dimension to avoid out-of-bounds memory access."
             )
 
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
@@ -1608,7 +1608,7 @@ def _quadratic_relaxation_scalar_coefficient_3D_field_target(
                 "Target array must have at least 2N points in each dimension to avoid out-of-bounds memory access."
             )
 
-        for i in range(status.size):
+        for i in numba.prange(status.size):
             if status[i] & INACTIVE_FLAG:
                 continue
 
