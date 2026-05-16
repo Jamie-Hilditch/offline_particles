@@ -22,7 +22,6 @@ find_package(OpenMP REQUIRED)
 set(EXTENSION_MODULES
     kernels._core.inputs.field_data
     kernels.buoyancy._buoyancy_force
-    kernels.relaxation._relaxation
     kernels.roms.horizontal_advection.linear_interpolation
     kernels.roms.vertical_coordinate.vertical_coordinate
     kernels.status._status
