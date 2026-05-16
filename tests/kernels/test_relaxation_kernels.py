@@ -80,18 +80,18 @@ def _build_kernel_inputs(coefficient_kind: str, target_kind: str, field_layout_a
 
     particle_properties = {
         "status": status,
-        "prop": prop,
-        "dprop": dprop,
-        "relaxation_coefficient": relaxation_coefficient_property,
-        "target": target_property,
+        "my_prop": prop,
+        "my_dprop": dprop,
+        "my_relaxation_coefficient": relaxation_coefficient_property,
+        "my_target": target_property,
         "xidx": xidx,
         "yidx": yidx,
         "zidx": zidx,
     }
 
     scalars = {
-        "relaxation_coefficient": np.float64(0.2),
-        "target": np.float64(1.4),
+        "my_relaxation_coefficient": np.float64(0.2),
+        "my_target": np.float64(1.4),
     }
 
     field_data = {}
@@ -100,14 +100,14 @@ def _build_kernel_inputs(coefficient_kind: str, target_kind: str, field_layout_a
         shape = (4,) * len(field_layout_axes)
         field_array = np.full(shape, 1.1, dtype=np.float64)
         offsets = (0.0,) * len(field_layout_axes)
-        field_data = {"target": FieldData(field_array, offsets)}
+        field_data = {"my_target": FieldData(field_array, offsets)}
 
     if coefficient_kind == "constant":
         coefficient = _CONST_COEFF
     elif coefficient_kind == "property":
         coefficient = float(relaxation_coefficient_property[0])
     elif coefficient_kind == "scalar":
-        coefficient = float(scalars["relaxation_coefficient"])
+        coefficient = float(scalars["my_relaxation_coefficient"])
     else:
         raise ValueError(f"invalid coefficient_kind={coefficient_kind}")
 
@@ -116,7 +116,7 @@ def _build_kernel_inputs(coefficient_kind: str, target_kind: str, field_layout_a
     elif target_kind == "property":
         target = float(target_property[0])
     elif target_kind == "scalar":
-        target = float(scalars["target"])
+        target = float(scalars["my_target"])
     elif target_kind == "field":
         target = 1.1
     else:
@@ -138,17 +138,30 @@ def test_relaxation_kernels_cover_all_nonfield_combinations(
         coefficient_kind, target_kind, None
     )
 
-    expected_active = particle_properties["dprop"][0] + _expected_increment(
+    expected_active = particle_properties["my_dprop"][0] + _expected_increment(
         form=form,
         coefficient=coefficient,
         target=target,
-        prop=particle_properties["prop"][0],
+        prop=particle_properties["my_prop"][0],
     )
 
-    bound_kernel.kernel(particle_properties, scalars, field_data)
+    kernel_particle_properties = {
+        decl_name: particle_properties[binding]
+        for decl_name, binding in bound_kernel.particle_property_bindings.items()
+    }
+    kernel_scalars = {
+        decl_name: scalars[binding]
+        for decl_name, binding in bound_kernel.scalar_bindings.items()
+    }
+    kernel_field_data = {
+        decl_name: field_data[binding]
+        for decl_name, binding in bound_kernel.field_data_bindings.items()
+    }
 
-    assert particle_properties["dprop"][0] == pytest.approx(expected_active)
-    assert particle_properties["dprop"][1] == pytest.approx(-0.8)
+    bound_kernel.kernel(kernel_particle_properties, kernel_scalars, kernel_field_data)
+
+    assert particle_properties["my_dprop"][0] == pytest.approx(expected_active)
+    assert particle_properties["my_dprop"][1] == pytest.approx(-0.8)
 
 
 @pytest.mark.parametrize("form", _FORMS)
@@ -169,14 +182,27 @@ def test_relaxation_kernels_cover_all_field_target_combinations(
         coefficient_kind, "field", field_layout_axes
     )
 
-    expected_active = particle_properties["dprop"][0] + _expected_increment(
+    expected_active = particle_properties["my_dprop"][0] + _expected_increment(
         form=form,
         coefficient=coefficient,
         target=target,
-        prop=particle_properties["prop"][0],
+        prop=particle_properties["my_prop"][0],
     )
 
-    bound_kernel.kernel(particle_properties, scalars, field_data)
+    kernel_particle_properties = {
+        decl_name: particle_properties[binding]
+        for decl_name, binding in bound_kernel.particle_property_bindings.items()
+    }
+    kernel_scalars = {
+        decl_name: scalars[binding]
+        for decl_name, binding in bound_kernel.scalar_bindings.items()
+    }
+    kernel_field_data = {
+        decl_name: field_data[binding]
+        for decl_name, binding in bound_kernel.field_data_bindings.items()
+    }
 
-    assert particle_properties["dprop"][0] == pytest.approx(expected_active)
-    assert particle_properties["dprop"][1] == pytest.approx(-0.8)
+    bound_kernel.kernel(kernel_particle_properties, kernel_scalars, kernel_field_data)
+
+    assert particle_properties["my_dprop"][0] == pytest.approx(expected_active)
+    assert particle_properties["my_dprop"][1] == pytest.approx(-0.8)
