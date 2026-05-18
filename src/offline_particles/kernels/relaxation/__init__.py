@@ -50,7 +50,7 @@ def construct_linear_relaxation_kernel(
     array_layout: ArrayLayout | None = None,
     interpolation_half_width: int = 1,
 ) -> BoundKernel:
-    """Construct a kernel for applying linear relaxation to a particle property.
+    r"""Construct a kernel for applying linear relaxation to a particle property.
 
     Parameters
     ----------
@@ -198,7 +198,7 @@ def construct_quadratic_relaxation_kernel(
     array_layout: ArrayLayout | None = None,
     interpolation_half_width: int = 1,
 ) -> BoundKernel:
-    """Construct a kernel for applying quadratic relaxation to a particle property.
+    r"""Construct a kernel for applying quadratic relaxation to a particle property.
 
     Parameters
     ----------
@@ -248,9 +248,11 @@ def construct_quadratic_relaxation_kernel(
     `array_layout` must be provided if `field_target` is specified.
 
     Quadratic relaxation is defined as:
-    ```math
-    d prop / d t = - coefficient * (prop - target) * |prop - target|
-    ```
+
+    .. math::
+
+        \frac{d\,\mathrm{prop}}{d\,t} = -\mathrm{coefficient} \left(\mathrm{prop} - \mathrm{target}\right) |\mathrm{prop} - \mathrm{target}|
+
     where `coefficient` is the relaxation coefficient, `target` is the target value for the property, and `prop` is the current value of the property.
     """
     coefficient = (constant_coefficient, property_coefficient, scalar_coefficient)
