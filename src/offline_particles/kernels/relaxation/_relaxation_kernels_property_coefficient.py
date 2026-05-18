@@ -63,7 +63,7 @@ def construct_relaxation_kernel_property_coefficient_constant_target(
     prop : str
         The binding of the particle property to which the relaxation forcing will be applied.
     dprop : str
-        The binding of the particle property to which the relaxation forcing will be applied.
+        The binding of the particle property accumulating tendency terms.
     relaxation_coefficient : str
         The binding of the property coefficient for the relaxation forcing.
     target : np.inexact | float
@@ -138,7 +138,7 @@ def construct_relaxation_kernel_property_coefficient_property_target(
     prop : str
         The binding of the particle property to which the relaxation forcing will be applied.
     dprop : str
-        The binding of the particle property to which the relaxation forcing will be applied.
+        The binding of the particle property accumulating tendency terms.
     relaxation_coefficient : str
         The binding of the particle property coefficient for the relaxation forcing.
     target : str
@@ -215,7 +215,7 @@ def construct_relaxation_kernel_property_coefficient_scalar_target(
     prop : str
         The binding of the particle property to which the relaxation forcing will be applied.
     dprop : str
-        The binding of the particle property to which the relaxation forcing will be applied.
+        The binding of the particle property accumulating tendency terms.
     relaxation_coefficient : str
         The binding of the particle property containing the relaxation coefficient.
     target : str
@@ -400,7 +400,7 @@ def construct_relaxation_kernel_property_coefficient_field_target(
     prop : str
         The binding of the particle property to which the relaxation forcing will be applied.
     dprop : str
-        The binding of the particle property to which the relaxation forcing will be applied.
+        The binding of the particle property accumulating tendency terms.
     relaxation_coefficient : str
         The binding of the property coefficient for the relaxation forcing.
     target : str

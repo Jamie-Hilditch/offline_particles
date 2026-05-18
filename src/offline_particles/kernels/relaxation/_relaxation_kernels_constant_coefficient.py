@@ -63,7 +63,7 @@ def construct_relaxation_kernel_constant_coefficient_constant_target(
     prop : str
         The binding of the particle property to which the relaxation forcing will be applied.
     dprop : str
-        The binding of the particle property to which the relaxation forcing will be applied.
+        The binding of the particle property accumulating tendency terms.
     relaxation_coefficient : np.inexact | float
         The coefficient for the relaxation forcing.
     target : np.inexact | float
@@ -141,7 +141,7 @@ def construct_relaxation_kernel_constant_coefficient_property_target(
     prop : str
         The binding of the particle property to which the relaxation forcing will be applied.
     dprop : str
-        The binding of the particle property to which the relaxation forcing will be applied.
+        The binding of the particle property accumulating tendency terms.
     relaxation_coefficient : np.inexact | float
         The coefficient for the relaxation forcing.
     target : str
@@ -222,7 +222,7 @@ def construct_relaxation_kernel_constant_coefficient_scalar_target(
     prop : str
         The binding of the particle property to which the relaxation forcing will be applied.
     dprop : str
-        The binding of the particle property to which the relaxation forcing will be applied.
+        The binding of the particle property accumulating tendency terms.
     relaxation_coefficient : np.inexact | float
         The coefficient for the relaxation forcing.
     target : str
@@ -408,7 +408,7 @@ def construct_relaxation_kernel_constant_coefficient_field_target(
     prop : str
         The binding of the particle property to which the relaxation forcing will be applied.
     dprop : str
-        The binding of the particle property to which the relaxation forcing will be applied.
+        The binding of the particle property accumulating tendency terms.
     relaxation_coefficient : np.inexact | float
         The coefficient for the relaxation forcing.
     target : str
