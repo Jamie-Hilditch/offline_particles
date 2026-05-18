@@ -1,5 +1,6 @@
 """Tests for linear and quadratic relaxation kernel constructors."""
 
+import inspect
 import re
 
 import numpy as np
@@ -8,6 +9,7 @@ import pytest
 from offline_particles.fields import FieldData
 from offline_particles.kernels._kernels import BoundKernel
 from offline_particles.kernels.relaxation import (
+    _relaxation_impl,
     construct_linear_damping_kernel,
     construct_linear_relaxation_kernel,
     construct_quadratic_damping_kernel,
@@ -351,3 +353,24 @@ def test_damping_public_api_accepts_only_valid_argument_combinations(form: str) 
                 match="Exactly one coefficient \\(constant/property/scalar\\) must be provided\\.",
             ):
                 _construct_damping_public_kernel(form, **kwargs)  # type: ignore[arg-type]
+
+
+def test_relaxation_impl_factories_are_cached() -> None:
+    for factory_name in _relaxation_impl.__all__:
+        factory = getattr(_relaxation_impl, factory_name)
+        assert hasattr(factory, "cache_info")
+
+        kwargs = {}
+        for parameter_name in inspect.signature(factory).parameters:
+            if parameter_name == "relaxation_coefficient":
+                kwargs[parameter_name] = np.float64(0.3)
+            elif parameter_name == "target":
+                kwargs[parameter_name] = np.float64(1.1)
+            elif parameter_name == "interpolation_half_width":
+                kwargs[parameter_name] = 1
+            else:
+                raise AssertionError(f"Unhandled parameter {parameter_name} for factory {factory_name}")
+
+        first_impl = factory(**kwargs)
+        second_impl = factory(**kwargs)
+        assert first_impl is second_impl
