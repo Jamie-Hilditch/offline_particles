@@ -257,7 +257,10 @@ def construct_quadratic_relaxation_kernel(
     if field_target is not None and array_layout is None:
         raise ValueError("`array_layout` must be provided when using a field target.")
     if field_target is None and array_layout is not None:
-        warnings.warn("`array_layout` is provided but `field_target` is None. `array_layout` will be ignored.")
+        warnings.warn(
+            "`array_layout` is provided but `field_target` is None. `array_layout` will be ignored.",
+            stacklevel=2,
+        )
 
     match coefficient, target:
         # constant coefficient
