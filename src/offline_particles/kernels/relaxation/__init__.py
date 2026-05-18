@@ -1,5 +1,6 @@
 """Kernels for applying relaxation and damping to particle properties."""
 
+import warnings
 from typing import cast
 
 import numpy as np
@@ -96,7 +97,7 @@ def construct_linear_relaxation_kernel(
     Exactly one of `constant_coefficient`, `property_coefficient`, or `scalar_coefficient` must be provided, and
     exactly one of `constant_target`, `property_target`, `scalar_target`, or `field_target` must be provided.
     The kernel will apply the relaxation according to the specified coefficient and target.
-    `array_layout` must be provided if and only if `field_target` is specified.
+    `array_layout` must be provided if `field_target` is specified.
 
     Linear relaxation is defined as:
     ```math
@@ -109,6 +110,8 @@ def construct_linear_relaxation_kernel(
 
     if field_target is not None and array_layout is None:
         raise ValueError("`array_layout` must be provided when using a field target.")
+    if field_target is None and array_layout is not None:
+        warnings.warn("`array_layout` is provided but `field_target` is None. `array_layout` will be ignored.")
 
     match coefficient, target:
         # constant coefficient
@@ -237,7 +240,7 @@ def construct_quadratic_relaxation_kernel(
     Exactly one of `constant_coefficient`, `property_coefficient`, or `scalar_coefficient` must be provided, and
     exactly one of `constant_target`, `property_target`, `scalar_target`, or `field_target` must be provided.
     The kernel will apply the relaxation according to the specified coefficient and target.
-    `array_layout` must be provided if and only if `field_target` is specified.
+    `array_layout` must be provided if `field_target` is specified.
 
     Quadratic relaxation is defined as:
     ```math
@@ -250,6 +253,8 @@ def construct_quadratic_relaxation_kernel(
 
     if field_target is not None and array_layout is None:
         raise ValueError("`array_layout` must be provided when using a field target.")
+    if field_target is None and array_layout is not None:
+        warnings.warn("`array_layout` is provided but `field_target` is None. `array_layout` will be ignored.")
 
     match coefficient, target:
         # constant coefficient
