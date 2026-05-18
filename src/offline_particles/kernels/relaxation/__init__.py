@@ -48,7 +48,7 @@ def construct_linear_relaxation_kernel(
     scalar_target: str | None = None,
     field_target: str | None = None,
     array_layout: ArrayLayout | None = None,
-    interpolation_half_width: int = 1,
+    interpolation_half_width: int | None = None,
 ) -> BoundKernel:
     r"""Construct a kernel for applying linear relaxation to a particle property.
 
@@ -76,9 +76,9 @@ def construct_linear_relaxation_kernel(
         The binding for a field to use as the target value for the relaxation, by default None.
     array_layout : ArrayLayout | None, optional
         The layout of the field target array, by default None.
-    interpolation_half_width : int, optional
+    interpolation_half_width : int | None, optional
         The half-width of the interpolation stencil to use when interpolating the field target to particle positions.
-        By default 1, corresponding to linear interpolation. This parameter is only used when `field_target` is specified.
+        Defaults to 1 when `field_target` is specified, corresponding to linear interpolation. This parameter is only used when `field_target` is specified.
 
     Returns
     -------
@@ -117,6 +117,13 @@ def construct_linear_relaxation_kernel(
             "`array_layout` is provided but `field_target` is None. `array_layout` will be ignored.",
             stacklevel=2,
         )
+    if field_target is None and interpolation_half_width is not None:
+        warnings.warn(
+            "`interpolation_half_width` is provided but `field_target` is None. `interpolation_half_width` will be ignored.",
+            stacklevel=2,
+        )
+    if field_target is not None and interpolation_half_width is None:
+        interpolation_half_width = 1  # default to linear interpolation
 
     match coefficient, target:
         # constant coefficient
@@ -128,6 +135,7 @@ def construct_linear_relaxation_kernel(
             return construct_relaxation_kernel_constant_coefficient_scalar_target(prop, dprop, c, t, dtype)
         case (c, None, None), (None, None, None, t) if c is not None and t is not None:
             # cast array_layout to ArrayLayout to satisfy type checker, since we already checked that array_layout is not None
+            # also cast interpolation_half_width to int to satisfy type checker, since we already checked that interpolation_half_width is not None
             return construct_relaxation_kernel_constant_coefficient_field_target(
                 prop,
                 dprop,
@@ -135,7 +143,7 @@ def construct_linear_relaxation_kernel(
                 t,
                 cast(ArrayLayout, array_layout),
                 dtype,
-                interpolation_half_width=interpolation_half_width,
+                interpolation_half_width=cast(int, interpolation_half_width),
             )
 
         # property coefficient
@@ -147,6 +155,7 @@ def construct_linear_relaxation_kernel(
             return construct_relaxation_kernel_property_coefficient_scalar_target(prop, dprop, c, t, dtype)
         case (None, c, None), (None, None, None, t) if c is not None and t is not None:
             # cast array_layout to ArrayLayout to satisfy type checker, since we already checked that array_layout is not None
+            # also cast interpolation_half_width to int to satisfy type checker, since we already checked that interpolation_half_width is not None
             return construct_relaxation_kernel_property_coefficient_field_target(
                 prop,
                 dprop,
@@ -154,7 +163,7 @@ def construct_linear_relaxation_kernel(
                 t,
                 cast(ArrayLayout, array_layout),
                 dtype,
-                interpolation_half_width=interpolation_half_width,
+                interpolation_half_width=cast(int, interpolation_half_width),
             )
 
         # scalar coefficient
@@ -166,6 +175,7 @@ def construct_linear_relaxation_kernel(
             return construct_relaxation_kernel_scalar_coefficient_scalar_target(prop, dprop, c, t, dtype)
         case (None, None, c), (None, None, None, t) if c is not None and t is not None:
             # cast array_layout to ArrayLayout to satisfy type checker, since we already checked that array_layout is not None
+            # also cast interpolation_half_width to int to satisfy type checker, since we already checked that interpolation_half_width is not None
             return construct_relaxation_kernel_scalar_coefficient_field_target(
                 prop,
                 dprop,
@@ -173,7 +183,7 @@ def construct_linear_relaxation_kernel(
                 t,
                 cast(ArrayLayout, array_layout),
                 dtype,
-                interpolation_half_width=interpolation_half_width,
+                interpolation_half_width=cast(int, interpolation_half_width),
             )
 
         case _:
@@ -196,7 +206,7 @@ def construct_quadratic_relaxation_kernel(
     scalar_target: str | None = None,
     field_target: str | None = None,
     array_layout: ArrayLayout | None = None,
-    interpolation_half_width: int = 1,
+    interpolation_half_width: int | None = None,
 ) -> BoundKernel:
     r"""Construct a kernel for applying quadratic relaxation to a particle property.
 
@@ -224,9 +234,9 @@ def construct_quadratic_relaxation_kernel(
         The binding for a field to use as the target value for the relaxation, by default None.
     array_layout : ArrayLayout | None, optional
         The layout of the field target array, by default None.
-    interpolation_half_width : int, optional
+    interpolation_half_width : int | None, optional
         The half-width of the interpolation stencil to use when interpolating the field target to particle positions.
-        By default 1, corresponding to linear interpolation. This parameter is only used when `field_target` is specified.
+        Defaults to 1 when `field_target` is specified, corresponding to linear interpolation. This parameter is only used when `field_target` is specified.
 
     Returns
     -------
@@ -265,6 +275,14 @@ def construct_quadratic_relaxation_kernel(
             "`array_layout` is provided but `field_target` is None. `array_layout` will be ignored.",
             stacklevel=2,
         )
+    if field_target is None and interpolation_half_width is not None:
+        warnings.warn(
+            "`interpolation_half_width` is provided but `field_target` is None. `interpolation_half_width` will be ignored.",
+            stacklevel=2,
+        )
+
+    if field_target is not None and interpolation_half_width is None:
+        interpolation_half_width = 1  # default to linear interpolation
 
     match coefficient, target:
         # constant coefficient
@@ -282,6 +300,7 @@ def construct_quadratic_relaxation_kernel(
             )
         case (c, None, None), (None, None, None, t) if c is not None and t is not None:
             # cast array_layout to ArrayLayout to satisfy type checker, since we already checked that array_layout is not None
+            # also cast interpolation_half_width to int to satisfy type checker, since we already checked that interpolation_half_width is not None
             return construct_relaxation_kernel_constant_coefficient_field_target(
                 prop,
                 dprop,
@@ -289,7 +308,7 @@ def construct_quadratic_relaxation_kernel(
                 t,
                 cast(ArrayLayout, array_layout),
                 dtype,
-                interpolation_half_width=interpolation_half_width,
+                interpolation_half_width=cast(int, interpolation_half_width),
                 form="quadratic",
             )
 
@@ -308,6 +327,7 @@ def construct_quadratic_relaxation_kernel(
             )
         case (None, c, None), (None, None, None, t) if c is not None and t is not None:
             # cast array_layout to ArrayLayout to satisfy type checker, since we already checked that array_layout is not None
+            # also cast interpolation_half_width to int to satisfy type checker, since we already checked that interpolation_half_width is not None
             return construct_relaxation_kernel_property_coefficient_field_target(
                 prop,
                 dprop,
@@ -315,7 +335,7 @@ def construct_quadratic_relaxation_kernel(
                 t,
                 cast(ArrayLayout, array_layout),
                 dtype,
-                interpolation_half_width=interpolation_half_width,
+                interpolation_half_width=cast(int, interpolation_half_width),
                 form="quadratic",
             )
 
@@ -334,6 +354,7 @@ def construct_quadratic_relaxation_kernel(
             )
         case (None, None, c), (None, None, None, t) if c is not None and t is not None:
             # cast array_layout to ArrayLayout to satisfy type checker, since we already checked that array_layout is not None
+            # also cast interpolation_half_width to int to satisfy type checker, since we already checked that interpolation_half_width is not None
             return construct_relaxation_kernel_scalar_coefficient_field_target(
                 prop,
                 dprop,
@@ -341,7 +362,7 @@ def construct_quadratic_relaxation_kernel(
                 t,
                 cast(ArrayLayout, array_layout),
                 dtype,
-                interpolation_half_width=interpolation_half_width,
+                interpolation_half_width=cast(int, interpolation_half_width),
                 form="quadratic",
             )
 
