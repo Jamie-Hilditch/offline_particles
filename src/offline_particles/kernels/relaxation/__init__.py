@@ -483,9 +483,11 @@ def construct_quadratic_damping_kernel(
     The kernel will apply the damping according to the specified coefficient.
 
     Quadratic damping is defined as:
-    ```math
-    d prop / d t = - coefficient * prop * |prop|
-    ```
+
+    .. math::
+
+        d prop / d t = - coefficient * prop * |prop|
+
     where `coefficient` is the damping coefficient and `prop` is the current value of the property.
     """
     if sum(c is not None for c in (constant_coefficient, property_coefficient, scalar_coefficient)) != 1:
