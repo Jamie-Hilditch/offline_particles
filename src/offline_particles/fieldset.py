@@ -15,7 +15,8 @@ class Fieldset:
 
     Can also hold associated constants.
 
-    Parameters:
+    Parameters
+    ----------
         t_size: size of the time dimension
         z_size: size of the centered z dimension
         y_size: size of the centered y dimension
@@ -158,7 +159,9 @@ class Fieldset:
 
     def add_field(self, name: str, field: Field) -> None:
         """Add a field to the fieldset.
-        Parameters:
+
+        Parameters
+        ----------
             name: name of the field
             field: Field object
         """
@@ -171,8 +174,10 @@ class Fieldset:
         self._fields[name] = field
 
     def add_constant(self, name: str, value: Any) -> None:
-        """Convenience method for adding a constant field to the fieldset.
-        Parameters:
+        """Add a constant field to the fieldset.
+
+        Parameters
+        ----------
             name: name of the constant
             value: value of the constant
         """
@@ -182,7 +187,9 @@ class Fieldset:
 
     def remove(self, name: str) -> None:
         """Remove a field or constant from the fieldset.
-        Parameters:
+
+        Parameters
+        ----------
             name: name of the field
         """
         if name in self._constants:
@@ -197,7 +204,9 @@ class Fieldset:
 
     def __getitem__(self, name: str) -> Field:
         """Get a field from the fieldset.
-        Parameters:
+
+        Parameters
+        ----------
             name: name of the field or constant
         Returns:
             Field object or float value of the constant
@@ -208,7 +217,9 @@ class Fieldset:
 
     def __contains__(self, name: str) -> bool:
         """Check if a field exists in the fieldset.
-        Parameters:
+
+        Parameters
+        ----------
             name: name of the field
         Returns:
             True if the field exists, False otherwise
@@ -249,7 +260,8 @@ class Fieldset:
     ) -> "Fieldset":
         """Create a Fieldset from an xarray Dataset.
 
-        Parameters:
+        Parameters
+        ----------
             ds: xarray Dataset containing the fields and coordinates
             time_dim: name of the time dimension in the dataset. Required even if there are no time-dependent fields.
             dims : Mapping[str, tuple[ArrayAxis | str, Stagger | str]]
@@ -262,15 +274,16 @@ class Fieldset:
             yidx_bounds: optional bounds of the y index (default: (0, y_size - 1))
             xidx_bounds: optional bounds of the x index (default: (0, x_size - 1))
 
-        Returns:
+        Returns
+        -------
             Fieldset object containing the fields from the dataset
 
-        Notes:
+        Notes
+        -----
             - The time dimension must be specified.
             - Only variables with the specified dimensions will be included as fields in the resulting Fieldset.
             - All length-1 dimensions will be squeezed out of the variables when creating fields.
         """
-
         # Validate that the dimensions exist
         if time_dim not in ds.dims:
             raise ValueError(f"Time dimension '{time_dim}' not found in dataset dimensions.")
@@ -362,16 +375,19 @@ def _get_dim_size(
 ) -> int:
     """Get the size of a centered dimension from the dataset or from the provided size argument.
 
-    Parameters:
+    Parameters
+    ----------
     size: size of the centered dimension, optional (required if centered dimension is not included in dims)
     ds: xarray Dataset containing the dimensions
     dims: Mapping of spatial dimension names to (ArrayAxis, Stagger) tuples
     axis: ArrayAxis for which to get the size of the centered dimension
 
-    Returns:
+    Returns
+    -------
     Size of the centered dimension
 
-    Raises:
+    Raises
+    ------
     ValueError: if size is not provided and the centered dimension is not included in dims
     """
     # get sizes of centered dimensions from dataset or from provided arguments

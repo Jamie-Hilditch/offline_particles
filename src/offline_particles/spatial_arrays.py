@@ -35,7 +35,7 @@ class Stagger(enum.StrEnum):
                 return -0.5
 
     def expected_size(self, N: int) -> int:
-        """Expected size of dimension given size of centered dimension."""
+        """Get the expected size of dimension given size of centered dimension."""
         match self:
             case Stagger.CENTER | Stagger.LEFT | Stagger.RIGHT:
                 return N
@@ -376,9 +376,7 @@ class ChunkedDaskArray(SpatialArray):
 def _compute_new_bounds(
     dim_bounds: tuple[float, float], offset: float, bounds: npt.NDArray[np.int_]
 ) -> tuple[int, int]:
-    """
-    Compute new dimension bounds for chunked data access.
-    """
+    """Compute new dimension bounds for chunked data access."""
     dim_min, dim_max = dim_bounds
     new_lower = compute_new_lower_bound(dim_min, offset, bounds)
     new_upper = compute_new_upper_bound(dim_max, offset, bounds)
@@ -392,11 +390,15 @@ def compute_new_lower_bound(
 ) -> int:
     """
     Compute new lower bound for chunked data access.
-    Parameters:
+
+    Parameters
+    ----------
         dim_min: lower bound of the bounding box.
         offset: offset to apply to the indices.
         bounds: array containing the chunk boundaries.
-    Returns:
+
+    Returns
+    -------
         - int: lower bound.
     """
     global_lower = dim_min + offset
@@ -414,11 +416,15 @@ def compute_new_upper_bound(
 ) -> int:
     """
     Compute new upper bound for chunked data access.
-    Parameters:
+
+    Parameters
+    ----------
         dim_max: upper bound of the bounding box.
         offset: offset to apply to the indices.
         bounds: array containing the chunk boundaries.
-    Returns:
+
+    Returns
+    -------
         - int: upper bound.
     """
     global_upper = dim_max + offset + 1  # add 1 for upper bound

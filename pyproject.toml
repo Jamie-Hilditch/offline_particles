@@ -37,8 +37,15 @@ dev = [
 line-length = 120
 
 [tool.ruff.lint]
+pydocstyle.convention = "numpy"
+select = ["D"]
 extend-select = ["I"]
-ignore = ["E266"]
+ignore = [
+  "D1", # Missing public docstrings
+  "E266"]
+
+[tool.ruff.format]
+docstring-code-format = true
 
 [tool.cython-lint]
 paths = ["src"]

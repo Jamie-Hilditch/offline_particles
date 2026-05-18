@@ -15,7 +15,8 @@ Types
      - Supported time increment types.
    * - :py:data:`DLike`
      - ``np.floating | np.timedelta64 | float | int``
-     - Accepted time increment input types. Converted to :py:data:`D` internally."""
+     - Accepted time increment input types. Converted to :py:data:`D` internally.
+"""
 
 import abc
 import itertools
@@ -90,7 +91,8 @@ class Clock:
         time_unit: The time unit. Determines the type of time increments. Required for dimensional time,
             defaults to np.float64(1.0) for dimensionless time.
 
-    Raises:
+    Raises
+    ------
         ValueError: If ``time_array`` is not 1D, has fewer than 2 elements,
             or is not strictly increasing.
         ValueError: If ``time_unit`` is not positive.
@@ -104,7 +106,8 @@ class Clock:
         The clock direction (forward or backward in time) is determined by
         the sign of ``dt`` at construction time and cannot be changed afterwards.
 
-    Examples:
+    Examples
+    --------
         >>> time_array = np.array([0, 1, 2, 3], dtype=np.float64)
         >>> dt = np.float64(0.5)
         >>> Clock(time_array, dt)
@@ -165,10 +168,12 @@ class Clock:
         Args:
             time: The time to get the index for.
 
-        Returns:
+        Returns
+        -------
             float64: The time index corresponding to the given time.
 
-        Raises:
+        Raises
+        ------
             ValueError: If time is out of bounds of the time array.
             TypeError (from numpy): If time is not compatible with the time array.
         """
@@ -261,10 +266,12 @@ class Clock:
     def first_time(self) -> T:
         """The chronological start of the simulation.
 
-        Returns:
+        Returns
+        -------
             T: ``time_array[0]`` if forward, ``time_array[-1]`` if backward.
 
-        Examples:
+        Examples
+        --------
             >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=np.float64(0.5))
             >>> clock.first_time
             np.float64(0.0)
@@ -279,10 +286,12 @@ class Clock:
     def final_time(self) -> T:
         """The chronological end of the simulation.
 
-        Returns:
+        Returns
+        -------
             T: ``time_array[-1]`` if forward, ``time_array[0]`` if backward.
 
-        Examples:
+        Examples
+        --------
             >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=np.float64(0.5))
             >>> clock.final_time
             np.float64(3.0)
@@ -515,7 +524,6 @@ class ABTimestepper(Timestepper):
 
     def run_step(self, particles: Particles, launcher: Launcher, clock: Clock) -> None:
         """Launch the Adams-Bashforth kernel to timestep the particles."""
-
         # first launch tendency kernels to compute tendencies and store in dprop_0
         for kernel in self._tendency_kernels:
             launcher.launch_kernel(kernel, particles, clock.tinfo)

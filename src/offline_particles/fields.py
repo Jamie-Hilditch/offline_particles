@@ -122,7 +122,7 @@ class Field(abc.ABC):
     def get_field_data(self, time_index: float, bbox: BBox) -> FieldData:
         """Get the field data at a given time index.
 
-         Parameters
+        Parameters
         ----------
         time_index : float
             Time index.
@@ -498,7 +498,7 @@ class TimeDependentField(Field):
     def get_field_data(self, time_index: float, bbox: BBox) -> FieldData:
         """Get the field data at a given time index.
 
-         Parameters
+        Parameters
         ----------
         time_index : float
             Time index.

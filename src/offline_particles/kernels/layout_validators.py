@@ -56,7 +56,7 @@ def validate_X_ordering(layout: ArrayLayout) -> None:
 
 
 def ordering_validator_factory(expected_axes: tuple[ArrayAxis, ...]) -> Callable[[ArrayLayout], None]:
-    """Factory function to create layout validators for specific axis orderings."""
+    """Create layout validators for specific axis orderings."""
 
     def validator(layout: ArrayLayout) -> None:
         if layout.axes != expected_axes:

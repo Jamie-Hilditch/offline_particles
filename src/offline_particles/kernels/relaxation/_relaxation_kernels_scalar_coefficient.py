@@ -294,7 +294,6 @@ def _construct_1d_kernel_function(
     axis0: ArrayAxis,
 ) -> KernelFunction:
     """Construct a kernel function for a 1D array layout."""
-
     index_declaration = _INDEX_DECLARATION_MAPPING[axis0]
     idx0 = index_declaration.name
 
@@ -324,7 +323,6 @@ def _construct_2d_kernel_function(
     axis1: ArrayAxis,
 ) -> KernelFunction:
     """Construct a kernel function for a 2D array layout."""
-
     index_declaration_0 = _INDEX_DECLARATION_MAPPING[axis0]
     index_declaration_1 = _INDEX_DECLARATION_MAPPING[axis1]
     idx0 = index_declaration_0.name
@@ -359,7 +357,6 @@ def _construct_3d_kernel_function(
     axis2: ArrayAxis,
 ) -> KernelFunction:
     """Construct a kernel function for a 3D array layout."""
-
     index_declaration_0 = _INDEX_DECLARATION_MAPPING[axis0]
     index_declaration_1 = _INDEX_DECLARATION_MAPPING[axis1]
     index_declaration_2 = _INDEX_DECLARATION_MAPPING[axis2]

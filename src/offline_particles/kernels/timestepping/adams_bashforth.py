@@ -17,7 +17,7 @@ from ._adams_bashforth import ab2_update, ab3_update, ab_bump_status, ab_initial
 
 # particle property declarations for Adams-Bashforth
 def _particle_property_declarations(dtype: np.inexact, order: int) -> list[ParticlePropertyDeclaration]:
-    """Helper function to create particle property declarations for Adams-Bashforth kernels.
+    """Create particle property declarations for Adams-Bashforth kernels.
 
     Args:
         dtype: Data type of the particle properties (np.float32 or np.float64).
@@ -52,7 +52,8 @@ def construct_ab2_update_kernel(
         dprop_1: Binding of the property tendency at the previous timestep.
         dtype: Data type of the particle properties (np.float32 or np.float64).
 
-    Returns:
+    Returns
+    -------
         BoundKernel implementing the AB2 update.
     """
     dtype = np.dtype(dtype)
@@ -97,7 +98,8 @@ def construct_ab3_update_kernel(
         dprop_2: Binding of the property tendency at two timesteps ago.
         dtype: Data type of the particle properties (np.float32 or np.float64).
 
-    Returns:
+    Returns
+    -------
         BoundKernel implementing the AB3 update.
     """
     dtype = np.dtype(dtype)
@@ -135,7 +137,8 @@ def construct_ab3_update_kernel(
 def construct_ab_bump_status_kernel() -> BoundKernel:
     """Construct a kernel that bumps the Adams-Bashforth status.
 
-    Returns:
+    Returns
+    -------
         BoundKernel implementing AB bump status.
     """
 
@@ -160,7 +163,8 @@ def construct_ab_initialisation_kernel(order: int) -> BoundKernel:
     Args:
         order: The order of the Adams-Bashforth method (2 or 3).
 
-    Returns:
+    Returns
+    -------
         BoundKernel implementing the AB initialisation.
     """
     kernel_function_impl = ab_initialisation_factory(order)

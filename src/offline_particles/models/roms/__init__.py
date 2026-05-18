@@ -73,7 +73,8 @@ def roms_ab3_timestepper(
         quadratic_damping_coefficient: Binding for the quadratic damping coefficient scalar (default "quadratic_damping_coefficient").
             Only used if `quadratic_damping` is True.
 
-    Notes:
+    Notes
+    -----
         ROMS uses a sigma coordinate system in the vertical. Vertical advection occurs in physical space,
         i.e. in `z`. Therefore, after each advection step, the particle `zidx` is recomputed based on the updated `z` position.
 

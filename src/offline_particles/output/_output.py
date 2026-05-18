@@ -30,7 +30,6 @@ class Output:
         **attrs: Any,
     ) -> None:
         """Initialize the Output."""
-
         kernel_particle_property_dtypes = get_required_particle_property_dtypes(*kernels)
 
         # case 1: the particle property is already defined by the kernels
@@ -177,10 +176,10 @@ class AbstractOutputWriter(abc.ABC):
     def create_output_events(self) -> list[Event]:
         """Create recurring events for writing time-dependent output.
 
-        Returns:
+        Returns
+        -------
             A list of recurring events for writing time-dependent output.
         """
-
         events = []
 
         # write time
@@ -205,7 +204,8 @@ class AbstractOutputWriter(abc.ABC):
         These events are intended to be registered once at iteration 0,
         after particle initialisation.
 
-        Returns:
+        Returns
+        -------
             A list of one-shot events for writing static outputs.
         """
         events = []

@@ -360,10 +360,12 @@ def get_required_particle_property_dtypes(*bound_kernels: BoundKernel) -> Mappin
     Args:
         bound_kernels: The bound kernels to get the required particle properties from.
 
-    Returns:
+    Returns
+    -------
         A mapping of required particle property names to their dtypes.
 
-    Raises:
+    Raises
+    ------
         ValueError: If there are conflicting dtype declarations for the same particle property name.
     """
     required: dict[str, np.dtype] = {}

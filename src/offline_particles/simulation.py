@@ -53,7 +53,7 @@ class Simulation:
         *,
         bbox_history_size: int = DEFAULT_BBOX_HISTORY_SIZE,
     ) -> None:
-        """Simulation class constructor.
+        """Construct the Simulation class.
 
         Note:
             Use :class:`SimulationBuilder` to construct a simulation rather
@@ -139,7 +139,8 @@ class Simulation:
     def fieldset(self) -> Fieldset:
         """Get the fieldset used in the simulation.
 
-        Returns:
+        Returns
+        -------
             Fieldset: The fieldset instance.
         """
         return self._fieldset
@@ -148,7 +149,8 @@ class Simulation:
     def time(self) -> T:
         """Get the current simulation time.
 
-        Returns:
+        Returns
+        -------
             float: The current time of the simulation.
         """
         return self._clock.time
@@ -157,7 +159,8 @@ class Simulation:
     def iteration(self) -> int:
         """Get the current simulation iteration.
 
-        Returns:
+        Returns
+        -------
             int: The current iteration of the simulation.
         """
         return self._clock.iteration
@@ -166,7 +169,8 @@ class Simulation:
     def dt(self) -> D:
         """Get the timestep size.
 
-        Returns:
+        Returns
+        -------
             float: The size of each timestep in the simulation.
         """
         return self._clock.dt
@@ -175,7 +179,8 @@ class Simulation:
     def tidx(self) -> np.float64:
         """Get the current timestep index.
 
-        Returns:
+        Returns
+        -------
             float: The index of the current timestep.
         """
         return self._clock.tidx
@@ -184,7 +189,8 @@ class Simulation:
     def time_unit(self) -> D:
         """Get the time unit used by the timestepper.
 
-        Returns:
+        Returns
+        -------
             The time unit.
         """
         return self._clock.time_unit
@@ -193,7 +199,8 @@ class Simulation:
     def tinfo(self) -> Tinfo:
         """Get the current time information.
 
-        Returns:
+        Returns
+        -------
             Tinfo: The current time information named tuple.
         """
         return self._clock.tinfo
@@ -202,7 +209,8 @@ class Simulation:
     def wall_time(self) -> np.timedelta64:
         """Get the elapsed wall time since the start of the simulation.
 
-        Returns:
+        Returns
+        -------
             float: The elapsed wall time in seconds.
         """
         nanoseconds = time.perf_counter_ns() - self._wall_time_start
@@ -212,7 +220,8 @@ class Simulation:
     def index_padding(self) -> int:
         """Get the current index padding used by the launcher.
 
-        Returns:
+        Returns
+        -------
             int: The index padding.
         """
         return self._launcher.index_padding
@@ -221,7 +230,8 @@ class Simulation:
     def forward_in_time(self) -> bool:
         """Check if the simulation is running forward in time.
 
-        Returns:
+        Returns
+        -------
             bool: True if the simulation is running forward in time, False otherwise.
         """
         return self._clock.forward_in_time
@@ -230,7 +240,8 @@ class Simulation:
     def iteration_stop(self) -> int | None:
         """Get the iteration stopping condition.
 
-        Returns:
+        Returns
+        -------
             int | None: The iteration stopping condition, or None if not set.
         """
         return self._iteration_stop
@@ -239,7 +250,8 @@ class Simulation:
     def time_stop(self) -> T | None:
         """Get the time stopping condition.
 
-        Returns:
+        Returns
+        -------
             T | None: The time stopping condition, or None if not set.
         """
         return self._time_stop
@@ -248,7 +260,8 @@ class Simulation:
     def wall_time_stop(self) -> np.timedelta64 | None:
         """Get the wall time stopping condition.
 
-        Returns:
+        Returns
+        -------
             np.timedelta64 | None: The wall time stopping condition, or None if not set.
         """
         return self._wall_time_stop
@@ -340,7 +353,8 @@ class Simulation:
     def particles(self) -> Mapping[str, ParticlesView]:
         """A view into the current particle data.
 
-        Returns:
+        Returns
+        -------
             The current state of the particles in the simulation.
         """
         return types.MappingProxyType(self._particles_view)
@@ -349,7 +363,8 @@ class Simulation:
     def recurring_iteration_scheduler(self) -> RecurringIterationScheduler:
         """Get the recurring iteration scheduler used in the simulation.
 
-        Returns:
+        Returns
+        -------
             RecurringIterationScheduler: The recurring iteration scheduler instance.
         """
         return self._recurring_iteration_scheduler
@@ -358,7 +373,8 @@ class Simulation:
     def recurring_time_scheduler(self) -> RecurringTimeScheduler:
         """Get the recurring time scheduler used in the simulation.
 
-        Returns:
+        Returns
+        -------
             RecurringTimeScheduler: The recurring time scheduler instance.
         """
         return self._recurring_time_scheduler
@@ -367,7 +383,8 @@ class Simulation:
     def at_iteration_scheduler(self) -> AtIterationScheduler:
         """Get the one-shot iteration scheduler used in the simulation.
 
-        Returns:
+        Returns
+        -------
             AtIterationScheduler: The one-shot iteration scheduler instance.
         """
         return self._at_iteration_scheduler
@@ -376,7 +393,8 @@ class Simulation:
     def at_time_scheduler(self) -> AtTimeScheduler:
         """Get the one-shot time scheduler used in the simulation.
 
-        Returns:
+        Returns
+        -------
             AtTimeScheduler: The one-shot time scheduler instance.
         """
         return self._at_time_scheduler
@@ -395,7 +413,8 @@ class Simulation:
     def state(self) -> SimulationState:
         """Get the current simulation state.
 
-        Returns:
+        Returns
+        -------
             SimulationState: A named tuple containing time, dt, tidx, wall_time and particles.
         """
         return SimulationState(
@@ -485,7 +504,6 @@ class Simulation:
         xidx: npt.ArrayLike | None = None,
     ) -> None:
         """Set the particles indices."""
-
         if particle_set not in self._particles:
             raise ValueError(f"Particle set '{particle_set}' not found in simulation.")
         particles = self._particles[particle_set]

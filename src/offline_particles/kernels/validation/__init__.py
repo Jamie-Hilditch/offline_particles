@@ -46,7 +46,8 @@ validation_kernel = ParticleKernel.chain(finite_indices_kernel, domain_bounds_ke
 def construct_finite_indices_kernel() -> BoundKernel:
     """Construct the finite indices validation bound kernel.
 
-    Returns:
+    Returns
+    -------
         BoundKernel implementing the finite indices validation.
     """
     return finite_indices_kernel.bind()
@@ -70,7 +71,8 @@ def construct_domain_bounds_kernel(
         xidx_min: Binding for the minimum valid x-index scalar (default "xidx_min").
         xidx_max: Binding for the maximum valid x-index scalar (default "xidx_max").
 
-    Returns:
+    Returns
+    -------
         BoundKernel implementing the domain bounds validation.
     """
     return domain_bounds_kernel.bind(
@@ -103,7 +105,8 @@ def construct_validation_kernel(
         xidx_min: Binding for the minimum valid x-index scalar (default "xidx_min").
         xidx_max: Binding for the maximum valid x-index scalar (default "xidx_max").
 
-    Returns:
+    Returns
+    -------
         BoundKernel implementing particle validation.
     """
     return validation_kernel.bind(

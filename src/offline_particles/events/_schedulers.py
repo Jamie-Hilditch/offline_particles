@@ -79,7 +79,8 @@ class RecurringIterationScheduler:
         Args:
             iteration (int): The current iteration.
 
-        Returns:
+        Returns
+        -------
             list[Event]: The list of events to trigger.
         """
         triggered_events: list[Event] = []
@@ -153,7 +154,8 @@ class RecurringTimeScheduler:
         Args:
             time (float): The current time.
 
-        Returns:
+        Returns
+        -------
             list[Event]: The list of events to trigger.
         """
         triggered_events: list[Event] = []
@@ -222,7 +224,8 @@ class AtIterationScheduler:
         Args:
             iteration (int): The current iteration.
 
-        Returns:
+        Returns
+        -------
             list[Event]: The list of events to trigger.
         """
         triggered_events: list[Event] = []
@@ -286,7 +289,8 @@ class AtTimeScheduler:
         Args:
             time (T): The current time.
 
-        Returns:
+        Returns
+        -------
             list[Event]: The list of events to trigger.
         """
         triggered_events: list[Event] = []

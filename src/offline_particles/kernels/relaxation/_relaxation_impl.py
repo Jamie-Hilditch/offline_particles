@@ -143,7 +143,6 @@ def _linear_relaxation_constant_coefficient_1D_field_target(
     interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to linear interpolation.
     """
-
     interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -200,7 +199,6 @@ def _linear_relaxation_constant_coefficient_2D_field_target(
     interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to bilinear interpolation.
     """
-
     interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -263,7 +261,6 @@ def _linear_relaxation_constant_coefficient_3D_field_target(
     interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to trilinear interpolation.
     """
-
     interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -417,7 +414,6 @@ def _linear_relaxation_property_coefficient_1D_field_target(
     interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to linear interpolation.
     """
-
     interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -474,7 +470,6 @@ def _linear_relaxation_property_coefficient_2D_field_target(
     interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to bilinear interpolation.
     """
-
     interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -537,7 +532,6 @@ def _linear_relaxation_property_coefficient_3D_field_target(
     interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to trilinear interpolation.
     """
-
     interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -684,7 +678,6 @@ def _linear_relaxation_scalar_coefficient_1D_field_target(
     interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to linear interpolation.
     """
-
     interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -741,7 +734,6 @@ def _linear_relaxation_scalar_coefficient_2D_field_target(
     interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to bilinear interpolation.
     """
-
     interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -804,7 +796,6 @@ def _linear_relaxation_scalar_coefficient_3D_field_target(
     interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to trilinear interpolation.
     """
-
     interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -944,7 +935,6 @@ def _quadratic_relaxation_constant_coefficient_1D_field_target(
     interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to linear interpolation.
     """
-
     interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -1002,7 +992,6 @@ def _quadratic_relaxation_constant_coefficient_2D_field_target(
     interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to bilinear interpolation.
     """
-
     interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -1066,7 +1055,6 @@ def _quadratic_relaxation_constant_coefficient_3D_field_target(
     interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to trilinear interpolation.
     """
-
     interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -1224,7 +1212,6 @@ def _quadratic_relaxation_property_coefficient_1D_field_target(
     interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to linear interpolation.
     """
-
     interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -1282,7 +1269,6 @@ def _quadratic_relaxation_property_coefficient_2D_field_target(
     interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to bilinear interpolation.
     """
-
     interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -1346,7 +1332,6 @@ def _quadratic_relaxation_property_coefficient_3D_field_target(
     interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to trilinear interpolation.
     """
-
     interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -1497,7 +1482,6 @@ def _quadratic_relaxation_scalar_coefficient_1D_field_target(
     interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to linear interpolation.
     """
-
     interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -1555,7 +1539,6 @@ def _quadratic_relaxation_scalar_coefficient_2D_field_target(
     interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to bilinear interpolation.
     """
-
     interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -1619,7 +1602,6 @@ def _quadratic_relaxation_scalar_coefficient_3D_field_target(
     interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to trilinear interpolation.
     """
-
     interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)

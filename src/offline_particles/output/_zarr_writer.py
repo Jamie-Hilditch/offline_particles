@@ -347,7 +347,6 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         self, particle_set: str, name: str, output: Output, nparticles: int, array_kwargs: dict[str, Any]
     ) -> zarr.Array:
         """Initialize Zarr array for output."""
-
         # set shape and chunks
         shape = (0, nparticles)
         chunks = (1, min(self._chunksize, nparticles))
@@ -370,7 +369,6 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         self, particle_set: str, name: str, output: Output, nparticles: int, array_kwargs: dict[str, Any]
     ) -> zarr.Array:
         """Initialize Zarr array for a static (time-independent) output."""
-
         # set shape and chunks (1D: particles only)
         shape = (nparticles,)
         chunks = (max(1, min(self._chunksize, nparticles)),)
