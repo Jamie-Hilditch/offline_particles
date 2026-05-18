@@ -118,11 +118,11 @@ def roms_ab3_timestepper(
         )
     if linear_damping:
         tendency_kernels.append(
-            construct_linear_damping_kernel("_dw_rel0", "w_rel", scalar_coefficient=linear_damping_coefficient)
+            construct_linear_damping_kernel("w_rel", "_dw_rel0", scalar_coefficient=linear_damping_coefficient)
         )
     if quadratic_damping:
         tendency_kernels.append(
-            construct_quadratic_damping_kernel("_dw_rel0", "w_rel", scalar_coefficient=quadratic_damping_coefficient)
+            construct_quadratic_damping_kernel("w_rel", "_dw_rel0", scalar_coefficient=quadratic_damping_coefficient)
         )
 
     # AB3 steps
