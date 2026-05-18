@@ -1,4 +1,4 @@
-"""Implementations of linear and quadratic damping tendencies for particle properties."""
+"""Implementations of linear and quadratic relaxation tendencies for particle properties."""
 
 from typing import Callable
 
