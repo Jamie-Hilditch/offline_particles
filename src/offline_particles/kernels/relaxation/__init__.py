@@ -75,7 +75,7 @@ def construct_linear_relaxation_kernel(
     field_target : str | None, optional
         The binding for a field to use as the target value for the relaxation, by default None.
     array_layout : ArrayLayout | None, optional
-        The layout of the particle properties in memory, by default None.
+        The layout of the field target array, by default None.
     interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use when interpolating the field target to particle positions.
         By default 1, corresponding to linear interpolation. This parameter is only used when `field_target` is specified.
@@ -218,7 +218,7 @@ def construct_quadratic_relaxation_kernel(
     field_target : str | None, optional
         The binding for a field to use as the target value for the relaxation, by default None.
     array_layout : ArrayLayout | None, optional
-        The layout of the particle properties in memory, by default None.
+        The layout of the field target array, by default None.
     interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use when interpolating the field target to particle positions.
         By default 1, corresponding to linear interpolation. This parameter is only used when `field_target` is specified.
