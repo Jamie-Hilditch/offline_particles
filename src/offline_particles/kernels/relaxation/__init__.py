@@ -421,9 +421,11 @@ def construct_linear_damping_kernel(
     The kernel will apply the damping according to the specified coefficient.
 
     Linear damping is defined as:
-    ```math
-    d prop / d t = - coefficient * prop
-    ```
+
+    .. math::
+
+        d prop / d t = - coefficient * prop
+
     where `coefficient` is the damping coefficient and `prop` is the current value of the property.
     """
     if sum(c is not None for c in (constant_coefficient, property_coefficient, scalar_coefficient)) != 1:
