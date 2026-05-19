@@ -18,24 +18,24 @@ class Fieldset:
 
     Parameters
     ----------
-        t_size : int
-            Size of the time dimension.
-        z_size : int
-            Size of the centered z dimension.
-        y_size : int
-            Size of the centered y dimension.
-        x_size : int
-            Size of the centered x dimension.
-        fields : Mapping[str, Field], optional
-            Optional dictionary of fields to add to the fieldset.
-        constants : Mapping[str, Any], optional
-            Optional dictionary of constants to add to the fieldset.
-        zidx_bounds: tuple[float, float], optional
-            Optional bounds of the z index (default: (0, z_size - 1)).
-        yidx_bounds: tuple[float, float], optional
-            Optional bounds of the y index (default: (0, y_size - 1)).
-        xidx_bounds: tuple[float, float], optional
-            Optional bounds of the x index (default: (0, x_size - 1)).
+    t_size : int
+        Size of the time dimension.
+    z_size : int
+        Size of the centered z dimension.
+    y_size : int
+        Size of the centered y dimension.
+    x_size : int
+        Size of the centered x dimension.
+    fields : Mapping[str, Field], optional
+        Optional dictionary of fields to add to the fieldset.
+    constants : Mapping[str, Any], optional
+        Optional dictionary of constants to add to the fieldset.
+    zidx_bounds: tuple[float, float], optional
+        Optional bounds of the z index (default: (0, z_size - 1)).
+    yidx_bounds: tuple[float, float], optional
+        Optional bounds of the y index (default: (0, y_size - 1)).
+    xidx_bounds: tuple[float, float], optional
+        Optional bounds of the x index (default: (0, x_size - 1)).
     """
 
     def __init__(
