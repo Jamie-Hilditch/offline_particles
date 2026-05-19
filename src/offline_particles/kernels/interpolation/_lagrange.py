@@ -1,4 +1,4 @@
-"""Core functions for interpolation kernels."""
+"""Implementations of Lagrange polynomial interpolation."""
 
 import functools
 from collections.abc import Callable
@@ -61,7 +61,7 @@ def _lagrange_basis_polynomial(N: int) -> Callable[[float, int], float]:
     """
 
     @numba.njit(nogil=True, fastmath=True)
-    def impl(x: float, j: int) -> float:
+    def lagrange_basis_polynomial(x: float, j: int) -> float:
         lbp = 1.0
         for k in range(2 * N):
             if j == k:
@@ -69,7 +69,7 @@ def _lagrange_basis_polynomial(N: int) -> Callable[[float, int], float]:
             lbp *= (x - k) / (j - k)
         return lbp
 
-    return impl
+    return lagrange_basis_polynomial
 
 
 @functools.cache
@@ -107,7 +107,7 @@ def lagrange2N_1D_particle_factory(N: int) -> Callable[[npt.NDArray[np.inexact],
     lagrange_2N = _lagrange_basis_polynomial(N)
 
     @numba.njit(nogil=True, fastmath=True)
-    def impl(
+    def lagrange2N_1D_particle(
         field_array: npt.NDArray[np.inexact],
         offset_idx: np.float64,
         max_idx: int,  # max index for the lower index to avoid out-of-bounds
@@ -143,7 +143,7 @@ def lagrange2N_1D_particle_factory(N: int) -> Callable[[npt.NDArray[np.inexact],
             value += l0 * field_array[I0 + i]
         return value
 
-    return impl
+    return lagrange2N_1D_particle
 
 
 @functools.cache
@@ -189,7 +189,7 @@ def lagrange2N_1D_factory(
     single_particle_interpolator = lagrange2N_1D_particle_factory(N)
 
     @numba.njit(parallel=True, nogil=True, fastmath=True)
-    def impl(
+    def lagrange2N_1D(
         status: npt.NDArray[np.uint8],
         idx: npt.NDArray[np.float64],
         output: npt.NDArray[np.inexact],
@@ -234,7 +234,7 @@ def lagrange2N_1D_factory(
             else:
                 output[i] = single_particle_interpolator(field_array, offset_idx, max_idx)
 
-    return impl
+    return lagrange2N_1D
 
 
 @functools.cache
@@ -275,7 +275,7 @@ def lagrange2N_2D_particle_factory(
     lagrange_2N = _lagrange_basis_polynomial(N)
 
     @numba.njit(nogil=True, fastmath=True)
-    def impl(
+    def lagrange2N_2D_particle(
         field_array: npt.NDArray[np.inexact],
         offset_idx_0: np.float64,
         offset_idx_1: np.float64,
@@ -362,7 +362,7 @@ def lagrange2N_2D_particle_factory(
                 value += l0[i] * l1[j] * field_array[I0 + i, I1 + j]
         return value
 
-    return impl
+    return lagrange2N_2D_particle
 
 
 @functools.cache
@@ -411,7 +411,7 @@ def lagrange2N_2D_factory(
     single_particle_interpolator = lagrange2N_2D_particle_factory(N)
 
     @numba.njit(parallel=True, nogil=True, fastmath=True)
-    def impl(
+    def lagrange2N_2D(
         status: npt.NDArray[np.uint8],
         idx0: npt.NDArray[np.float64],
         idx1: npt.NDArray[np.float64],
@@ -464,7 +464,7 @@ def lagrange2N_2D_factory(
             else:
                 output[i] = single_particle_interpolator(field_array, offset_idx0, offset_idx1, max_idx_0, max_idx_1)
 
-    return impl
+    return lagrange2N_2D
 
 
 @functools.cache
@@ -505,7 +505,7 @@ def lagrange2N_3D_particle_factory(
     lagrange_2N = _lagrange_basis_polynomial(N)
 
     @numba.njit(nogil=True, fastmath=True)
-    def impl(
+    def lagrange2N_3D_particle(
         field_array: npt.NDArray[np.inexact],
         offset_idx_0: np.float64,
         offset_idx_1: np.float64,
@@ -619,7 +619,7 @@ def lagrange2N_3D_particle_factory(
                     value += l0[i] * l1[j] * l2[k] * field_array[I0 + i, I1 + j, I2 + k]
         return value
 
-    return impl
+    return lagrange2N_3D_particle
 
 
 @functools.cache
@@ -669,7 +669,7 @@ def lagrange2N_3D_factory(
     single_particle_interpolator = lagrange2N_3D_particle_factory(N)
 
     @numba.njit(parallel=True, nogil=True, fastmath=True)
-    def impl(
+    def lagrange2N_3D(
         status: npt.NDArray[np.uint8],
         idx0: npt.NDArray[np.float64],
         idx1: npt.NDArray[np.float64],
@@ -734,4 +734,4 @@ def lagrange2N_3D_factory(
                     field_array, offset_idx_0, offset_idx_1, offset_idx_2, max_idx_0, max_idx_1, max_idx_2
                 )
 
-    return impl
+    return lagrange2N_3D
