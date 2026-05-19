@@ -15,7 +15,21 @@ from offline_particles.particles import Particles, ParticlesView
 
 
 def _make_state(nparticles: int = 5, property_values: dict | None = None) -> SimulationState:
-    """Create a SimulationState with a single particle set for testing."""
+    """Create a SimulationState with a single particle set for testing.
+
+    Parameters
+    ----------
+    nparticles : int
+        The number of particles in the particle set.
+    property_values : dict, optional
+        A dictionary mapping property names to their values. If provided, these values will be set in
+        the particle set.
+
+    Returns
+    -------
+    SimulationState
+        A SimulationState object with the specified number of particles and property values.
+    """
     kwargs: dict = {"xidx": np.dtype(np.float64), "yidx": np.dtype(np.float64)}
     if property_values:
         for name, values in property_values.items():
@@ -38,12 +52,36 @@ def _make_state(nparticles: int = 5, property_values: dict | None = None) -> Sim
 
 
 def _make_output(property_name: str, dtype=np.float64) -> Output:
-    """Create a simple Output object for testing."""
+    """Create a simple Output object for testing.
+
+    Parameters
+    ----------
+    property_name : str
+        The name of the property to output.
+    dtype : data-type, optional
+        The data type of the output array. Default is np.float64.
+
+    Returns
+    -------
+    Output
+        An Output object configured for the specified property and data type.
+    """
     return Output(property_name, dtype=dtype)
 
 
 def _make_builder(store: zarr.storage.StoreLike) -> ZarrOutputBuilder:
-    """Create a ZarrOutputBuilder for testing."""
+    """Create a ZarrOutputBuilder for testing.
+
+    Parameters
+    ----------
+    store : zarr.storage.StoreLike
+        The storage backend for the Zarr array.
+
+    Returns
+    -------
+    ZarrOutputBuilder
+        A ZarrOutputBuilder instance for testing.
+    """
     return ZarrOutputBuilder("test_writer", store)
 
 

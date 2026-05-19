@@ -22,7 +22,32 @@ def _make_dataset(
     y_dim: str = "y",
     x_dim: str = "x",
 ) -> xr.Dataset:
-    """Create a minimal xarray Dataset with one static and one time-dependent field."""
+    """Create a minimal xarray Dataset with one static and one time-dependent field.
+
+    Parameters
+    ----------
+    t : int
+        Size of the time dimension.
+    z : int
+        Size of the z dimension.
+    y : int
+        Size of the y dimension.
+    x : int
+        Size of the x dimension.
+    time_dim : str, optional
+        Name of the time dimension.
+    z_dim : str, optional
+        Name of the z dimension.
+    y_dim : str, optional
+        Name of the y dimension.
+    x_dim : str, optional
+        Name of the x dimension.
+
+    Returns
+    -------
+    xr.Dataset
+        An xarray Dataset with one static field and one time-dependent field.
+    """
     static = xr.DataArray(np.ones((z, y, x), dtype=np.float64), dims=[z_dim, y_dim, x_dim])
     timedep = xr.DataArray(np.ones((t, z, y, x), dtype=np.float64), dims=[time_dim, z_dim, y_dim, x_dim])
     return xr.Dataset({"static": static, "timedep": timedep})
@@ -77,11 +102,9 @@ class TestFieldsetFromXarrayBasic:
 
     def test_time_dependent_only_dataset(self) -> None:
         """Dataset with only time-dependent variables."""
-        ds = xr.Dataset(
-            {
-                "u": xr.DataArray(np.zeros((3, 4, 5, 6), dtype=np.float64), dims=["time", "z", "y", "x"]),
-            }
-        )
+        ds = xr.Dataset({
+            "u": xr.DataArray(np.zeros((3, 4, 5, 6), dtype=np.float64), dims=["time", "z", "y", "x"]),
+        })
         fs = Fieldset.from_xarray(ds, "time", _DIMS)
         assert isinstance(fs["u"], TimeDependentField)
 
@@ -166,11 +189,9 @@ class TestFieldsetFromXarrayStaggered:
     def test_outer_stagger_z(self) -> None:
         """Outer-staggered z dimension has size z_size + 1."""
         t, z, y, x = 3, 4, 5, 6
-        ds = xr.Dataset(
-            {
-                "w": xr.DataArray(np.ones((t, z + 1, y, x), dtype=np.float64), dims=["time", "zw", "y", "x"]),
-            }
-        )
+        ds = xr.Dataset({
+            "w": xr.DataArray(np.ones((t, z + 1, y, x), dtype=np.float64), dims=["time", "zw", "y", "x"]),
+        })
         dims = {"zw": ("Z", "outer"), "y": ("Y", "center"), "x": ("X", "center")}
         fs = Fieldset.from_xarray(ds, "time", dims, z_size=z)
         assert fs.z_size == z
@@ -179,11 +200,9 @@ class TestFieldsetFromXarrayStaggered:
     def test_inner_stagger_z(self) -> None:
         """Inner-staggered z dimension has size z_size - 1."""
         t, z, y, x = 3, 4, 5, 6
-        ds = xr.Dataset(
-            {
-                "inner": xr.DataArray(np.ones((t, z - 1, y, x), dtype=np.float64), dims=["time", "zi", "y", "x"]),
-            }
-        )
+        ds = xr.Dataset({
+            "inner": xr.DataArray(np.ones((t, z - 1, y, x), dtype=np.float64), dims=["time", "zi", "y", "x"]),
+        })
         dims = {"zi": ("Z", "inner"), "y": ("Y", "center"), "x": ("X", "center")}
         fs = Fieldset.from_xarray(ds, "time", dims, z_size=z)
         assert fs.z_size == z
@@ -192,11 +211,9 @@ class TestFieldsetFromXarrayStaggered:
         """If a staggered dimension size doesn't match expectation, raise ValueError."""
         t, z, y, x = 3, 4, 5, 6
         # Claim outer stagger (expects z+1=5) but use z=4
-        ds = xr.Dataset(
-            {
-                "w": xr.DataArray(np.ones((t, z, y, x), dtype=np.float64), dims=["time", "zw", "y", "x"]),
-            }
-        )
+        ds = xr.Dataset({
+            "w": xr.DataArray(np.ones((t, z, y, x), dtype=np.float64), dims=["time", "zw", "y", "x"]),
+        })
         dims = {"zw": ("Z", "outer"), "y": ("Y", "center"), "x": ("X", "center")}
         with pytest.raises(ValueError, match="expected"):
             Fieldset.from_xarray(ds, "time", dims, z_size=z)
@@ -224,11 +241,9 @@ class TestFieldsetFromXarrayAliases:
 
     def test_custom_dim_names(self) -> None:
         """Non-default dimension names in the dataset are handled correctly."""
-        ds = xr.Dataset(
-            {
-                "u": xr.DataArray(np.ones((3, 4, 5, 6)), dims=["T", "depth", "lat", "lon"]),
-            }
-        )
+        ds = xr.Dataset({
+            "u": xr.DataArray(np.ones((3, 4, 5, 6)), dims=["T", "depth", "lat", "lon"]),
+        })
         dims = {"depth": ("Z", "center"), "lat": ("Y", "center"), "lon": ("X", "center")}
         fs = Fieldset.from_xarray(ds, "T", dims)
         assert fs.t_size == 3
@@ -245,12 +260,10 @@ class TestFieldsetFromXarrayAliases:
 class TestFieldsetFromXarrayDropDims:
     def test_extra_dims_dropped(self) -> None:
         """Dimensions not in time_dim or dims are dropped along with their variables."""
-        ds = xr.Dataset(
-            {
-                "u": xr.DataArray(np.ones((3, 4, 5, 6)), dims=["time", "z", "y", "x"]),
-                "extra": xr.DataArray(np.ones((7,)), dims=["extra_dim"]),
-            }
-        )
+        ds = xr.Dataset({
+            "u": xr.DataArray(np.ones((3, 4, 5, 6)), dims=["time", "z", "y", "x"]),
+            "extra": xr.DataArray(np.ones((7,)), dims=["extra_dim"]),
+        })
         fs = Fieldset.from_xarray(ds, "time", _DIMS)
         # 'extra' variable only has 'extra_dim' which is dropped
         assert "extra" not in fs.fields

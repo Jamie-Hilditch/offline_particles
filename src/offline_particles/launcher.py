@@ -80,7 +80,18 @@ class Launcher:
 
     @staticmethod
     def create_value_scalar_source(value: np.generic) -> ScalarProvider:
-        """Create a scalar data source that always returns the given value."""
+        """Create a scalar data source that always returns the given value.
+
+        Parameters
+        ----------
+        value : np.generic
+            The constant value to return.
+
+        Returns
+        -------
+        ScalarProvider
+            A function that takes a Tinfo and returns the constant value.
+        """
 
         def value_func(tinfo: Tinfo) -> np.generic:
             return value
@@ -88,7 +99,20 @@ class Launcher:
         return value_func
 
     def register_scalar_data_source(self, name: str, source: ScalarProvider) -> None:
-        """Register a scalar data source function."""
+        """Register a scalar data source function.
+
+        Parameters
+        ----------
+        name : str
+            The name of the scalar data source.
+        source : ScalarProvider
+            A callable that takes a Tinfo and returns a scalar value.
+
+        Raises
+        ------
+        ValueError
+            If a scalar data source with the same name is already registered or if the name conflicts with a field in the fieldset.
+        """
         if name in self._scalar_data_sources:
             raise ValueError(
                 f"Scalar data source '{name}' is already registered. Deregister it before registering a new one."
@@ -99,7 +123,18 @@ class Launcher:
         self._scalar_data_sources[name] = source
 
     def deregister_scalar_data_source(self, name: str) -> None:
-        """Deregister a scalar data source function."""
+        """Deregister a scalar data source function.
+
+        Parameters
+        ----------
+        name : str
+            The name of the scalar data source to deregister.
+
+        Raises
+        ------
+        ValueError
+            If the scalar data source is not registered.
+        """
         if name not in self._scalar_data_sources:
             raise ValueError(f"Scalar data source '{name}' is not registered.")
         del self._scalar_data_sources[name]
@@ -120,7 +155,19 @@ class Launcher:
     def set_index_padding(self, index_padding: int, force: bool = False) -> None:
         """Set the index padding using by this launcher.
 
-        Unless `force` is True, only increases the index padding.
+        Parameters
+        ----------
+        index_padding : int
+            The new index padding to set. Must be non-negative.
+        force : bool, optional
+            If True, forcefully set the index padding to the given value.
+            If False, increase the index padding if the new value is greater than the current value
+            else leave it unchanged. Default is False.
+
+        Raises
+        ------
+        ValueError
+            If index_padding is negative.
         """
         if index_padding < 0:
             raise ValueError("Index padding must be non-negative.")
@@ -131,7 +178,18 @@ class Launcher:
         self,
         particles: Particles,
     ) -> BBox:
-        """Construct a bounding box around the given particles with index padding."""
+        """Construct a bounding box around the given particles with index padding.
+
+        Parameters
+        ----------
+        particles : Particles
+            The particles to compute the bounding box for.
+
+        Returns
+        -------
+        BBox
+            The computed bounding box with index padding applied.
+        """
         # compute bounds of active particles
         zmin, zmax, ymin, ymax, xmin, xmax = _compute_particle_bounds(
             particles["status"],
@@ -199,7 +257,34 @@ def _compute_particle_bounds(
     yidx: npt.NDArray[np.float64],
     xidx: npt.NDArray[np.float64],
 ) -> tuple[float, float, float, float, float, float]:
-    """Compute the bounding box of active particles."""
+    """Compute the bounding box of active particles.
+
+    Parameters
+    ----------
+    status : npt.NDArray[np.uint8]
+        Array of particle statuses.
+    zidx : npt.NDArray[np.float64]
+        Array of particle z indices.
+    yidx : npt.NDArray[np.float64]
+        Array of particle y indices.
+    xidx : npt.NDArray[np.float64]
+        Array of particle x indices.
+
+    Returns
+    -------
+    float
+        zmin : Minimum z index of active particles.
+    float
+        zmax : Maximum z index of active particles.
+    float
+        ymin : Minimum y index of active particles.
+    float
+        ymax : Maximum y index of active particles.
+    float
+        xmin : Minimum x index of active particles.
+    float
+        xmax : Maximum x index of active particles.
+    """
     zmin = np.inf
     zmax = -np.inf
     ymin = np.inf

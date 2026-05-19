@@ -32,7 +32,26 @@ def construct_buoyancy_force_accumulation_kernel(
     reference_density: str = "rho0",
     gravity: str = "g",
 ) -> BoundKernel:
-    """Construct a kernel to compute buoyancy force accumulation on particles."""
+    """Construct a kernel to compute buoyancy force accumulation on particles.
+
+    Parameters
+    ----------
+    rhs : str
+        The name of the particle property to add the computed buoyancy force to.
+    particle_density : str, optional
+        The binding for the particle property that contains the particle density. Default is "rho".
+    density_field : str, optional
+        The binding for the field data that contains the fluid density. Default is "rho".
+    reference_density : str, optional
+        The binding for the scalar that contains the reference fluid density. Default is "rho0".
+    gravity : str, optional
+        The binding for the scalar that contains the gravitational acceleration. Default is "g".
+
+    Returns
+    -------
+    BoundKernel
+        A bound kernel that computes the buoyancy force on particles.
+    """
     kernel = ParticleKernel(
         buoyancy_force_accumulation,
         particle_properties=[

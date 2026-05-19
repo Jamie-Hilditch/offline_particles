@@ -20,7 +20,19 @@ def _make_state(
     time: float = 0.0,
     particle_set: str = "particles",
 ) -> SimulationState:
-    """Create a SimulationState with a single particle set for testing."""
+    """Create a SimulationState with a single particle set for testing.
+
+    Parameters
+    ----------
+        nparticles (int): The number of particles in the set.
+        property_values (dict | None): Optional dictionary of property names and their values.
+        time (float): The simulation time.
+        particle_set (str): The name of the particle set.
+
+    Returns
+    -------
+        SimulationState: A SimulationState containing the specified particle set.
+    """
     kwargs: dict = {"xidx": np.dtype(np.float64), "yidx": np.dtype(np.float64)}
     if property_values:
         for name, values in property_values.items():
@@ -49,7 +61,20 @@ def _make_multi_set_state(
     values_ps2: list | None = None,
     time: float = 0.0,
 ) -> SimulationState:
-    """Create a SimulationState with two particle sets."""
+    """Create a SimulationState with two particle sets.
+
+    Parameters
+    ----------
+        nparticles_ps1 (int): Number of particles in the first particle set.
+        nparticles_ps2 (int): Number of particles in the second particle set.
+        values_ps1 (list | None): Optional list of values for the first particle set's 'xidx' property.
+        values_ps2 (list | None): Optional list of values for the second particle set's 'xidx' property.
+        time (float): The simulation time.
+
+    Returns
+    -------
+        SimulationState: A SimulationState containing two particle sets.
+    """
     p1 = Particles(nparticles_ps1, xidx=np.dtype(np.float64))
     if values_ps1 is not None:
         p1["xidx"][:] = np.asarray(values_ps1, dtype=np.float64)

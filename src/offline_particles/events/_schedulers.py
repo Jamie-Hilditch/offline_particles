@@ -53,7 +53,12 @@ class RecurringIterationScheduler:
 
     @property
     def events(self) -> Iterable[Event]:
-        """All registered events."""
+        """All registered events.
+
+        Yields
+        ------
+            Event: The next registered event.
+        """
         for event_list in self._events.values():
             for _, event in event_list:
                 yield event
@@ -117,7 +122,12 @@ class RecurringTimeScheduler:
 
     @property
     def events(self) -> Iterable[Event]:
-        """All registered events."""
+        """All registered events.
+
+        Yields
+        ------
+            Event: The next registered event.
+        """
         for event_list in self._events.values():
             for _, event in event_list:
                 yield event
@@ -125,10 +135,20 @@ class RecurringTimeScheduler:
     def register_event(self, first: T, dt: D, event: Event) -> None:
         """Register an event to be triggered every dt.
 
-        Args:
-            first (T): The first time the event is triggered.
-            dt (D): The time interval between events.
-            event (Event): The event to be triggered.
+        Parameters
+        ----------
+        first : T
+            The first time the event is triggered.
+        dt : D
+            The time interval between events.
+        event : Event
+            The event to be triggered.
+
+        Raises
+        ------
+        ValueError
+            If dt is not positive when forward_in_time is True,
+            or if dt is not negative when forward_in_time is False.
         """
         # validate dt
         if self._forward_in_time and not (dt > dt * 0):
@@ -199,7 +219,12 @@ class AtIterationScheduler:
 
     @property
     def events(self) -> Iterable[Event]:
-        """All registered events."""
+        """All registered events.
+
+        Yields
+        ------
+            Event: The next registered event.
+        """
         for event_list in self._events.values():
             for event in event_list:
                 yield event
@@ -258,7 +283,13 @@ class AtTimeScheduler:
 
     @property
     def events(self) -> Iterable[Event]:
-        """All registered events."""
+        """All registered events.
+
+        Yields
+        ------
+        Event
+            The next registered event.
+        """
         for event_list in self._events.values():
             for event in event_list:
                 yield event

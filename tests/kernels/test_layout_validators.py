@@ -16,7 +16,20 @@ from offline_particles.spatial_arrays import ArrayLayout
 
 
 def _layout(*axes: str, stagger: str = "center") -> ArrayLayout:
-    """Build a layout from axis names all with the same stagger."""
+    """Build a layout from axis names all with the same stagger.
+
+    Parameters
+    ----------
+    *axes : str
+        The axis names.
+    stagger : str, optional
+        The stagger type for all axes, by default "center".
+
+    Returns
+    -------
+    ArrayLayout
+        An ArrayLayout object with the specified axes and stagger.
+    """
     return ArrayLayout(axes, (stagger,) * len(axes))
 
 

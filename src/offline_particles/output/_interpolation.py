@@ -19,11 +19,34 @@ def interpolate_fields(
 ) -> dict[str, Output]:
     """Output variables that interpolate field data using Lagrange polynomials.
 
-    Args:
-        fieldset: The fieldset containing the fields to interpolate.
-        variables: A string or an iterable of variable names to interpolate.
-        N: The half width of the Lagrange interpolation stencil. Defaults to 1, which corresponds to linear interpolation.
-        particle_property_prefix: The prefix for the particle array to store the output data.
+    Parameters
+    ----------
+    fieldset (Fieldset)
+        The fieldset containing the fields to interpolate.
+    variables (str | Iterable[str])
+        A string or an iterable of variable names to interpolate.
+    N (int, optional)
+        The half width of the Lagrange interpolation stencil. Defaults to 1, which corresponds to linear interpolation.
+    particle_property_prefix (str, optional)
+        The prefix for the particle array to store the output data, by default '_output'.
+
+    Returns
+    -------
+    dict[str, Output]
+        A dictionary mapping variable names to Output objects.
+
+    Raises
+    ------
+    KeyError
+        If a variable is not found in the fieldset.
+    ValueError
+        If a field has an unsupported number of axes.
+
+    Notes
+    -----
+    Outputs are computed in the particle property named '{particle_property_prefix}_{field_dtype}', where 'field_dtype' is the data type
+    of the field being interpolated. This particle property is assumed to be temporary and may be overwritten if multiple fields of the
+    same data type are interpolated.
     """
     outputs = {}
 

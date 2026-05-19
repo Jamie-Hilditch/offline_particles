@@ -29,7 +29,24 @@ class Output:
         dtype: npt.DTypeLike | None = None,
         **attrs: Any,
     ) -> None:
-        """Initialize the Output."""
+        """Initialize the Output.
+
+        Parameters
+        ----------
+        particle_property_name : str
+            The name of the particle property to output.
+        *kernels : BoundKernel
+            The kernels required to compute the output.
+        dtype : npt.DTypeLike, optional
+            The data type of the output.
+        **attrs : Any
+            Additional attributes for the output.
+
+        Raises
+        ------
+        ValueError
+            If the specified dtype is incompatible with the required dtype from the kernels.
+        """
         kernel_particle_property_dtypes = get_required_particle_property_dtypes(*kernels)
 
         # case 1: the particle property is already defined by the kernels
@@ -92,13 +109,35 @@ class TwoKeyDict[OT, IT, VT](collections.abc.MutableMapping[tuple[OT, IT], VT]):
         return sum(len(inner_dict) for inner_dict in self._data.values())
 
     def get_inner_mapping(self, outer_key: OT) -> Mapping[IT, VT]:
-        """Get a view of the inner mapping for a given outer key."""
+        """Get a view of the inner mapping for a given outer key.
+
+        Parameters
+        ----------
+        outer_key : OT
+            The outer key for which to retrieve the inner mapping.
+
+        Returns
+        -------
+        Mapping[IT, VT]
+            A read-only view of the inner mapping corresponding to the specified outer key.
+
+        Raises
+        ------
+        KeyError
+            If the specified outer key does not exist in the TwoKeyDict.
+        """
         if outer_key not in self._data:
             raise KeyError(f"Outer key '{outer_key}' not found.")
         return types.MappingProxyType(self._data[outer_key])
 
     def outer_keys(self) -> KeysView[OT]:
-        """Get a view of all outer keys."""
+        """Get a view of all outer keys.
+
+        Returns
+        -------
+        KeysView[OT]
+            A view of all outer keys in the TwoKeyDict.
+        """
         return self._data.keys()
 
 
@@ -167,9 +206,17 @@ class AbstractOutputWriter(abc.ABC):
     def event_name(self, particle_set: str, name: str) -> str:
         """Generate an event name for an output.
 
-        Args:
-            particle_set: The set of particles for which to write output.
-            name: The name of the output variable.
+        Parameters
+        ----------
+        particle_set (str)
+            The set of particles for which to write output.
+        name (str)
+            The name of the output variable.
+
+        Returns
+        -------
+        str
+            The generated event name in the format "{writer_name}:{particle_set}:{output_name}".
         """
         return f"{self.name}:{particle_set}:{name}"
 

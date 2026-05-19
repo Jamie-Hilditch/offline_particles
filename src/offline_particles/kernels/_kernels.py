@@ -62,7 +62,18 @@ class FieldDataDeclaration(KernelInputDeclaration):
         object.__setattr__(self, "_layout_validators", tuple(layout_validators))
 
     def validate_field(self, field: Field) -> None:
-        """Validate that a field matches this declaration."""
+        """Validate that a field matches this declaration.
+
+        Parameters
+        ----------
+        field : Field
+            The field to validate.
+
+        Raises
+        ------
+        TypeError
+            If the field's dtype does not match the declaration's dtype.
+        """
         if field.output_dtype != self.dtype:
             raise TypeError(
                 f"Kernel field data '{self.name}' has dtype '{self.dtype}', but field has dtype '{field.output_dtype}'."
@@ -189,7 +200,22 @@ class ParticleKernel:
         scalars: Mapping[str, str] | None = None,
         field_data: Mapping[str, str] | None = None,
     ) -> BoundKernel:
-        """Create a BoundKernel for this kernel."""
+        """Create a BoundKernel for this kernel.
+
+        Parameters
+        ----------
+        particle_properties : Mapping[str, str], optional
+            A mapping of declared particle property names to actual names. If not provided, the declared names are used.
+        scalars : Mapping[str, str], optional
+            A mapping of declared scalar names to argument names. If not provided, the declared names are used.
+        field_data : Mapping[str, str], optional
+            A mapping of declared field data names to argument names. If not provided, the declared names are used.
+
+        Returns
+        -------
+        BoundKernel
+            A BoundKernel with the specified bindings.
+        """
         return BoundKernel(
             self,
             particle_property_bindings=particle_properties,
@@ -199,7 +225,18 @@ class ParticleKernel:
 
     @classmethod
     def chain(cls, *Kernels: Self) -> Self:
-        """Create a new ParticleKernel by merging kernels."""
+        """Create a new ParticleKernel by merging kernels.
+
+        Parameters
+        ----------
+        *Kernels : ParticleKernel
+            The kernels to merge.
+
+        Returns
+        -------
+        ParticleKernel
+            A new ParticleKernel that combines the functions and declarations of the input kernels.
+        """
         # concatenate functions
         funcs = sum((k._funcs for k in Kernels), ())
         # merge declarations
@@ -218,7 +255,18 @@ class ParticleKernel:
         self,
         *others: Self,
     ) -> Self:
-        """Chain this kernel with another kernel."""
+        """Chain this kernel with another kernel.
+
+        Parameters
+        ----------
+        *others : ParticleKernel
+            Other kernels to chain with this kernel.
+
+        Returns
+        -------
+        ParticleKernel
+            A new ParticleKernel that combines the functions and declarations of this kernel and the others.
+        """
         return self.__class__.chain(self, *others)
 
 
@@ -292,7 +340,22 @@ class BoundKernel:
         scalars: Mapping[str, str] | None = None,
         field_data: Mapping[str, str] | None = None,
     ) -> Self:
-        """Create a new BoundKernel with updated bindings."""
+        """Create a new BoundKernel with updated bindings.
+
+        Parameters
+        ----------
+        particle_properties : Mapping[str, str], optional
+            A mapping of declared particle property names to new bound names. If not provided, the current bindings are used.
+        scalars : Mapping[str, str], optional
+            A mapping of declared scalar names to new bound names. If not provided, the current bindings are used.
+        field_data : Mapping[str, str], optional
+            A mapping of declared field data names to new bound names. If not provided, the current bindings are used.
+
+        Returns
+        -------
+        BoundKernel
+            A new BoundKernel with the updated bindings.
+        """
         new_particle_property_bindings = self._particle_property_bindings.copy()
         new_scalar_bindings = self._scalar_bindings.copy()
         new_field_data_bindings = self._field_data_bindings.copy()
@@ -331,7 +394,18 @@ class BoundKernel:
 
     @classmethod
     def chain(cls, *Kernels: Self) -> Self:
-        """Create a new BoundKernel by merging kernels."""
+        """Create a new BoundKernel by merging kernels.
+
+        Parameters
+        ----------
+        *Kernels : BoundKernel
+            The bound kernels to merge.
+
+        Returns
+        -------
+        BoundKernel
+            A new BoundKernel that combines the underlying kernels and their bindings.
+        """
         # chain underlying kernels
         chained_kernel = ParticleKernel.chain(*(k._kernel for k in Kernels))
         # merge bindings
@@ -350,23 +424,38 @@ class BoundKernel:
         self,
         *others: Self,
     ) -> Self:
-        """Chain this bound kernel with other bound kernels."""
+        """Chain this bound kernel with other bound kernels.
+
+        Parameters
+        ----------
+        *others : BoundKernel
+            Other bound kernels to chain with this bound kernel.
+
+        Returns
+        -------
+        BoundKernel
+            A new BoundKernel that combines the underlying kernels and their bindings.
+        """
         return self.__class__.chain(self, *others)
 
 
 def get_required_particle_property_dtypes(*bound_kernels: BoundKernel) -> Mapping[str, np.dtype]:
     """Get the required particle properties types from bound kernels.
 
-    Args:
-        bound_kernels: The bound kernels to get the required particle properties from.
+    Parameters
+    ----------
+    *bound_kernels : BoundKernel
+        The bound kernels to get the required particle properties from.
 
     Returns
     -------
-        A mapping of required particle property names to their dtypes.
+    Mapping[str, np.dtype]
+        A mapping of bound particle property names to their dtypes.
 
     Raises
     ------
-        ValueError: If there are conflicting dtype declarations for the same particle property name.
+    ValueError
+        If there are conflicting dtype declarations for the same particle property name.
     """
     required: dict[str, np.dtype] = {}
     for kb in bound_kernels:
@@ -388,7 +477,23 @@ def get_required_particle_property_dtypes(*bound_kernels: BoundKernel) -> Mappin
 
 
 def _merge_declaration_dicts[KID: KernelInputDeclaration](*dicts: Mapping[str, KID]) -> dict[str, KID]:
-    """Merge multiple declaration dicts, checking for conflicts."""
+    """Merge multiple declaration dicts, checking for conflicts.
+
+    Parameters
+    ----------
+    *dicts : Mapping[str, KID]
+        The declaration dicts to merge.
+
+    Returns
+    -------
+    dict[str, KID]
+        A merged declaration dict.
+
+    Raises
+    ------
+    ValueError
+        If there are conflicting declarations for the same name.
+    """
     merged: dict[str, KID] = {}
     for d in dicts:
         for key, decl in d.items():
@@ -401,7 +506,23 @@ def _merge_declaration_dicts[KID: KernelInputDeclaration](*dicts: Mapping[str, K
 
 
 def _merge_binding_dicts(*dicts: Mapping[str, str]) -> dict[str, str]:
-    """Merge multiple binding dicts, checking for conflicts."""
+    """Merge multiple binding dicts, checking for conflicts.
+
+    Parameters
+    ----------
+    *dicts : Mapping[str, str]
+        The binding dicts to merge.
+
+    Returns
+    -------
+    dict[str, str]
+        A merged binding dict.
+
+    Raises
+    ------
+    ValueError
+        If there are conflicting bindings for the same name.
+    """
     merged: dict[str, str] = {}
     for d in dicts:
         for name, binding in d.items():

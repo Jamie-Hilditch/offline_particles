@@ -162,8 +162,17 @@ class Fieldset:
 
         Parameters
         ----------
-            name: name of the field
-            field: Field object
+        name : str
+            Name of the field
+        field : Field
+            Field object
+
+        Raises
+        ------
+        KeyError
+            If a field with the same name already exists in the fieldset
+        ValueError
+            If the shape of the field does not match the simulation size
         """
         if name in self:
             raise KeyError(f"Field '{name}' already exists in Fieldset. First remove it before adding a new one.")
@@ -178,8 +187,15 @@ class Fieldset:
 
         Parameters
         ----------
-            name: name of the constant
-            value: value of the constant
+        name : str
+            Name of the constant
+        value : Any
+            Value of the constant
+
+        Raises
+        ------
+        KeyError
+            If a field or constant with the same name already exists in the fieldset
         """
         if name in self._constants or name in self:
             raise KeyError(f"'{name}' already exists in Fieldset. First remove it before adding a new one.")
@@ -190,7 +206,13 @@ class Fieldset:
 
         Parameters
         ----------
-            name: name of the field
+        name : str
+            Name of the field or constant to remove
+
+        Raises
+        ------
+        KeyError
+            If the field or constant does not exist in the fieldset
         """
         if name in self._constants:
             del self._constants[name]
@@ -207,9 +229,18 @@ class Fieldset:
 
         Parameters
         ----------
-            name: name of the field or constant
-        Returns:
-            Field object or float value of the constant
+        name : str
+            Name of the field
+
+        Returns
+        -------
+        Field
+            Field object
+
+        Raises
+        ------
+        KeyError
+            If the field does not exist in the fieldset
         """
         if name in self._fields:
             return self._fields[name]
@@ -220,8 +251,12 @@ class Fieldset:
 
         Parameters
         ----------
-            name: name of the field
-        Returns:
+        name : str
+            Name of the field
+
+        Returns
+        -------
+        bool
             True if the field exists, False otherwise
         """
         return name in self._fields
@@ -262,21 +297,39 @@ class Fieldset:
 
         Parameters
         ----------
-            ds: xarray Dataset containing the fields and coordinates
-            time_dim: name of the time dimension in the dataset. Required even if there are no time-dependent fields.
-            dims : Mapping[str, tuple[ArrayAxis | str, Stagger | str]]
+        ds : xr.Dataset
+            xarray Dataset containing the fields and coordinates
+        time_dim : str
+            name of the time dimension in the dataset. Required even if there are no time-dependent fields.
+        dims : Mapping[str, tuple[ArrayAxis | str, Stagger | str]]
             Mapping of spatial dimension names to ``(ArrayAxis, Stagger)`` tuples.
-            include_coords: whether to include coordinates as fields in the resulting Fieldset
-            z_size: size of the centered z dimension, optional (required if centered z dimension is not included in dims)
-            y_size: size of the centered y dimension, optional (required if centered y dimension is not included in dims)
-            x_size: size of the centered x dimension, optional (required if centered x dimension is not included in dims)
-            zidx_bounds: optional bounds of the z index (default: (0, z_size - 1))
-            yidx_bounds: optional bounds of the y index (default: (0, y_size - 1))
-            xidx_bounds: optional bounds of the x index (default: (0, x_size - 1))
+        include_coords : bool, optional
+            whether to include coordinates as fields in the resulting Fieldset
+        z_size : int | None, optional
+            size of the centered z dimension, optional (required if centered z dimension is not included in dims)
+        y_size : int | None, optional
+            size of the centered y dimension, optional (required if centered y dimension is not included in dims)
+        x_size : int | None, optional
+            size of the centered x dimension, optional (required if centered x dimension is not included in dims)
+        zidx_bounds : tuple[float, float] | None, optional
+            optional bounds of the z index (default: (0, z_size - 1))
+        yidx_bounds : tuple[float, float] | None, optional
+            optional bounds of the y index (default: (0, y_size - 1))
+        xidx_bounds : tuple[float, float] | None, optional
+            optional bounds of the x index (default: (0, x_size - 1))
 
         Returns
         -------
+        Fieldset
             Fieldset object containing the fields from the dataset
+
+        Raises
+        ------
+        ValueError
+            If the time dimension is not found in the dataset dimensions.
+            If any of the spatial dimensions are not found in the dataset dimensions.
+            If the size of a centered dimension is not provided and the centered dimension is not included in dims.
+            If a dimension has a size that does not match the expected size based on the stagger and provided size.
 
         Notes
         -----
@@ -352,7 +405,23 @@ class Fieldset:
 
 
 def _numpyify_constant(value: Any) -> np.generic:
-    """Convert a value to a numpy scalar."""
+    """Convert a value to a numpy scalar.
+
+    Parameters
+    ----------
+    value : Any
+        Value to convert to a numpy scalar
+
+    Returns
+    -------
+    np.generic
+        Numpy scalar representation of the value
+
+    Raises
+    ------
+    ValueError
+        If the value cannot be converted to a numpy scalar
+    """
     try:
         arr = np.asarray(value)
         if arr.size != 1:
@@ -363,7 +432,20 @@ def _numpyify_constant(value: Any) -> np.generic:
 
 
 def _get_centered_dim_name(dims: Mapping[str, tuple[ArrayAxis, Stagger]], axis: ArrayAxis) -> str | None:
-    """Get the name of the centered dimension from the dims mapping."""
+    """Get the name of the centered dimension from the dims mapping.
+
+    Parameters
+    ----------
+    dims : Mapping[str, tuple[ArrayAxis, Stagger]]
+        Mapping of spatial dimension names to (ArrayAxis, Stagger) tuples
+    axis : ArrayAxis
+        ArrayAxis for which to get the name of the centered dimension
+
+    Returns
+    -------
+    str | None
+        Name of the centered dimension, or None if not found
+    """
     for dim_name, (a, stagger) in dims.items():
         if a == axis and stagger == Stagger.CENTER:
             return dim_name
@@ -377,10 +459,14 @@ def _get_dim_size(
 
     Parameters
     ----------
-    size: size of the centered dimension, optional (required if centered dimension is not included in dims)
-    ds: xarray Dataset containing the dimensions
-    dims: Mapping of spatial dimension names to (ArrayAxis, Stagger) tuples
-    axis: ArrayAxis for which to get the size of the centered dimension
+    size : int | None
+        size of the centered dimension
+    ds : xr.Dataset
+        xarray Dataset containing the dimensions
+    dims : Mapping[str, tuple[ArrayAxis, Stagger]]
+        Mapping of spatial dimension names to (ArrayAxis, Stagger) tuples
+    axis : ArrayAxis
+        ArrayAxis for which to get the size of the centered dimension
 
     Returns
     -------
@@ -388,7 +474,8 @@ def _get_dim_size(
 
     Raises
     ------
-    ValueError: if size is not provided and the centered dimension is not included in dims
+    ValueError
+        If size is not provided and the centered dimension is not included in dims
     """
     # get sizes of centered dimensions from dataset or from provided arguments
     if size is not None:

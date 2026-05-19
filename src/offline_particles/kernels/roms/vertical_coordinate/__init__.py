@@ -36,13 +36,25 @@ def construct_compute_z_kernel(
 ) -> BoundKernel:
     """Construct a kernel to compute the physical vertical position `z` from ROMS vertical coordinates.
 
-    Args:
-        z: Binding for the particle property to store the computed physical vertical position.
-        hc: Binding for the critical depth scalar
-        NZ: Binding for the scalar giving the number of vertical rho levels.
-        h: Binding for the bathymetry field
-        zeta: Binding for the sea surface height field
-        C: Binding for the vertical stretching function field
+    Parameters
+    ----------
+    z (str)
+        Binding for the particle property to store the computed physical vertical position.
+    hc (str)
+        Binding for the critical depth scalar
+    NZ (str)
+        Binding for the scalar giving the number of vertical rho levels.
+    h (str)
+        Binding for the bathymetry field
+    zeta (str)
+        Binding for the sea surface height field
+    C (str)
+        Binding for the vertical stretching function field
+
+    Returns
+    -------
+    BoundKernel
+        A bound kernel that computes the physical vertical position `z`.
     """
     kernel = ParticleKernel(
         compute_z_kernel_function,
@@ -90,13 +102,25 @@ def construct_compute_zidx_kernel(
 ) -> BoundKernel:
     """Construct a kernel to compute the ROMS vertical index `zidx` from physical vertical position `z`.
 
-    Args:
-        z: Binding for the particle property giving the physical vertical position.
-        hc: Binding for the critical depth scalar
-        NZ: Binding for the scalar giving the number of vertical rho levels.
-        h: Binding for the bathymetry field
-        zeta: Binding for the sea surface height field
-        C: Binding for the vertical stretching function field
+    Parameters
+    ----------
+    z (str)
+        Binding for the particle property giving the physical vertical position.
+    hc (str)
+        Binding for the critical depth scalar
+    NZ (str)
+        Binding for the scalar giving the number of vertical rho levels.
+    h (str)
+        Binding for the bathymetry field
+    zeta (str)
+        Binding for the sea surface height field
+    C (str)
+        Binding for the vertical stretching function field
+
+    Returns
+    -------
+    BoundKernel
+        A bound kernel that computes the ROMS vertical index `zidx` from the physical vertical position `z`.
     """
     kernel = ParticleKernel(
         compute_zidx_kernel_function,

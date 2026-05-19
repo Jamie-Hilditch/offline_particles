@@ -106,16 +106,20 @@ def ab_bump_status(status: npt.NDArray[np.uint8]) -> None:
 def ab_initialisation_factory(order: int) -> Callable[[npt.NDArray[np.uint8]], None]:
     """Create an Adams-Bashforth initialisation kernel for a given order.
 
-    Args:
-        order: Order of Adams-Bashforth scheme.
+    Parameters
+    ----------
+    order (int)
+        Order of Adams-Bashforth scheme.
 
     Returns
     -------
-        Function implementing the initialisation kernel for the specified Adams-Bashforth order.
+    Callable[[npt.NDArray[np.uint8]], None]
+        A numba jitted function implementing the initialisation kernel for the specified Adams-Bashforth order.
 
     Raises
     ------
-        ValueError: If an unsupported Adams-Bashforth order is specified.
+    ValueError
+        If an unsupported Adams-Bashforth order is specified.
     """
     if order == 2:
         value = _MULTISTEP_1

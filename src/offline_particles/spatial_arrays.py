@@ -35,7 +35,18 @@ class Stagger(enum.StrEnum):
                 return -0.5
 
     def expected_size(self, N: int) -> int:
-        """Get the expected size of dimension given size of centered dimension."""
+        """Get the expected size of dimension given size of centered dimension.
+
+        Parameters
+        ----------
+        N (int)
+            Size of the centered dimension.
+
+        Returns
+        -------
+        int
+            Expected size of the dimension with this staggering.
+        """
         match self:
             case Stagger.CENTER | Stagger.LEFT | Stagger.RIGHT:
                 return N
@@ -85,9 +96,14 @@ class ArrayAxis(enum.StrEnum):
 
         Parameters
         ----------
-        axis : ArrayAxis | str
+        axis (ArrayAxis | str)
             Either an existing ``ArrayAxis`` member, a canonical value (``"Z"``, ``"Y"``, ``"X"``),
             or an alias name (e.g. ``"DEPTH"``, ``"LATITUDE"``, ``"LON"``).
+
+        Returns
+        -------
+        ArrayAxis
+            The corresponding ``ArrayAxis`` member.
 
         Raises
         ------
@@ -166,7 +182,23 @@ class BBox:
     xmax: float
 
     def axis_bounds(self, axis: ArrayAxis) -> tuple[float, float]:
-        """Get the bounding box limits for a specific axis."""
+        """Get the bounding box limits for a specific axis.
+
+        Parameters
+        ----------
+        axis (ArrayAxis)
+            The axis for which to retrieve the bounding box limits.
+
+        Returns
+        -------
+        tuple[float, float]
+            A tuple containing the minimum and maximum bounds for the specified axis.
+
+        Raises
+        ------
+        ValueError
+            If the provided axis is not one of the recognized ArrayAxis values.
+        """
         match axis:
             case ArrayAxis.Z:
                 return self.zmin, self.zmax
@@ -376,7 +408,22 @@ class ChunkedDaskArray(SpatialArray):
 def _compute_new_bounds(
     dim_bounds: tuple[float, float], offset: float, bounds: npt.NDArray[np.int_]
 ) -> tuple[int, int]:
-    """Compute new dimension bounds for chunked data access."""
+    """Compute new dimension bounds for chunked data access.
+
+    Parameters
+    ----------
+    dim_bounds (tuple[float, float])
+        The minimum and maximum bounds of the dimension.
+    offset (float)
+        The offset to apply to the indices based on the staggering of the grid.
+    bounds (npt.NDArray[np.int_])
+        The array containing the chunk boundaries for the dimension.
+
+    Returns
+    -------
+    tuple[int, int]
+        The new lower and upper bounds for the dimension, clamped to the chunk boundaries.
+    """
     dim_min, dim_max = dim_bounds
     new_lower = compute_new_lower_bound(dim_min, offset, bounds)
     new_upper = compute_new_upper_bound(dim_max, offset, bounds)
@@ -393,13 +440,17 @@ def compute_new_lower_bound(
 
     Parameters
     ----------
-        dim_min: lower bound of the bounding box.
-        offset: offset to apply to the indices.
-        bounds: array containing the chunk boundaries.
+    dim_min (float)
+        The minimum bound of the dimension.
+    offset (float)
+        The offset to apply to the indices based on the staggering of the grid.
+    bounds (npt.NDArray[np.int_])
+        The array containing the chunk boundaries for the dimension.
 
     Returns
     -------
-        - int: lower bound.
+    int
+        The new lower bound for the dimension, clamped to the chunk boundaries.
     """
     global_lower = dim_min + offset
 
@@ -419,13 +470,17 @@ def compute_new_upper_bound(
 
     Parameters
     ----------
-        dim_max: upper bound of the bounding box.
-        offset: offset to apply to the indices.
-        bounds: array containing the chunk boundaries.
+    dim_max (float)
+        The maximum bound of the dimension.
+    offset (float)
+        The offset to apply to the indices based on the staggering of the grid.
+    bounds (npt.NDArray[np.int_])
+        The array containing the chunk boundaries for the dimension.
 
     Returns
     -------
-        - int: upper bound.
+    int
+        The new upper bound for the dimension, clamped to the chunk boundaries.
     """
     global_upper = dim_max + offset + 1  # add 1 for upper bound
 

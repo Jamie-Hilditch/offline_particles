@@ -22,11 +22,20 @@ def construct_copy_property_kernel(
 ) -> BoundKernel:
     """Construct a kernel to copy a particle property from source to destination.
 
-    Args:
-        source: Binding for the source particle property.
-        destination: Binding for the destination particle property.
-        dtype: Data type of the particle properties (default np.float64).
-            Supported types are np.float32, np.float64, and any np.integer.
+    Parameters
+    ----------
+    source : str
+        Binding for the source particle property.
+    destination : str
+        Binding for the destination particle property.
+    dtype : type[np.float32] | type[np.float64] | type[np.integer], optional
+        Data type of the particle properties (default np.float64).
+        Supported types are np.float32, np.float64, and any np.integer.
+
+    Returns
+    -------
+    BoundKernel
+        A bound kernel that copies the source property to the destination property.
     """
     source_declaration = ParticlePropertyDeclaration("source", np.dtype(dtype))
     destination_declaration = ParticlePropertyDeclaration("destination", np.dtype(dtype))
@@ -55,11 +64,20 @@ def construct_add_property_kernel(
 ) -> BoundKernel:
     """Construct a kernel to add particle property source to destination.
 
-    Args:
-        source: Binding for the source particle property.
-        destination: Binding for the destination particle property.
-        dtype: Data type of the particle properties (default np.float64).
-            Supported types are np.float32, np.float64, and any np.integer.
+    Parameters
+    ----------
+    source : str
+        Binding for the source particle property.
+    destination : str
+        Binding for the destination particle property.
+    dtype : type[np.float32] | type[np.float64] | type[np.integer], optional
+        Data type of the particle properties (default np.float64).
+        Supported types are np.float32, np.float64, and any np.integer.
+
+    Returns
+    -------
+    BoundKernel
+        A bound kernel that adds the source property to the destination property.
     """
     source_declaration = ParticlePropertyDeclaration("source", np.dtype(dtype))
     destination_declaration = ParticlePropertyDeclaration("destination", np.dtype(dtype))
@@ -88,11 +106,20 @@ def construct_subtract_property_kernel(
 ) -> BoundKernel:
     """Construct a kernel to subtract particle property source from destination.
 
-    Args:
-        source: Binding for the source particle property.
-        destination: Binding for the destination particle property.
-        dtype: Data type of the particle properties (default np.float64).
-            Supported types are np.float32, np.float64, and any np.integer.
+    Parameters
+    ----------
+    source : str
+        Binding for the source particle property.
+    destination : str
+        Binding for the destination particle property.
+    dtype : type[np.float32] | type[np.float64] | type[np.integer], optional
+        Data type of the particle properties (default np.float64).
+        Supported types are np.float32, np.float64, and any np.integer.
+
+    Returns
+    -------
+    BoundKernel
+        A bound kernel that subtracts the source property from the destination property.
     """
     source_declaration = ParticlePropertyDeclaration("source", np.dtype(dtype))
     destination_declaration = ParticlePropertyDeclaration("destination", np.dtype(dtype))
@@ -121,11 +148,20 @@ def construct_multiply_property_kernel(
 ) -> BoundKernel:
     """Construct a kernel to multiply particle property destination by source.
 
-    Args:
-        source: Binding for the source particle property.
-        destination: Binding for the destination particle property.
-        dtype: Data type of the particle properties (default np.float64).
-            Supported types are np.float32, np.float64, and any np.integer.
+    Parameters
+    ----------
+    source : str
+        Binding for the source particle property.
+    destination : str
+        Binding for the destination particle property.
+    dtype : type[np.float32] | type[np.float64] | type[np.integer], optional
+        Data type of the particle properties (default np.float64).
+        Supported types are np.float32, np.float64, and any np.integer.
+
+    Returns
+    -------
+    BoundKernel
+        A bound kernel that multiplies the destination property by the source property.
     """
     source_declaration = ParticlePropertyDeclaration("source", np.dtype(dtype))
     destination_declaration = ParticlePropertyDeclaration("destination", np.dtype(dtype))
@@ -154,11 +190,20 @@ def construct_divide_property_kernel(
 ) -> BoundKernel:
     """Construct a kernel to divide particle property destination by source.
 
-    Args:
-        source: Binding for the source particle property.
-        destination: Binding for the destination particle property.
-        dtype: Data type of the particle properties (default np.float64).
-            Only np.float32 and np.float64 are supported.
+    Parameters
+    ----------
+    source : str
+        Binding for the source particle property.
+    destination : str
+        Binding for the destination particle property.
+    dtype : type[np.float32] | type[np.float64], optional
+        Data type of the particle properties (default np.float64).
+        Only np.float32 and np.float64 are supported.
+
+    Returns
+    -------
+    BoundKernel
+        A bound kernel that divides the destination property by the source property.
     """
     source_declaration = ParticlePropertyDeclaration("source", np.dtype(dtype))
     destination_declaration = ParticlePropertyDeclaration("destination", np.dtype(dtype))

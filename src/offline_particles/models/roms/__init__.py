@@ -49,29 +49,54 @@ def roms_ab3_timestepper(
 ) -> ABTimestepper:
     """Create an AB3 timestepper with ROMS advection kernels.
 
-    Keyword Args:
-        vertical_velocity: Whether to include vertical velocity advection (default True).
-        buoyant_particles: Whether to include a buoyancy driven component to the vertical velocity (default False).
-        time_unit: Unit of time for the simulation (default None). Should be the same type as dt.
-        index_padding: Index padding, i.e. the minimum amount by which the field indices
-            exceed the particle indices (default 5).
-        u: Binding for the u velocity field (default "u").
-        v: Binding for the v velocity field (default "v").
-        w: Binding for the w velocity field (default "w"). Only used if `vertical_velocity` is True.
-        dx: Binding for the x grid spacing field (default "dx").
-        dy: Binding for the y grid spacing field (default "dy").
-        h: Binding for the bathymetry field (default "h").
-        zeta: Binding for the free surface field (default "zeta").
-        C: Binding for the vertical stretching function field (default "C").
-        rho: Binding for the density field (default "rho"). Only used if `buoyant_particles` is True.
-        hc: Binding for the critical depth scalar (default "hc").
-        NZ: Binding for the number of vertical levels scalar (default "NZ").
-        g: Binding for the gravitational acceleration scalar (default "g"). Only used if `buoyant_particles` is True.
-        rho0: Binding for the reference density scalar (default "rho0"). Only used if `buoyant_particles` is True.
-        linear_damping_coefficient: Binding for the linear damping coefficient scalar (default "linear_damping_coefficient").
-            Only used if `linear_damping` is True.
-        quadratic_damping_coefficient: Binding for the quadratic damping coefficient scalar (default "quadratic_damping_coefficient").
-            Only used if `quadratic_damping` is True.
+    Parameters
+    ----------
+    vertical_velocity (bool, optional)
+        Whether to include vertical velocity advection (default True).
+    buoyant_particles (bool, optional)
+        Whether to include a buoyancy driven component to the vertical velocity (default False).
+    time_unit (str, optional)
+        Unit of time for the simulation (default None). Should be the same type as dt.
+    index_padding (int, optional)
+        Index padding, i.e. the minimum amount by which the field indices
+        exceed the particle indices (default 5).
+    u (str, optional)
+        Binding for the u velocity field (default "u").
+    v (str, optional)
+        Binding for the v velocity field (default "v").
+    w (str, optional)
+        Binding for the w velocity field (default "w"). Only used if `vertical_velocity` is True.
+    dx (str, optional)
+        Binding for the x grid spacing field (default "dx").
+    dy (str, optional)
+        Binding for the y grid spacing field (default "dy").
+    h (str, optional)
+        Binding for the bathymetry field (default "h").
+    zeta (str, optional)
+        Binding for the free surface field (default "zeta").
+    C (str, optional)
+        Binding for the vertical stretching function field (default "C").
+    rho (str, optional)
+        Binding for the density field (default "rho"). Only used if `buoyant_particles` is True.
+    hc (str, optional)
+        Binding for the critical depth scalar (default "hc").
+    NZ (str, optional)
+        Binding for the number of vertical levels scalar (default "NZ").
+    g (str, optional)
+        Binding for the gravitational acceleration scalar (default "g"). Only used if `buoyant_particles` is True.
+    rho0 (str, optional)
+        Binding for the reference density scalar (default "rho0"). Only used if `buoyant_particles` is True.
+    linear_damping_coefficient (str, optional)
+        Binding for the linear damping coefficient scalar (default "linear_damping_coefficient").
+        Only used if `linear_damping` is True.
+    quadratic_damping_coefficient (str, optional)
+        Binding for the quadratic damping coefficient scalar (default "quadratic_damping_coefficient").
+        Only used if `quadratic_damping` is True.
+
+    Returns
+    -------
+    ABTimestepper
+        Timestepper with ROMS advection kernels.
 
     Notes
     -----
@@ -97,12 +122,10 @@ def roms_ab3_timestepper(
     tendency_kernels = []
 
     # horizontal advection
-    tendency_kernels.extend(
-        [
-            construct_horizontal_idx_tendency_kernel_from_velocity_field("_dxidx0", u, dx),
-            construct_horizontal_idx_tendency_kernel_from_velocity_field("_dyidx0", v, dy),
-        ]
-    )
+    tendency_kernels.extend([
+        construct_horizontal_idx_tendency_kernel_from_velocity_field("_dxidx0", u, dx),
+        construct_horizontal_idx_tendency_kernel_from_velocity_field("_dyidx0", v, dy),
+    ])
 
     # vertical advection
     if vertical_velocity:

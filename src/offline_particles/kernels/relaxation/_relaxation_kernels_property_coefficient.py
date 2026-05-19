@@ -285,7 +285,20 @@ def _construct_1d_kernel_function(
     kernel_function_impl: Callable[..., None],
     axis0: ArrayAxis,
 ) -> KernelFunction:
-    """Construct a kernel function for a 1D array layout."""
+    """Construct a kernel function for a 1D array layout.
+
+    Parameters
+    ----------
+    kernel_function_impl : Callable[..., None]
+        The implementation of the kernel function to be constructed.
+    axis0 : ArrayAxis
+        The first axis of the 1D array layout.
+
+    Returns
+    -------
+    KernelFunction
+        The constructed kernel function for the 1D array layout.
+    """
     index_declaration = _INDEX_DECLARATION_MAPPING[axis0]
     idx0 = index_declaration.name
 
@@ -314,7 +327,22 @@ def _construct_2d_kernel_function(
     axis0: ArrayAxis,
     axis1: ArrayAxis,
 ) -> KernelFunction:
-    """Construct a kernel function for a 2D array layout."""
+    """Construct a kernel function for a 2D array layout.
+
+    Parameters
+    ----------
+    kernel_function_impl : Callable[..., None]
+        The implementation of the kernel function to be constructed.
+    axis0 : ArrayAxis
+        The first axis of the 2D array layout.
+    axis1 : ArrayAxis
+        The second axis of the 2D array layout.
+
+    Returns
+    -------
+    KernelFunction
+        The constructed kernel function for the 2D array layout.
+    """
     index_declaration_0 = _INDEX_DECLARATION_MAPPING[axis0]
     index_declaration_1 = _INDEX_DECLARATION_MAPPING[axis1]
     idx0 = index_declaration_0.name
@@ -348,7 +376,24 @@ def _construct_3d_kernel_function(
     axis1: ArrayAxis,
     axis2: ArrayAxis,
 ) -> KernelFunction:
-    """Construct a kernel function for a 3D array layout."""
+    """Construct a kernel function for a 3D array layout.
+
+    Parameters
+    ----------
+    kernel_function_impl : Callable[..., None]
+        The implementation of the kernel function to be constructed.
+    axis0 : ArrayAxis
+        The first axis of the 3D array layout.
+    axis1 : ArrayAxis
+        The second axis of the 3D array layout.
+    axis2 : ArrayAxis
+        The third axis of the 3D array layout.
+
+    Returns
+    -------
+    KernelFunction
+        The constructed kernel function for the 3D array layout.
+    """
     index_declaration_0 = _INDEX_DECLARATION_MAPPING[axis0]
     index_declaration_1 = _INDEX_DECLARATION_MAPPING[axis1]
     index_declaration_2 = _INDEX_DECLARATION_MAPPING[axis2]
@@ -411,6 +456,16 @@ def construct_relaxation_kernel_property_coefficient_field_target(
     interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use when interpolating the field target to the particle position.
         Default is 1, which corresponds to linear interpolation.
+
+    Returns
+    -------
+    BoundKernel
+        The constructed kernel for applying relaxation forcing to a particle property with property coefficient and field target.
+
+    Raises
+    ------
+    ValueError
+        If the form is not "linear" or "quadratic", or if the array layout is not supported.
     """
     dtype = np.dtype(dtype)
 

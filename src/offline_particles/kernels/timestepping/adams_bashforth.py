@@ -19,9 +19,17 @@ from ._adams_bashforth import ab2_update, ab3_update, ab_bump_status, ab_initial
 def _particle_property_declarations(dtype: np.inexact, order: int) -> list[ParticlePropertyDeclaration]:
     """Create particle property declarations for Adams-Bashforth kernels.
 
-    Args:
-        dtype: Data type of the particle properties (np.float32 or np.float64).
-        order: Order of the Adams-Bashforth scheme.
+    Parameters
+    ----------
+    dtype (np.inexact)
+        Data type of the particle properties.
+    order (int)
+        Order of the Adams-Bashforth scheme.
+
+    Returns
+    -------
+    list[ParticlePropertyDeclaration]
+        List of particle property declarations for the property plus its current and previous tendencies.
     """
     prop_declaration = ParticlePropertyDeclaration("prop", np.dtype(dtype))
     dprop_0_declaration = ParticlePropertyDeclaration("dprop_0", np.dtype(dtype))

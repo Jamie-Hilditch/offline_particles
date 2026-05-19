@@ -13,17 +13,41 @@ from offline_particles.timestepping import Clock
 
 
 def _make_clock(time_array: np.ndarray, dt: float) -> Clock:
-    """Create a Clock from a float64 time array and dt."""
+    """Create a Clock from a float64 time array and dt.
+
+    Parameters
+    ----------
+        time_array (np.ndarray): A float64 array of times.
+        dt (float): The time step size.
+
+    Returns
+    -------
+        Clock: A Clock initialized with the given time array and dt.
+    """
     return Clock(time_array, np.float64(dt))
 
 
 def _make_fieldset() -> Fieldset:
-    """Create a minimal Fieldset for testing."""
+    """Create a minimal Fieldset for testing.
+
+    Returns
+    -------
+        Fieldset: A minimal Fieldset with dummy dimensions.
+    """
     return Fieldset(1, 1, 1, 1)
 
 
 def _make_builder(clock: Clock) -> SimulationBuilder:
-    """Create a SimulationBuilder with an empty particle set list."""
+    """Create a SimulationBuilder with an empty particle set list.
+
+    Parameters
+    ----------
+        clock (Clock): The Clock to use for the simulation.
+
+    Returns
+    -------
+        SimulationBuilder: A builder for creating a simulation with the given clock.
+    """
     fieldset = _make_fieldset()
     builder = SimulationBuilder(clock, fieldset)
     return builder

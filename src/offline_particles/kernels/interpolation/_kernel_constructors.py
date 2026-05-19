@@ -163,6 +163,11 @@ def construct_2D_interpolation_kernel(
     -------
     BoundKernel
         A BoundKernel for performing 2D interpolation along the specified axes.
+
+    Raises
+    ------
+    ValueError
+        If the axes tuple does not contain exactly two elements or if the two axes are not different.
     """
     if len(axes) != 2:
         raise ValueError("axes must be a tuple of two elements.")
@@ -266,6 +271,11 @@ def construct_3D_interpolation_kernel(
     -------
     BoundKernel
         A BoundKernel for performing trilinear interpolation.
+
+    Raises
+    ------
+    ValueError
+        If the axes tuple does not contain exactly three elements or if any of the axes are the same.
     """
     if len(axes) != 3:
         raise ValueError("axes must be a tuple of three elements.")
