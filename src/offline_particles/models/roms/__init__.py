@@ -55,6 +55,10 @@ def roms_ab3_timestepper(
         Whether to include vertical velocity advection (default True).
     buoyant_particles : bool, optional
         Whether to include a buoyancy driven component to the vertical velocity (default False).
+    linear_damping : bool, optional
+        Whether to include linear damping of the relative vertical velocity (default False).
+    quadratic_damping : bool, optional
+        Whether to include quadratic damping of the relative vertical velocity (default False).
     index_padding : int, optional
         Index padding, i.e. the minimum amount by which the field indices
         exceed the particle indices (default 5).
