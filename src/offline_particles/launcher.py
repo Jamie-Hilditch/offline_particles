@@ -273,13 +273,8 @@ def _compute_particle_bounds(
 
     Returns
     -------
-    float
-        zmin : Minimum z index of active particles.
-        zmax : Maximum z index of active particles.
-        ymin : Minimum y index of active particles.
-        ymax : Maximum y index of active particles.
-        xmin : Minimum x index of active particles.
-        xmax : Maximum x index of active particles.
+    tuple[float, float, float, float, float, float]
+        Bounding box of active particles in the form (zmin, zmax, ymin, ymax, xmin, xmax).
     """
     zmin = np.inf
     zmax = -np.inf

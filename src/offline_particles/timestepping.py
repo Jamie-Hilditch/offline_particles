@@ -345,7 +345,8 @@ class Clock:
 
         Returns
         -------
-            T: ``time_array[0]`` if forward, ``time_array[-1]`` if backward.
+        T
+            ``time_array[0]`` if forward, ``time_array[-1]`` if backward.
 
         Examples
         --------
@@ -365,7 +366,8 @@ class Clock:
 
         Returns
         -------
-            T: ``time_array[-1]`` if forward, ``time_array[0]`` if backward.
+        T
+            ``time_array[-1]`` if forward, ``time_array[0]`` if backward.
 
         Examples
         --------
