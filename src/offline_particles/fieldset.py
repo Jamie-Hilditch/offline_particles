@@ -30,11 +30,11 @@ class Fieldset:
         Optional dictionary of fields to add to the fieldset.
     constants : Mapping[str, Any], optional
         Optional dictionary of constants to add to the fieldset.
-    zidx_bounds: tuple[float, float], optional
+    zidx_bounds : tuple[float, float], optional
         Optional bounds of the z index (default: (0, z_size - 1)).
-    yidx_bounds: tuple[float, float], optional
+    yidx_bounds : tuple[float, float], optional
         Optional bounds of the y index (default: (0, y_size - 1)).
-    xidx_bounds: tuple[float, float], optional
+    xidx_bounds : tuple[float, float], optional
         Optional bounds of the x index (default: (0, x_size - 1)).
     """
 

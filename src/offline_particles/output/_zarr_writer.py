@@ -291,7 +291,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             The name of the output. Also used as the Zarr array name unless 'name' is given in kwargs.
         output : Output
             The output to add.
-        **kwargs (dict[str, Any])
+        **kwargs : Any
             Additional keyword arguments passed to Zarr.create_array for this output.
 
         Raises
@@ -342,7 +342,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             The name of the static output. Also used as the Zarr array name unless 'name' is given in kwargs.
         output : Output
             The output to add.
-        **kwargs (dict[str, Any])
+        **kwargs : Any
             Additional keyword arguments passed to Zarr.create_array for this output.
 
         Raises

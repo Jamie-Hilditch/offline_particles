@@ -46,8 +46,8 @@ def _make_builder(clock: Clock) -> SimulationBuilder:
 
     Parameters
     ----------
-        clock : Clock
-            The Clock to use for the simulation.
+    clock : Clock
+        The Clock to use for the simulation.
 
     Returns
     -------
