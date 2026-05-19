@@ -699,7 +699,7 @@ def lagrange2N_3D_factory(
         offset0 : float
             The offset for the first dimension.
         offset1 : float
-              The offset for the second dimension.
+            The offset for the second dimension.
         offset2 : float
             The offset for the third dimension.
 
