@@ -200,7 +200,7 @@ class TestFieldsetMapping:
         fs = Fieldset(10, 4, 5, 6)
         field = _make_static_field(4, 5, 6)
         fs.add_field("u", field)
-        assert "u" in fs.keys()
+        assert "u" in fs
 
     def test_values(self) -> None:
         fs = Fieldset(10, 4, 5, 6)

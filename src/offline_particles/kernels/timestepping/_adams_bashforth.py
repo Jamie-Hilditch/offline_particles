@@ -1,6 +1,6 @@
 """Implementations of Adams-Bashforth time-stepping schemes."""
 
-from typing import Callable
+from collections.abc import Callable
 
 import numba
 import numpy as np

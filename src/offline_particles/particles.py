@@ -1,7 +1,7 @@
 """The particles."""
 
 import types
-from typing import Mapping
+from collections.abc import Mapping
 
 import numpy as np
 import numpy.typing as npt
@@ -10,7 +10,7 @@ import numpy.typing as npt
 class _FrozenArrayMapping:
     """A mapping-like object that holds equi-shaped arrays and prevents modification."""
 
-    __slots__ = ("_shape", "_dtypes", "_arrays")
+    __slots__ = ("_arrays", "_dtypes", "_shape")
 
     def __init__(self, **arrays: npt.NDArray) -> None:
         """Initialize the mapping with given arrays.

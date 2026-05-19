@@ -18,9 +18,9 @@ from ...kernels.validation import construct_validation_kernel
 from ...timestepping import ABTimestepper
 
 __all__ = [
-    "roms_ab3_timestepper",
-    "construct_compute_zidx_kernel",
     "construct_compute_z_kernel",
+    "construct_compute_zidx_kernel",
+    "roms_ab3_timestepper",
 ]
 
 

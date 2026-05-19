@@ -98,7 +98,7 @@ class TestConstructLinearInterpolationKernel:
             called["N"] = N
             called["accumulate"] = accumulate
 
-            def kernel_function_impl(*args):  # noqa: ANN002, ANN003
+            def kernel_function_impl(*args):
                 return None
 
             return kernel_function_impl
@@ -187,7 +187,7 @@ class TestConstructBilinearInterpolationKernel:
             called["N"] = N
             called["accumulate"] = accumulate
 
-            def kernel_function_impl(*args):  # noqa: ANN002, ANN003
+            def kernel_function_impl(*args):
                 return None
 
             return kernel_function_impl
@@ -280,7 +280,7 @@ class TestConstructTrilinearInterpolationKernel:
             called["N"] = N
             called["accumulate"] = accumulate
 
-            def kernel_function_impl(*args):  # noqa: ANN002, ANN003
+            def kernel_function_impl(*args):
                 return None
 
             return kernel_function_impl

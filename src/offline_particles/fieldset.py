@@ -1,7 +1,8 @@
 """Submodule for Fieldset, a collection of fields from a simulation."""
 
 import types
-from typing import Any, ItemsView, KeysView, Mapping, ValuesView
+from collections.abc import ItemsView, KeysView, Mapping, ValuesView
+from typing import Any
 
 import numpy as np
 import xarray as xr

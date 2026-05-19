@@ -5,7 +5,7 @@ import itertools
 import time
 import types
 import warnings
-from typing import Iterable, Mapping
+from collections.abc import Iterable, Mapping
 
 import numpy as np
 import numpy.typing as npt
@@ -360,7 +360,7 @@ class Simulation:
         if time is not None:
             # check time is compatible with current simulation time
             try:
-                time < self.time  # type: ignore
+                _ = time < self.time  # type: ignore
             except TypeError as e:
                 raise TypeError(
                     f"Incompatible time type {type(time)} for simulation time type {type(self.time)}"
@@ -703,7 +703,7 @@ class SimulationBuilder:
         self._at_time_scheduler = AtTimeScheduler(forward_in_time=self._clock.forward_in_time)
 
         # output writers
-        self._output_writers: dict[str, tuple[AbstractOutputWriterBuilder, dict[str, ...]]] = dict()
+        self._output_writers: dict[str, tuple[AbstractOutputWriterBuilder, dict[str, ...]]] = {}
 
     @property
     def events(self) -> Iterable[Event]:

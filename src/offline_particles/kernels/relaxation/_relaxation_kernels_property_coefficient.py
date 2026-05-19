@@ -1,6 +1,7 @@
 """Kernels implementing relaxation forcing with a particle property relaxation coefficient."""
 
-from typing import Callable, Literal
+from collections.abc import Callable
+from typing import Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -36,9 +37,9 @@ from ._relaxation_impl import (
 
 __all__ = [
     "construct_relaxation_kernel_property_coefficient_constant_target",
+    "construct_relaxation_kernel_property_coefficient_field_target",
     "construct_relaxation_kernel_property_coefficient_property_target",
     "construct_relaxation_kernel_property_coefficient_scalar_target",
-    "construct_relaxation_kernel_property_coefficient_field_target",
 ]
 
 _INDEX_DECLARATION_MAPPING = {

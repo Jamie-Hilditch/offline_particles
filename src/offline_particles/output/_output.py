@@ -5,7 +5,8 @@ import collections.abc
 import dataclasses
 import functools
 import types
-from typing import Any, Iterable, KeysView, Mapping
+from collections.abc import Iterable, KeysView, Mapping
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -148,13 +149,11 @@ class AbstractOutputWriter(abc.ABC):
     @abc.abstractmethod
     def name(self) -> str:
         """The name of the output writer."""
-        pass
 
     @property
     @abc.abstractmethod
     def outputs(self) -> Iterable[tuple[tuple[str, str], Output]]:
         """The outputs declared for this writer."""
-        pass
 
     @property
     @abc.abstractmethod
@@ -163,7 +162,6 @@ class AbstractOutputWriter(abc.ABC):
 
         Static outputs are written once at iteration 0, after particle initialisation.
         """
-        pass
 
     @abc.abstractmethod
     def write_time(self, state: SimulationState) -> None:
@@ -172,7 +170,6 @@ class AbstractOutputWriter(abc.ABC):
         Args:
             state: The current simulation state.
         """
-        pass
 
     @abc.abstractmethod
     def write_output(self, particle_set: str, name: str, state: SimulationState) -> None:
@@ -183,12 +180,10 @@ class AbstractOutputWriter(abc.ABC):
             name: The name of the output variable to write.
             state: The current simulation state.
         """
-        pass
 
     @abc.abstractmethod
     def finalise_write_round(self, state: SimulationState) -> None:
         """Confirm that all outputs have been written for the current round."""
-        pass
 
     @abc.abstractmethod
     def write_static_output(self, particle_set: str, name: str, state: SimulationState) -> None:
@@ -201,7 +196,6 @@ class AbstractOutputWriter(abc.ABC):
             name: The name of the static output variable to write.
             state: The current simulation state.
         """
-        pass
 
     def event_name(self, particle_set: str, name: str) -> str:
         """Generate an event name for an output.
@@ -270,13 +264,11 @@ class AbstractOutputWriterBuilder(abc.ABC):
     @abc.abstractmethod
     def name(self) -> str:
         """The name of the output writer."""
-        pass
 
     @property
     @abc.abstractmethod
     def outputs(self) -> Iterable[tuple[tuple[str, str], Output]]:
         """The outputs declared for this writer."""
-        pass
 
     @property
     @abc.abstractmethod
@@ -286,7 +278,6 @@ class AbstractOutputWriterBuilder(abc.ABC):
         Note:
             Static outputs are written once at iteration 0, after particle initialisation.
         """
-        pass
 
     @abc.abstractmethod
     def add_output(self, particle_set: str, name: str, output: Output, **kwargs: Any) -> None:
@@ -298,7 +289,6 @@ class AbstractOutputWriterBuilder(abc.ABC):
             output: The output to add.
             **kwargs: Additional keyword arguments.
         """
-        pass
 
     @abc.abstractmethod
     def remove_output(self, particle_set: str, name: str) -> None:
@@ -308,7 +298,6 @@ class AbstractOutputWriterBuilder(abc.ABC):
             particle_set: The set of particles for which to remove the output.
             name: The name of the output to remove.
         """
-        pass
 
     @abc.abstractmethod
     def add_static_output(self, particle_set: str, name: str, output: Output, **kwargs: Any) -> None:
@@ -322,7 +311,6 @@ class AbstractOutputWriterBuilder(abc.ABC):
             output: The output to add.
             **kwargs: Additional keyword arguments.
         """
-        pass
 
     @abc.abstractmethod
     def remove_static_output(self, particle_set: str, name: str) -> None:
@@ -332,7 +320,6 @@ class AbstractOutputWriterBuilder(abc.ABC):
             particle_set: The set of particles for which to remove the static output.
             name: The name of the static output to remove.
         """
-        pass
 
     @abc.abstractmethod
     def build(
@@ -346,4 +333,3 @@ class AbstractOutputWriterBuilder(abc.ABC):
             nparticles: A mapping of particle set names to number of particles.
             time_type: The numpy dtype for the time variable.
         """
-        pass

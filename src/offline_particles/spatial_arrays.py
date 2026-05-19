@@ -4,7 +4,7 @@ import abc
 import dataclasses
 import enum
 import logging
-from typing import Iterable
+from collections.abc import Iterable
 
 import dask.array as da
 import numpy as np
@@ -139,7 +139,7 @@ class ArrayAxis(enum.StrEnum):
 class ArrayLayout:
     """Specification of a spatial array's axes and staggering."""
 
-    __slots__ = ("ndim", "axes", "staggers", "offsets")
+    __slots__ = ("axes", "ndim", "offsets", "staggers")
 
     # Type annotations for the type checker
     ndim: int
@@ -248,13 +248,11 @@ class SpatialArray(abc.ABC):
     @abc.abstractmethod
     def dtype(self) -> np.dtype:
         """Data type of the underlying data array."""
-        pass
 
     @property
     @abc.abstractmethod
     def shape(self) -> tuple[int, ...]:
         """Shape of the underlying data array."""
-        pass
 
     @abc.abstractmethod
     def get_data_subset(
@@ -277,7 +275,6 @@ class SpatialArray(abc.ABC):
             Offsets to apply to the active particle indices in order to index into the returned data.
             This accounts for both the grid staggering and any subsetting of the data array.
         """
-        pass
 
 
 class NumpyArray(SpatialArray):

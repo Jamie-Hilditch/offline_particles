@@ -94,7 +94,6 @@ class Field(abc.ABC):
     @abc.abstractmethod
     def dtype(self) -> np.dtype:
         """Data type of the field."""
-        pass
 
     @property
     def output_dtype(self) -> np.dtype:
@@ -106,7 +105,6 @@ class Field(abc.ABC):
     @abc.abstractmethod
     def spatial_shape(self) -> tuple[int, ...]:
         """Shape of the spatial dimensions of the field."""
-        pass
 
     @property
     def nspatial_dims(self) -> int:
@@ -116,7 +114,6 @@ class Field(abc.ABC):
     @abc.abstractmethod
     def validate_shape(self, simulation_size: SimulationSize) -> None:
         """Validate that the field's shape is compatible with the sizes of the simulation dimensions."""
-        pass
 
     @abc.abstractmethod
     def get_field_data(self, time_index: float, bbox: BBox) -> FieldData:
@@ -134,7 +131,6 @@ class Field(abc.ABC):
         FieldData
             Namedtuple containing the field data array and offsets.
         """
-        pass
 
 
 class StaticField(Field):
@@ -413,7 +409,7 @@ class StaticField(Field):
             )
 
 
-type SpatialArrayFactory = type[NumpyArray] | type[ChunkedDaskArray]
+type SpatialArrayFactory = type[NumpyArray | ChunkedDaskArray]
 
 
 class TimeDependentField(Field):

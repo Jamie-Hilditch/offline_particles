@@ -1,7 +1,8 @@
 """Submodule for particle kernel launchers."""
 
 import collections
-from typing import Callable, TypeVar
+from collections.abc import Callable
+from typing import TypeVar
 
 import numba
 import numpy as np
@@ -300,17 +301,11 @@ def _compute_particle_bounds(
         y = yidx[i]
         x = xidx[i]
 
-        if z < zmin:
-            zmin = z
-        if z > zmax:
-            zmax = z
-        if y < ymin:
-            ymin = y
-        if y > ymax:
-            ymax = y
-        if x < xmin:
-            xmin = x
-        if x > xmax:
-            xmax = x
+        zmin = min(zmin, z)
+        zmax = max(zmax, z)
+        ymin = min(ymin, y)
+        ymax = max(ymax, y)
+        xmin = min(xmin, x)
+        xmax = max(xmax, x)
 
     return zmin, zmax, ymin, ymax, xmin, xmax

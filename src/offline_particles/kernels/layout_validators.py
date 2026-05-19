@@ -1,6 +1,6 @@
 """Functions that validate array layouts."""
 
-from typing import Callable
+from collections.abc import Callable
 
 from ..spatial_arrays import ArrayAxis, ArrayLayout
 

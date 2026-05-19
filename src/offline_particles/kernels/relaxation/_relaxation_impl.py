@@ -1,7 +1,7 @@
 """Implementations of linear and quadratic relaxation tendencies for particle properties."""
 
-from functools import lru_cache
-from typing import Callable
+from collections.abc import Callable
+from functools import cache
 
 import numba
 import numpy as np
@@ -15,46 +15,46 @@ from ..interpolation import (
 from ..status import INACTIVE_FLAG
 
 __all__ = [
-    "_linear_relaxation_constant_coefficient_constant_target",
-    "_linear_relaxation_constant_coefficient_property_target",
-    "_linear_relaxation_constant_coefficient_scalar_target",
     "_linear_relaxation_constant_coefficient_1D_field_target",
     "_linear_relaxation_constant_coefficient_2D_field_target",
     "_linear_relaxation_constant_coefficient_3D_field_target",
-    "_linear_relaxation_property_coefficient_constant_target",
-    "_linear_relaxation_property_coefficient_property_target",
-    "_linear_relaxation_property_coefficient_scalar_target",
+    "_linear_relaxation_constant_coefficient_constant_target",
+    "_linear_relaxation_constant_coefficient_property_target",
+    "_linear_relaxation_constant_coefficient_scalar_target",
     "_linear_relaxation_property_coefficient_1D_field_target",
     "_linear_relaxation_property_coefficient_2D_field_target",
     "_linear_relaxation_property_coefficient_3D_field_target",
-    "_linear_relaxation_scalar_coefficient_constant_target",
-    "_linear_relaxation_scalar_coefficient_property_target",
-    "_linear_relaxation_scalar_coefficient_scalar_target",
+    "_linear_relaxation_property_coefficient_constant_target",
+    "_linear_relaxation_property_coefficient_property_target",
+    "_linear_relaxation_property_coefficient_scalar_target",
     "_linear_relaxation_scalar_coefficient_1D_field_target",
     "_linear_relaxation_scalar_coefficient_2D_field_target",
     "_linear_relaxation_scalar_coefficient_3D_field_target",
-    "_quadratic_relaxation_constant_coefficient_constant_target",
-    "_quadratic_relaxation_constant_coefficient_property_target",
-    "_quadratic_relaxation_constant_coefficient_scalar_target",
+    "_linear_relaxation_scalar_coefficient_constant_target",
+    "_linear_relaxation_scalar_coefficient_property_target",
+    "_linear_relaxation_scalar_coefficient_scalar_target",
     "_quadratic_relaxation_constant_coefficient_1D_field_target",
     "_quadratic_relaxation_constant_coefficient_2D_field_target",
     "_quadratic_relaxation_constant_coefficient_3D_field_target",
-    "_quadratic_relaxation_property_coefficient_constant_target",
-    "_quadratic_relaxation_property_coefficient_property_target",
-    "_quadratic_relaxation_property_coefficient_scalar_target",
+    "_quadratic_relaxation_constant_coefficient_constant_target",
+    "_quadratic_relaxation_constant_coefficient_property_target",
+    "_quadratic_relaxation_constant_coefficient_scalar_target",
     "_quadratic_relaxation_property_coefficient_1D_field_target",
     "_quadratic_relaxation_property_coefficient_2D_field_target",
     "_quadratic_relaxation_property_coefficient_3D_field_target",
-    "_quadratic_relaxation_scalar_coefficient_constant_target",
-    "_quadratic_relaxation_scalar_coefficient_property_target",
-    "_quadratic_relaxation_scalar_coefficient_scalar_target",
+    "_quadratic_relaxation_property_coefficient_constant_target",
+    "_quadratic_relaxation_property_coefficient_property_target",
+    "_quadratic_relaxation_property_coefficient_scalar_target",
     "_quadratic_relaxation_scalar_coefficient_1D_field_target",
     "_quadratic_relaxation_scalar_coefficient_2D_field_target",
     "_quadratic_relaxation_scalar_coefficient_3D_field_target",
+    "_quadratic_relaxation_scalar_coefficient_constant_target",
+    "_quadratic_relaxation_scalar_coefficient_property_target",
+    "_quadratic_relaxation_scalar_coefficient_scalar_target",
 ]
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_constant_coefficient_constant_target(
     relaxation_coefficient: np.inexact,
     target: np.inexact,
@@ -93,7 +93,7 @@ def _linear_relaxation_constant_coefficient_constant_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_constant_coefficient_property_target(
     relaxation_coefficient: np.inexact,
 ) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], npt.NDArray[np.inexact]], None]:
@@ -130,7 +130,7 @@ def _linear_relaxation_constant_coefficient_property_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_constant_coefficient_scalar_target(
     relaxation_coefficient: np.inexact,
 ) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], np.generic], None]:
@@ -167,7 +167,7 @@ def _linear_relaxation_constant_coefficient_scalar_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_constant_coefficient_1D_field_target(
     relaxation_coefficient: np.inexact,
     interpolation_half_width: int = 1,
@@ -232,7 +232,7 @@ def _linear_relaxation_constant_coefficient_1D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_constant_coefficient_2D_field_target(
     relaxation_coefficient: np.inexact,
     interpolation_half_width: int = 1,
@@ -303,7 +303,7 @@ def _linear_relaxation_constant_coefficient_2D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_constant_coefficient_3D_field_target(
     relaxation_coefficient: np.inexact,
     interpolation_half_width: int = 1,
@@ -382,7 +382,7 @@ def _linear_relaxation_constant_coefficient_3D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_property_coefficient_constant_target(
     target: np.inexact,
 ) -> Callable[
@@ -427,7 +427,7 @@ def _linear_relaxation_property_coefficient_constant_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_property_coefficient_property_target() -> Callable[
     [
         npt.NDArray[np.uint8],
@@ -467,7 +467,7 @@ def _linear_relaxation_property_coefficient_property_target() -> Callable[
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_property_coefficient_scalar_target() -> Callable[
     [
         npt.NDArray[np.uint8],
@@ -507,7 +507,7 @@ def _linear_relaxation_property_coefficient_scalar_target() -> Callable[
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_property_coefficient_1D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -571,7 +571,7 @@ def _linear_relaxation_property_coefficient_1D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_property_coefficient_2D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -641,7 +641,7 @@ def _linear_relaxation_property_coefficient_2D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_property_coefficient_3D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -719,7 +719,7 @@ def _linear_relaxation_property_coefficient_3D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_scalar_coefficient_constant_target(
     target: np.inexact,
 ) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], np.generic], None]:
@@ -756,7 +756,7 @@ def _linear_relaxation_scalar_coefficient_constant_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_scalar_coefficient_property_target() -> Callable[
     [
         npt.NDArray[np.uint8],
@@ -796,7 +796,7 @@ def _linear_relaxation_scalar_coefficient_property_target() -> Callable[
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_scalar_coefficient_scalar_target() -> Callable[
     [
         npt.NDArray[np.uint8],
@@ -836,7 +836,7 @@ def _linear_relaxation_scalar_coefficient_scalar_target() -> Callable[
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_scalar_coefficient_1D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -900,7 +900,7 @@ def _linear_relaxation_scalar_coefficient_1D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_scalar_coefficient_2D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -970,7 +970,7 @@ def _linear_relaxation_scalar_coefficient_2D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_scalar_coefficient_3D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -1049,7 +1049,7 @@ def _linear_relaxation_scalar_coefficient_3D_field_target(
 ########################
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_constant_coefficient_constant_target(
     relaxation_coefficient: np.inexact,
     target: np.inexact,
@@ -1089,7 +1089,7 @@ def _quadratic_relaxation_constant_coefficient_constant_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_constant_coefficient_property_target(
     relaxation_coefficient: np.inexact,
 ) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], npt.NDArray[np.inexact]], None]:
@@ -1127,7 +1127,7 @@ def _quadratic_relaxation_constant_coefficient_property_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_constant_coefficient_scalar_target(
     relaxation_coefficient: np.inexact,
 ) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], np.generic], None]:
@@ -1165,7 +1165,7 @@ def _quadratic_relaxation_constant_coefficient_scalar_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_constant_coefficient_1D_field_target(
     relaxation_coefficient: np.inexact,
     interpolation_half_width: int = 1,
@@ -1231,7 +1231,7 @@ def _quadratic_relaxation_constant_coefficient_1D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_constant_coefficient_2D_field_target(
     relaxation_coefficient: np.inexact,
     interpolation_half_width: int = 1,
@@ -1303,7 +1303,7 @@ def _quadratic_relaxation_constant_coefficient_2D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_constant_coefficient_3D_field_target(
     relaxation_coefficient: np.inexact,
     interpolation_half_width: int = 1,
@@ -1383,7 +1383,7 @@ def _quadratic_relaxation_constant_coefficient_3D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_property_coefficient_constant_target(
     target: np.inexact,
 ) -> Callable[
@@ -1429,7 +1429,7 @@ def _quadratic_relaxation_property_coefficient_constant_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_property_coefficient_property_target() -> Callable[
     [
         npt.NDArray[np.uint8],
@@ -1470,7 +1470,7 @@ def _quadratic_relaxation_property_coefficient_property_target() -> Callable[
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_property_coefficient_scalar_target() -> Callable[
     [
         npt.NDArray[np.uint8],
@@ -1511,7 +1511,7 @@ def _quadratic_relaxation_property_coefficient_scalar_target() -> Callable[
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_property_coefficient_1D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -1576,7 +1576,7 @@ def _quadratic_relaxation_property_coefficient_1D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_property_coefficient_2D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -1647,7 +1647,7 @@ def _quadratic_relaxation_property_coefficient_2D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_property_coefficient_3D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -1726,7 +1726,7 @@ def _quadratic_relaxation_property_coefficient_3D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_scalar_coefficient_constant_target(
     target: np.inexact,
 ) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], np.generic], None]:
@@ -1764,7 +1764,7 @@ def _quadratic_relaxation_scalar_coefficient_constant_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_scalar_coefficient_property_target() -> Callable[
     [
         npt.NDArray[np.uint8],
@@ -1805,7 +1805,7 @@ def _quadratic_relaxation_scalar_coefficient_property_target() -> Callable[
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_scalar_coefficient_scalar_target() -> Callable[
     [
         npt.NDArray[np.uint8],
@@ -1846,7 +1846,7 @@ def _quadratic_relaxation_scalar_coefficient_scalar_target() -> Callable[
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_scalar_coefficient_1D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -1911,7 +1911,7 @@ def _quadratic_relaxation_scalar_coefficient_1D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_scalar_coefficient_2D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -1982,7 +1982,7 @@ def _quadratic_relaxation_scalar_coefficient_2D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_scalar_coefficient_3D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import dataclasses
 import types
-from typing import Callable, Iterable, Mapping, Self
+from collections.abc import Callable, Iterable, Mapping
+from typing import Self
 
 import numpy as np
 import numpy.typing as npt

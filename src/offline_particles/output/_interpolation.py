@@ -1,6 +1,6 @@
 """Generate output by interpolating field data to particle positions using Lagrange polynomials."""
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from ..fieldset import Fieldset
 from ..kernels.interpolation import (

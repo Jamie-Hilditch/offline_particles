@@ -12,7 +12,7 @@ from ._base import (
     subtract_property,
 )
 
-type SupportedDTypes = type[np.float32] | type[np.float64] | type[np.integer]
+type SupportedDTypes = type[np.float32 | np.float64 | np.integer]
 
 
 def construct_copy_property_kernel(

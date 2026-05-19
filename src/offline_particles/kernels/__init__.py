@@ -34,13 +34,6 @@ from .status import Status, is_active, is_inactive
 from .validation import construct_validation_kernel
 
 __all__ = [
-    "input_declarations",
-    "layout_validators",
-    "roms",
-    "status",
-    "timed_activation",
-    "timestepping",
-    "validation",
     "BoundKernel",
     "FieldDataDeclaration",
     "FieldDataType",
@@ -50,9 +43,16 @@ __all__ = [
     "ParticlePropertyDeclaration",
     "ScalarDeclaration",
     "ScalarsType",
-    "get_required_particle_property_dtypes",
     "Status",
+    "construct_validation_kernel",
+    "get_required_particle_property_dtypes",
+    "input_declarations",
     "is_active",
     "is_inactive",
-    "construct_validation_kernel",
+    "layout_validators",
+    "roms",
+    "status",
+    "timed_activation",
+    "timestepping",
+    "validation",
 ]

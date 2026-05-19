@@ -1,7 +1,7 @@
 """Core functions for interpolation kernels."""
 
 import functools
-from typing import Callable
+from collections.abc import Callable
 
 import numba
 import numpy as np
@@ -10,12 +10,12 @@ import numpy.typing as npt
 from ..status import INACTIVE_FLAG
 
 __all__ = [
-    "lagrange2N_1D_particle_factory",
-    "lagrange2N_2D_particle_factory",
-    "lagrange2N_3D_particle_factory",
     "lagrange2N_1D_factory",
+    "lagrange2N_1D_particle_factory",
     "lagrange2N_2D_factory",
+    "lagrange2N_2D_particle_factory",
     "lagrange2N_3D_factory",
+    "lagrange2N_3D_particle_factory",
 ]
 
 
@@ -45,7 +45,7 @@ def _truncate_index(idx: float, max_idx: int) -> int:
         return idx
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _lagrange_basis_polynomial(N: int) -> Callable[[float, int], float]:
     """Return a function that computes the j-th Lagrange basis polynomial of degree 2N-1 at x.
 
@@ -72,7 +72,7 @@ def _lagrange_basis_polynomial(N: int) -> Callable[[float, int], float]:
     return impl
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def lagrange2N_1D_particle_factory(N: int) -> Callable[[npt.NDArray[np.inexact], np.float64, int], np.inexact]:
     """Create a function for 1D Lagrange polynomial interpolation of a single particle on a 2N point stencil.
 
@@ -146,7 +146,7 @@ def lagrange2N_1D_particle_factory(N: int) -> Callable[[npt.NDArray[np.inexact],
     return impl
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def lagrange2N_1D_factory(
     N: int,
     accumulate: bool = False,
@@ -237,7 +237,7 @@ def lagrange2N_1D_factory(
     return impl
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def lagrange2N_2D_particle_factory(
     N: int,
 ) -> Callable[[npt.NDArray[np.inexact], np.float64, np.float64, int, int], np.inexact]:
@@ -365,7 +365,7 @@ def lagrange2N_2D_particle_factory(
     return impl
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def lagrange2N_2D_factory(
     N: int,
     accumulate: bool = False,
@@ -467,7 +467,7 @@ def lagrange2N_2D_factory(
     return impl
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def lagrange2N_3D_particle_factory(
     N: int,
 ) -> Callable[[npt.NDArray[np.inexact], np.float64, np.float64, np.float64, int, int, int], np.inexact]:
@@ -622,7 +622,7 @@ def lagrange2N_3D_particle_factory(
     return impl
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def lagrange2N_3D_factory(
     N: int,
     accumulate: bool = False,

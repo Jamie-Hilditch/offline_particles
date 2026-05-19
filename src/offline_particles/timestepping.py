@@ -20,7 +20,7 @@ Types
 
 import abc
 import itertools
-from typing import Iterator
+from collections.abc import Iterator
 
 import numpy as np
 import numpy.typing as npt
@@ -128,7 +128,7 @@ class Clock:
         negative for backward integration.
     time_unit : DLike, optional
         The time unit. Determines the type of time increments. Required for dimensional time,
-        defaults to np.float64(1.0) for dimensionless time.
+        defaults to 1.0 for dimensionless time.
 
     Raises
     ------
@@ -167,7 +167,7 @@ class Clock:
         time_array: npt.NDArray[T],
         dt: DLike,
         *,
-        time_unit: DLike = np.float64(1.0),
+        time_unit: DLike = 1.0,
     ) -> None:
         # validate time_array shape and length
         if time_array.ndim != 1:
@@ -228,8 +228,7 @@ class Clock:
 
         idx = np.searchsorted(time_array, time, side="right") - 1
         # Clamp idx so that idx+1 is always a valid index (handles time == time_array[-1])
-        if idx > self._max_tidx:
-            idx = self._max_tidx
+        idx = min(idx, self._max_tidx)
         t0 = time_array[idx]
         t1 = time_array[idx + 1]
         fraction = (time - t0) / (t1 - t0)
@@ -453,7 +452,6 @@ class Timestepper(abc.ABC):
     @abc.abstractmethod
     def run_step(self, particles: Particles, launcher: Launcher, clock: Clock) -> None:
         """Timestep the particles."""
-        pass
 
     def run_post_step(self, particles: Particles, launcher: Launcher, clock: Clock) -> None:
         """Launch the post-step kernels."""

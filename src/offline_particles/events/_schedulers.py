@@ -1,6 +1,7 @@
 """Submodule for event schedulers."""
 
-from typing import Iterable, Protocol, runtime_checkable
+from collections.abc import Iterable
+from typing import Protocol, runtime_checkable
 
 from ..timestepping import D, T
 from ._events import Event
@@ -39,7 +40,7 @@ class RecurringIterationScheduler:
 
     def __init__(self) -> None:
         self._next = None
-        self._events: dict[int, list[tuple[int, Event]]] = dict()
+        self._events: dict[int, list[tuple[int, Event]]] = {}
 
     def _schedule_event(self, iteration: int, N: int, event: Event) -> None:
         if iteration not in self._events:
@@ -112,7 +113,7 @@ class RecurringTimeScheduler:
         self._forward_in_time = forward_in_time
 
         self._next_time = None
-        self._events: dict[T, list[tuple[D, Event]]] = dict()
+        self._events: dict[T, list[tuple[D, Event]]] = {}
 
     def _schedule_event(self, time: T, dt: D, event: Event) -> None:
         if time not in self._events:
@@ -213,7 +214,7 @@ class AtIterationScheduler:
 
     def __init__(self) -> None:
         self._next = None
-        self._events: dict[int, list[Event]] = dict()
+        self._events: dict[int, list[Event]] = {}
 
     def _schedule_event(self, iteration: int, event: Event) -> None:
         if iteration not in self._events:
@@ -235,8 +236,7 @@ class AtIterationScheduler:
             The next registered event.
         """
         for event_list in self._events.values():
-            for event in event_list:
-                yield event
+            yield from event_list
 
     def register_event(self, iteration: int, event: Event) -> None:
         """Register an event to be triggered once at the given iteration.
@@ -284,7 +284,7 @@ class AtTimeScheduler:
     def __init__(self, *, forward_in_time: bool = True) -> None:
         self._forward_in_time = forward_in_time
         self._next_time = None
-        self._events: dict[T, list[Event]] = dict()
+        self._events: dict[T, list[Event]] = {}
 
     def _schedule_event(self, time: T, event: Event) -> None:
         if time not in self._events:
@@ -306,8 +306,7 @@ class AtTimeScheduler:
             The next registered event.
         """
         for event_list in self._events.values():
-            for event in event_list:
-                yield event
+            yield from event_list
 
     def register_event(self, time: T, event: Event) -> None:
         """Register an event to be triggered once at the given time.
