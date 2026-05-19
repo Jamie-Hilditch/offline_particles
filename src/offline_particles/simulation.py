@@ -416,7 +416,7 @@ class Simulation:
 
         Returns
         -------
-        RecurringIterationScheduler:
+        RecurringIterationScheduler
             The recurring iteration scheduler instance.
         """
         return self._recurring_iteration_scheduler

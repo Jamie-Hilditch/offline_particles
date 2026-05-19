@@ -176,12 +176,15 @@ class RecurringTimeScheduler:
     def __call__(self, time: T) -> list[Event]:
         """Get the events to trigger at the given time.
 
-        Args:
-            time (float): The current time.
+        Parameters
+        ----------
+        time : T
+            The current time.
 
         Returns
         -------
-            list[Event]: The list of events to trigger.
+        list[Event]
+            The list of events to trigger.
         """
         triggered_events: list[Event] = []
 
@@ -238,9 +241,12 @@ class AtIterationScheduler:
     def register_event(self, iteration: int, event: Event) -> None:
         """Register an event to be triggered once at the given iteration.
 
-        Args:
-            iteration (int): The iteration at which to trigger the event.
-            event (Event): The event to be triggered.
+        Parameters
+        ----------
+        iteration : int
+            The iteration at which to trigger the event.
+        event : Event
+            The event to be triggered.
         """
         self._schedule_event(iteration, event)
         self.set_next()
@@ -252,12 +258,15 @@ class AtIterationScheduler:
     def __call__(self, iteration: int) -> list[Event]:
         """Get the events to trigger at the given iteration.
 
-        Args:
-            iteration (int): The current iteration.
+        Parameters
+        ----------
+        iteration : int
+            The current iteration.
 
         Returns
         -------
-            list[Event]: The list of events to trigger.
+        list[Event]
+            The list of events to trigger.
         """
         triggered_events: list[Event] = []
 
@@ -303,9 +312,12 @@ class AtTimeScheduler:
     def register_event(self, time: T, event: Event) -> None:
         """Register an event to be triggered once at the given time.
 
-        Args:
-            time (T): The time at which to trigger the event.
-            event (Event): The event to be triggered.
+        Parameters
+        ----------
+        time : T
+            The time at which to trigger the event.
+        event : Event
+            The event to be triggered.
         """
         self._schedule_event(time, event)
         self.set_next()
@@ -323,12 +335,15 @@ class AtTimeScheduler:
     def __call__(self, time: T) -> list[Event]:
         """Get the events to trigger at the given time.
 
-        Args:
-            time (T): The current time.
+        Parameters
+        ----------
+        time : T
+            The current time.
 
         Returns
         -------
-            list[Event]: The list of events to trigger.
+        list[Event]
+            The list of events to trigger.
         """
         triggered_events: list[Event] = []
 
