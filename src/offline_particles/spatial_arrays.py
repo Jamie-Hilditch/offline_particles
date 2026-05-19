@@ -435,8 +435,7 @@ def compute_new_lower_bound(
     offset: float,
     bounds: npt.NDArray[np.int_],
 ) -> int:
-    """
-    Compute new lower bound for chunked data access.
+    """Compute new lower bound for chunked data access.
 
     Parameters
     ----------
@@ -465,8 +464,7 @@ def compute_new_upper_bound(
     offset: float,
     bounds: npt.NDArray[np.int_],
 ) -> int:
-    """
-    Compute new upper bound for chunked data access.
+    """Compute new upper bound for chunked data access.
 
     Parameters
     ----------
