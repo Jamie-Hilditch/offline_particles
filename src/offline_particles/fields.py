@@ -94,7 +94,6 @@ class Field(abc.ABC):
     @abc.abstractmethod
     def dtype(self) -> np.dtype:
         """Data type of the field."""
-        pass
 
     @property
     def output_dtype(self) -> np.dtype:
@@ -106,7 +105,6 @@ class Field(abc.ABC):
     @abc.abstractmethod
     def spatial_shape(self) -> tuple[int, ...]:
         """Shape of the spatial dimensions of the field."""
-        pass
 
     @property
     def nspatial_dims(self) -> int:
@@ -116,13 +114,12 @@ class Field(abc.ABC):
     @abc.abstractmethod
     def validate_shape(self, simulation_size: SimulationSize) -> None:
         """Validate that the field's shape is compatible with the sizes of the simulation dimensions."""
-        pass
 
     @abc.abstractmethod
     def get_field_data(self, time_index: float, bbox: BBox) -> FieldData:
         """Get the field data at a given time index.
 
-         Parameters
+        Parameters
         ----------
         time_index : float
             Time index.
@@ -134,7 +131,6 @@ class Field(abc.ABC):
         FieldData
             Namedtuple containing the field data array and offsets.
         """
-        pass
 
 
 class StaticField(Field):
@@ -178,7 +174,18 @@ class StaticField(Field):
         return self._data.shape
 
     def validate_shape(self, simulation_size: SimulationSize) -> None:
-        """Validate that the field's shape is compatible with the sizes of the simulation dimensions."""
+        """Validate that the field's shape is compatible with the sizes of the simulation dimensions.
+
+        Parameters
+        ----------
+        simulation_size : SimulationSize
+            The sizes of the simulation dimensions to validate against.
+
+        Raises
+        ------
+        ValueError
+            If the field's shape does not match the expected sizes based on the simulation dimensions and staggers.
+        """
         for data_size, axis, stagger in zip(self._data.shape, self.axes, self.staggers):
             simulation_axis_size = simulation_size.axis_size(axis)
             expected_size = stagger.expected_size(simulation_axis_size)
@@ -215,7 +222,29 @@ class StaticField(Field):
         *,
         attrs: dict[str, Any] | None = None,
     ) -> "StaticField":
-        """Create a StaticField from a NumPy array."""
+        """Create a StaticField from a NumPy array.
+
+        Parameters
+        ----------
+        data : npt.NDArray
+            Input NumPy array containing the field data.
+        axes : tuple[ArrayAxis | str, ...]
+            Tuple of axes corresponding to the spatial dimensions of the field.
+        staggers : tuple[Stagger | str, ...]
+            Tuple of staggers corresponding to the spatial dimensions of the field.
+        attrs : dict[str, Any] | None, optional
+            Attributes for the field.
+
+        Returns
+        -------
+        StaticField
+            A StaticField instance created from the input NumPy array.
+
+        Raises
+        ------
+        TypeError
+            If the input data is not a NumPy array.
+        """
         layout = ArrayLayout(axes, staggers)
         if not isinstance(data, np.ndarray):
             raise TypeError(f"Expected a NumPy array, got {type(data).__name__}")
@@ -234,7 +263,29 @@ class StaticField(Field):
         *,
         attrs: dict[str, Any] | None = None,
     ) -> "StaticField":
-        """Create a StaticField from a chunked Dask array."""
+        """Create a StaticField from a chunked Dask array.
+
+        Parameters
+        ----------
+        data : da.Array
+            Input Dask array containing the field data.
+        axes : tuple[ArrayAxis | str, ...]
+            Tuple of axes corresponding to the spatial dimensions of the field.
+        staggers : tuple[Stagger | str, ...]
+            Tuple of staggers corresponding to the spatial dimensions of the field.
+        attrs : dict[str, Any] | None, optional
+            Attributes for the field.
+
+        Returns
+        -------
+        StaticField
+            A StaticField instance created from the input Dask array.
+
+        Raises
+        ------
+        TypeError
+            If the input data is not a Dask array.
+        """
         layout = ArrayLayout(axes, staggers)
         if not isinstance(data, da.Array):
             raise TypeError(f"Expected a Dask array, got {type(data).__name__}")
@@ -254,6 +305,22 @@ class StaticField(Field):
         attrs: dict[str, Any] | None = None,
     ) -> "StaticField":
         """Create a StaticField by converting the input to a NumPy array.
+
+        Parameters
+        ----------
+        data : npt.ArrayLike
+            Input data that can be converted to a NumPy array.
+        axes : tuple[ArrayAxis | str, ...]
+            Tuple of axes corresponding to the spatial dimensions of the field.
+        staggers : tuple[Stagger | str, ...]
+            Tuple of staggers corresponding to the spatial dimensions of the field.
+        attrs : dict[str, Any] | None, optional
+            Attributes for the field.
+
+        Returns
+        -------
+        StaticField
+            A StaticField instance created from the input data.
 
         Notes
         -----
@@ -289,11 +356,17 @@ class StaticField(Field):
             If True, dimensions specified in ``dims`` that are not present in the DataArray will
             be ignored. If False (default), a ValueError will be raised.
 
-
         Returns
         -------
         StaticField
             A StaticField instance created from the input xarray DataArray.
+
+        Raises
+        ------
+        ValueError
+            If any of the dimensions are not found in the dataset dimensions.
+            If the size of a centered dimension is not provided and the centered dimension is not included in dims.
+            If a dimension has a size that does not match the expected size based on the stagger and provided size.
 
         Notes
         -----
@@ -336,7 +409,7 @@ class StaticField(Field):
             )
 
 
-type SpatialArrayFactory = type[NumpyArray] | type[ChunkedDaskArray]
+type SpatialArrayFactory = type[NumpyArray | ChunkedDaskArray]
 
 
 class TimeDependentField(Field):
@@ -429,7 +502,18 @@ class TimeDependentField(Field):
         return len(self.spatial_shape)
 
     def validate_shape(self, simulation_size: SimulationSize) -> None:
-        """Validate that the field's shape is compatible with the sizes of the simulation dimensions."""
+        """Validate that the field's shape is compatible with the sizes of the simulation dimensions.
+
+        Parameters
+        ----------
+        simulation_size : SimulationSize
+            The sizes of the simulation dimensions to validate against.
+
+        Raises
+        ------
+        ValueError
+            If the field's shape does not match the expected sizes based on the simulation dimensions and staggers.
+        """
         # first validate time dimension
         if self._data.shape[0] != simulation_size.time:
             raise ValueError(f"Expected size {simulation_size.time} along time axis but got {self._data.shape[0]}")
@@ -450,7 +534,13 @@ class TimeDependentField(Field):
         return self._next_time_slice
 
     def increment_time(self) -> None:
-        """Increment the time index, creating the next spatial arrays."""
+        """Increment the time index, creating the next spatial arrays.
+
+        Raises
+        ------
+        IndexError
+            If the time index is already at the penultimate timestep and cannot be incremented further.
+        """
         # error if at largest time
         if self._It == self._num_timesteps - 2:
             raise IndexError("Cannot increment past the penultimate timestep.")
@@ -462,7 +552,13 @@ class TimeDependentField(Field):
         self._output_valid = False
 
     def decrement_time(self) -> None:
-        """Decrement the time index, creating the previous spatial arrays."""
+        """Decrement the time index, creating the previous spatial arrays.
+
+        Raises
+        ------
+        IndexError
+            If the time index is already at the first timestep and cannot be decremented further.
+        """
         # error if at smallest time
         if self._It == 0:
             raise IndexError("Cannot decrement past the first timestep.")
@@ -474,7 +570,18 @@ class TimeDependentField(Field):
         self._output_valid = False
 
     def set_time_index(self, It: int) -> None:
-        """Set the time index, adjusting the spatial arrays."""
+        """Set the time index, adjusting the spatial arrays.
+
+        Parameters
+        ----------
+        It : int
+            The desired time index to set.
+
+        Raises
+        ------
+        IndexError
+            If the time index is out of the valid range [0, num_timesteps - 2].
+        """
         # if previous time index do nothing
         if It == self._It:
             return
@@ -498,7 +605,7 @@ class TimeDependentField(Field):
     def get_field_data(self, time_index: float, bbox: BBox) -> FieldData:
         """Get the field data at a given time index.
 
-         Parameters
+        Parameters
         ----------
         time_index : float
             Time index.
@@ -567,7 +674,29 @@ class TimeDependentField(Field):
         *,
         attrs: dict[str, Any] | None = None,
     ) -> "TimeDependentField":
-        """Create a TimeDependentField from a NumPy array."""
+        """Create a TimeDependentField from a NumPy array.
+
+        Parameters
+        ----------
+        data : npt.NDArray
+            Input NumPy array containing the field data.
+        axes : tuple[ArrayAxis | str, ...]
+            Tuple of axes corresponding to the spatial dimensions of the field.
+        staggers : tuple[Stagger | str, ...]
+            Tuple of staggers corresponding to the spatial dimensions of the field.
+        attrs : dict[str, Any] | None, optional
+            Attributes for the field.
+
+        Returns
+        -------
+        TimeDependentField
+            A TimeDependentField instance created from the input NumPy array.
+
+        Raises
+        ------
+        TypeError
+            If the input data is not a NumPy array.
+        """
         layout = ArrayLayout(axes, staggers)
         if not isinstance(data, np.ndarray):
             raise TypeError(f"Expected a NumPy array, got {type(data).__name__}")
@@ -583,7 +712,32 @@ class TimeDependentField(Field):
         preload_space: bool = False,
         attrs: dict[str, Any] | None = None,
     ) -> "TimeDependentField":
-        """Create a TimeDependentField from a chunked Dask array."""
+        """Create a TimeDependentField from a chunked Dask array.
+
+        Parameters
+        ----------
+        data : da.Array
+            Input Dask array containing the field data.
+        axes : tuple[ArrayAxis | str, ...]
+            Tuple of axes corresponding to the spatial dimensions of the field.
+        staggers : tuple[Stagger | str, ...]
+            Tuple of staggers corresponding to the spatial dimensions of the field.
+        preload_space : bool, optional
+            If True, the spatial arrays will be preloaded into memory as NumPy arrays.
+            If False (default), the spatial arrays will remain as Dask arrays and will be computed on demand.
+        attrs : dict[str, Any] | None, optional
+            Attributes for the field.
+
+        Returns
+        -------
+        TimeDependentField
+            A TimeDependentField instance created from the input Dask array.
+
+        Raises
+        ------
+        TypeError
+            If the input data is not a Dask array.
+        """
         layout = ArrayLayout(axes, staggers)
         if not isinstance(data, da.Array):
             raise TypeError(f"Expected a Dask array, got {type(data).__name__}")
@@ -603,6 +757,22 @@ class TimeDependentField(Field):
         attrs: dict[str, Any] | None = None,
     ) -> "TimeDependentField":
         """Create a TimeDependentField by converting the input to a NumPy array.
+
+        Parameters
+        ----------
+        data : npt.ArrayLike
+            Input data that can be converted to a NumPy array.
+        axes : tuple[ArrayAxis | str, ...]
+            Tuple of axes corresponding to the spatial dimensions of the field.
+        staggers : tuple[Stagger | str, ...]
+            Tuple of staggers corresponding to the spatial dimensions of the field.
+        attrs : dict[str, Any] | None, optional
+            Attributes for the field.
+
+        Returns
+        -------
+        TimeDependentField
+            A TimeDependentField instance created from the input data.
 
         Notes
         -----
@@ -646,6 +816,14 @@ class TimeDependentField(Field):
         -------
         TimeDependentField
             A TimeDependentField instance created from the input xarray DataArray.
+
+        Raises
+        ------
+        ValueError
+            If the time dimension is not found in the dataset dimensions.
+            If any of the spatial dimensions are not found in the dataset dimensions.
+            If the size of a centered dimension is not provided and the centered dimension is not included in dims.
+            If a dimension has a size that does not match the expected size based on the stagger and provided size.
 
         Notes
         -----

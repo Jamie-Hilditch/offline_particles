@@ -15,11 +15,12 @@ Types
      - Supported time increment types.
    * - :py:data:`DLike`
      - ``np.floating | np.timedelta64 | float | int``
-     - Accepted time increment input types. Converted to :py:data:`D` internally."""
+     - Accepted time increment input types. Converted to :py:data:`D` internally.
+"""
 
 import abc
 import itertools
-from typing import Iterator
+from collections.abc import Iterator
 
 import numpy as np
 import numpy.typing as npt
@@ -52,18 +53,53 @@ type DLike = np.floating | np.timedelta64 | float | int
 
 
 def _regularise_DLike(dt: DLike) -> D:
-    """Regularise a DLike time increment into a D time increment."""
+    """Regularise a DLike time increment into a D time increment.
+
+    Parameters
+    ----------
+    dt : DLike
+        The time increment to regularise.
+
+    Returns
+    -------
+    D
+        The regularised time increment.
+
+    Raises
+    ------
+    TypeError
+        If dt is not a np.floating, np.timedelta64, float or int.
+    """
     match dt:
         case np.floating() | np.timedelta64():
             return dt
         case float() | int():
             return np.float64(dt)
         case _:
-            raise TypeError(f"dt must be a np.floating, np.timedelta64, or float, got {type(dt)!r}")
+            raise TypeError(f"dt must be a np.floating, np.timedelta64, float or int, got {type(dt)!r}")
 
 
 def _convert_DLike(dt: DLike, time_unit: D) -> D:
-    """Convert a DLike time increment into a D time increment of the same type as time_unit."""
+    """Convert a DLike time increment into a D time increment of the same type as time_unit.
+
+    Parameters
+    ----------
+    dt : DLike
+        The time increment to convert.
+    time_unit : D
+        The time unit to match the type of the converted dt.
+
+    Returns
+    -------
+    D
+        The converted time increment of the same type as time_unit.
+
+    Raises
+    ------
+    TypeError
+        If dt is not compatible with time_unit (for example, dimensional time requires np.timedelta64 increments,
+        while non-dimensional time requires floating-point increments).
+    """
     _dt = _regularise_DLike(dt)
     match _dt, time_unit:
         # dimensionless time: allow any floating type, convert to time_unit type
@@ -83,28 +119,37 @@ def _convert_DLike(dt: DLike, time_unit: D) -> D:
 class Clock:
     """Class keeping time for a simulation.
 
-    Args:
-        time_array: strictly increasing 1D array of time values.
-        dt: The time step. Must be positive for forward integration,
-            negative for backward integration.
-        time_unit: The time unit. Determines the type of time increments. Required for dimensional time,
-            defaults to np.float64(1.0) for dimensionless time.
+    Parameters
+    ----------
+    time_array : npt.NDArray[T]
+        Strictly increasing 1D array of time values.
+    dt : DLike
+        The time step. Must be positive for forward integration,
+        negative for backward integration.
+    time_unit : DLike, optional
+        The time unit. Determines the type of time increments. Required for dimensional time,
+        defaults to 1.0 for dimensionless time.
 
-    Raises:
-        ValueError: If ``time_array`` is not 1D, has fewer than 2 elements,
-            or is not strictly increasing.
-        ValueError: If ``time_unit`` is not positive.
-        ValueError: If ``dt`` has the wrong sign for the clock direction.
-        TypeError: If ``dt`` or ``time_unit`` has an unsupported type, or if
-            ``dt`` is incompatible with ``time_unit`` (for example, dimensional
-            time requires ``np.timedelta64`` increments, while non-dimensional
-            time requires floating-point increments).
+    Raises
+    ------
+    ValueError
+        If ``time_array`` is not 1D, has fewer than 2 elements,
+        or is not strictly increasing.
+        If ``time_unit`` is not positive.
+        If ``dt`` has the wrong sign for the clock direction.
+    TypeError
+        If ``dt`` or ``time_unit`` has an unsupported type, or if
+        ``dt`` is incompatible with ``time_unit`` (for example, dimensional
+        time requires ``np.timedelta64`` increments, while non-dimensional
+        time requires floating-point increments).
 
-    Note:
+    Notes
+    -----
         The clock direction (forward or backward in time) is determined by
         the sign of ``dt`` at construction time and cannot be changed afterwards.
 
-    Examples:
+    Examples
+    --------
         >>> time_array = np.array([0, 1, 2, 3], dtype=np.float64)
         >>> dt = np.float64(0.5)
         >>> Clock(time_array, dt)
@@ -122,7 +167,7 @@ class Clock:
         time_array: npt.NDArray[T],
         dt: DLike,
         *,
-        time_unit: DLike = np.float64(1.0),
+        time_unit: DLike = 1.0,
     ) -> None:
         # validate time_array shape and length
         if time_array.ndim != 1:
@@ -162,15 +207,20 @@ class Clock:
     def get_time_index(self, time: T) -> np.float64:
         """Get the time index corresponding to the given time.
 
-        Args:
-            time: The time to get the index for.
+        Parameters
+        ----------
+        time : T
+            The time to get the index for.
 
-        Returns:
-            float64: The time index corresponding to the given time.
+        Returns
+        -------
+        float64
+            The time index corresponding to the given time.
 
-        Raises:
-            ValueError: If time is out of bounds of the time array.
-            TypeError (from numpy): If time is not compatible with the time array.
+        Raises
+        ------
+        ValueError
+            If time is out of bounds of the time array.
         """
         time_array = self._time_array
         if time < time_array[0] or time > time_array[-1]:
@@ -178,15 +228,25 @@ class Clock:
 
         idx = np.searchsorted(time_array, time, side="right") - 1
         # Clamp idx so that idx+1 is always a valid index (handles time == time_array[-1])
-        if idx > self._max_tidx:
-            idx = self._max_tidx
+        idx = min(idx, self._max_tidx)
         t0 = time_array[idx]
         t1 = time_array[idx + 1]
         fraction = (time - t0) / (t1 - t0)
         return idx + fraction
 
     def set_dt(self, dt: DLike) -> None:
-        """Set the time step."""
+        """Set the time step.
+
+        Parameters
+        ----------
+        dt : DLike
+            The time step. Must be compatible with the time unit.
+
+        Raises
+        ------
+        ValueError
+            If dt is zero or has an invalid sign for the current integration direction.
+        """
         dt = _convert_DLike(
             dt, self.time_unit
         )  # validates dt is compatible with time_unit and converts to correct type
@@ -201,7 +261,18 @@ class Clock:
         self._normalised_dt = np.float64(dt / self.time_unit)  # type: ignore[operator]
 
     def set_time(self, time: T) -> None:
-        """Set the current time and update the time index."""
+        """Set the current time and update the time index.
+
+        Parameters
+        ----------
+        time : T
+            The current time. Must be within the bounds of the time array.
+
+        Raises
+        ------
+        TypeError
+            If time is not compatible with dt.
+        """
         # check time + dt is valid
         try:
             _ = time + self.dt  # type: ignore[operator]
@@ -212,7 +283,18 @@ class Clock:
         self._time = time
 
     def set_iteration(self, iteration: int) -> None:
-        """Set the current iteration."""
+        """Set the current iteration.
+
+        Parameters
+        ----------
+        iteration : int
+            The current iteration. Must be non-negative.
+
+        Raises
+        ------
+        ValueError
+            If iteration is negative.
+        """
         if iteration < 0:
             raise ValueError("Iteration must be non-negative.")
         self._iteration = iteration
@@ -261,10 +343,13 @@ class Clock:
     def first_time(self) -> T:
         """The chronological start of the simulation.
 
-        Returns:
-            T: ``time_array[0]`` if forward, ``time_array[-1]`` if backward.
+        Returns
+        -------
+        T
+            ``time_array[0]`` if forward, ``time_array[-1]`` if backward.
 
-        Examples:
+        Examples
+        --------
             >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=np.float64(0.5))
             >>> clock.first_time
             np.float64(0.0)
@@ -279,10 +364,13 @@ class Clock:
     def final_time(self) -> T:
         """The chronological end of the simulation.
 
-        Returns:
-            T: ``time_array[-1]`` if forward, ``time_array[0]`` if backward.
+        Returns
+        -------
+        T
+            ``time_array[-1]`` if forward, ``time_array[0]`` if backward.
 
-        Examples:
+        Examples
+        --------
             >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=np.float64(0.5))
             >>> clock.final_time
             np.float64(3.0)
@@ -366,7 +454,6 @@ class Timestepper(abc.ABC):
     @abc.abstractmethod
     def run_step(self, particles: Particles, launcher: Launcher, clock: Clock) -> None:
         """Timestep the particles."""
-        pass
 
     def run_post_step(self, particles: Particles, launcher: Launcher, clock: Clock) -> None:
         """Launch the post-step kernels."""
@@ -515,7 +602,6 @@ class ABTimestepper(Timestepper):
 
     def run_step(self, particles: Particles, launcher: Launcher, clock: Clock) -> None:
         """Launch the Adams-Bashforth kernel to timestep the particles."""
-
         # first launch tendency kernels to compute tendencies and store in dprop_0
         for kernel in self._tendency_kernels:
             launcher.launch_kernel(kernel, particles, clock.tinfo)

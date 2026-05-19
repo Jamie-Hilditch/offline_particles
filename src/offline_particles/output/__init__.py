@@ -8,7 +8,7 @@ __all__ = [
     "AbstractOutputWriter",
     "AbstractOutputWriterBuilder",
     "Output",
-    "ZarrOutputWriter",
     "ZarrOutputBuilder",
+    "ZarrOutputWriter",
     "interpolate_fields",
 ]

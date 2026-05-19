@@ -36,8 +36,8 @@ python_use_unqualified_type_names = True
 toc_object_entries_show_parents = "hide"
 
 # -- Napoleon
-napoleon_google_docstring = True
-napoleon_numpy_docstring = False
+napoleon_google_docstring = False
+napoleon_numpy_docstring = True
 napoleon_use_param = False
 napoleon_use_rtype = False
 

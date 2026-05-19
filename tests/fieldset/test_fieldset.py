@@ -8,7 +8,23 @@ from offline_particles.fieldset import Fieldset
 
 
 def _make_static_field(z: int, y: int, x: int) -> StaticField:
-    """Create a minimal StaticField for testing."""
+    """Create a minimal StaticField for testing.
+
+    Parameters
+    ----------
+    z : int
+        Size of the Z dimension.
+    y : int
+        Size of the Y dimension.
+    x : int
+        Size of the X dimension.
+
+    Returns
+    -------
+    StaticField
+        A StaticField with the specified dimensions, filled with zeros and
+        with axes ("Z", "Y", "X") and staggers ("center", "center", "center").
+    """
     data = np.zeros((z, y, x), dtype=np.float64)
     return StaticField.from_numpy(data, axes=("Z", "Y", "X"), staggers=("center", "center", "center"))
 
@@ -184,7 +200,7 @@ class TestFieldsetMapping:
         fs = Fieldset(10, 4, 5, 6)
         field = _make_static_field(4, 5, 6)
         fs.add_field("u", field)
-        assert "u" in fs.keys()
+        assert "u" in fs
 
     def test_values(self) -> None:
         fs = Fieldset(10, 4, 5, 6)

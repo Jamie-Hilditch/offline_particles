@@ -74,6 +74,11 @@ def construct_horizontal_idx_tendency_kernel_from_velocity_property(
         Binding for the velocity particle property.
     grid_spacing_field : str
         Binding for the grid spacing field data.
+
+    Returns
+    -------
+    BoundKernel
+        The constructed kernel.
     """
     kernel = ParticleKernel(
         horizontal_idx_tendency_from_velocity_property,

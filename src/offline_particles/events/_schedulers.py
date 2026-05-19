@@ -1,6 +1,7 @@
 """Submodule for event schedulers."""
 
-from typing import Iterable, Protocol, runtime_checkable
+from collections.abc import Iterable
+from typing import Protocol, runtime_checkable
 
 from ..timestepping import D, T
 from ._events import Event
@@ -39,7 +40,7 @@ class RecurringIterationScheduler:
 
     def __init__(self) -> None:
         self._next = None
-        self._events: dict[int, list[tuple[int, Event]]] = dict()
+        self._events: dict[int, list[tuple[int, Event]]] = {}
 
     def _schedule_event(self, iteration: int, N: int, event: Event) -> None:
         if iteration not in self._events:
@@ -53,7 +54,13 @@ class RecurringIterationScheduler:
 
     @property
     def events(self) -> Iterable[Event]:
-        """All registered events."""
+        """All registered events.
+
+        Yields
+        ------
+        event : Event
+            The next registered event.
+        """
         for event_list in self._events.values():
             for _, event in event_list:
                 yield event
@@ -76,11 +83,15 @@ class RecurringIterationScheduler:
     def __call__(self, iteration: int) -> list[Event]:
         """Get the events to trigger at the given iteration.
 
-        Args:
-            iteration (int): The current iteration.
+        Parameters
+        ----------
+        iteration : int
+            The current iteration.
 
-        Returns:
-            list[Event]: The list of events to trigger.
+        Returns
+        -------
+        list[Event]
+            The list of events to trigger.
         """
         triggered_events: list[Event] = []
 
@@ -102,7 +113,7 @@ class RecurringTimeScheduler:
         self._forward_in_time = forward_in_time
 
         self._next_time = None
-        self._events: dict[T, list[tuple[D, Event]]] = dict()
+        self._events: dict[T, list[tuple[D, Event]]] = {}
 
     def _schedule_event(self, time: T, dt: D, event: Event) -> None:
         if time not in self._events:
@@ -116,7 +127,13 @@ class RecurringTimeScheduler:
 
     @property
     def events(self) -> Iterable[Event]:
-        """All registered events."""
+        """All registered events.
+
+        Yields
+        ------
+        event : Event
+            The next registered event.
+        """
         for event_list in self._events.values():
             for _, event in event_list:
                 yield event
@@ -124,10 +141,20 @@ class RecurringTimeScheduler:
     def register_event(self, first: T, dt: D, event: Event) -> None:
         """Register an event to be triggered every dt.
 
-        Args:
-            first (T): The first time the event is triggered.
-            dt (D): The time interval between events.
-            event (Event): The event to be triggered.
+        Parameters
+        ----------
+        first : T
+            The first time the event is triggered.
+        dt : D
+            The time interval between events.
+        event : Event
+            The event to be triggered.
+
+        Raises
+        ------
+        ValueError
+            If dt is not positive when forward_in_time is True,
+            or if dt is not negative when forward_in_time is False.
         """
         # validate dt
         if self._forward_in_time and not (dt > dt * 0):
@@ -150,11 +177,15 @@ class RecurringTimeScheduler:
     def __call__(self, time: T) -> list[Event]:
         """Get the events to trigger at the given time.
 
-        Args:
-            time (float): The current time.
+        Parameters
+        ----------
+        time : T
+            The current time.
 
-        Returns:
-            list[Event]: The list of events to trigger.
+        Returns
+        -------
+        list[Event]
+            The list of events to trigger.
         """
         triggered_events: list[Event] = []
 
@@ -183,7 +214,7 @@ class AtIterationScheduler:
 
     def __init__(self) -> None:
         self._next = None
-        self._events: dict[int, list[Event]] = dict()
+        self._events: dict[int, list[Event]] = {}
 
     def _schedule_event(self, iteration: int, event: Event) -> None:
         if iteration not in self._events:
@@ -197,17 +228,25 @@ class AtIterationScheduler:
 
     @property
     def events(self) -> Iterable[Event]:
-        """All registered events."""
+        """All registered events.
+
+        Yields
+        ------
+        event : Event
+            The next registered event.
+        """
         for event_list in self._events.values():
-            for event in event_list:
-                yield event
+            yield from event_list
 
     def register_event(self, iteration: int, event: Event) -> None:
         """Register an event to be triggered once at the given iteration.
 
-        Args:
-            iteration (int): The iteration at which to trigger the event.
-            event (Event): The event to be triggered.
+        Parameters
+        ----------
+        iteration : int
+            The iteration at which to trigger the event.
+        event : Event
+            The event to be triggered.
         """
         self._schedule_event(iteration, event)
         self.set_next()
@@ -219,11 +258,15 @@ class AtIterationScheduler:
     def __call__(self, iteration: int) -> list[Event]:
         """Get the events to trigger at the given iteration.
 
-        Args:
-            iteration (int): The current iteration.
+        Parameters
+        ----------
+        iteration : int
+            The current iteration.
 
-        Returns:
-            list[Event]: The list of events to trigger.
+        Returns
+        -------
+        list[Event]
+            The list of events to trigger.
         """
         triggered_events: list[Event] = []
 
@@ -241,7 +284,7 @@ class AtTimeScheduler:
     def __init__(self, *, forward_in_time: bool = True) -> None:
         self._forward_in_time = forward_in_time
         self._next_time = None
-        self._events: dict[T, list[Event]] = dict()
+        self._events: dict[T, list[Event]] = {}
 
     def _schedule_event(self, time: T, event: Event) -> None:
         if time not in self._events:
@@ -255,17 +298,25 @@ class AtTimeScheduler:
 
     @property
     def events(self) -> Iterable[Event]:
-        """All registered events."""
+        """All registered events.
+
+        Yields
+        ------
+        event : Event
+            The next registered event.
+        """
         for event_list in self._events.values():
-            for event in event_list:
-                yield event
+            yield from event_list
 
     def register_event(self, time: T, event: Event) -> None:
         """Register an event to be triggered once at the given time.
 
-        Args:
-            time (T): The time at which to trigger the event.
-            event (Event): The event to be triggered.
+        Parameters
+        ----------
+        time : T
+            The time at which to trigger the event.
+        event : Event
+            The event to be triggered.
         """
         self._schedule_event(time, event)
         self.set_next()
@@ -283,11 +334,15 @@ class AtTimeScheduler:
     def __call__(self, time: T) -> list[Event]:
         """Get the events to trigger at the given time.
 
-        Args:
-            time (T): The current time.
+        Parameters
+        ----------
+        time : T
+            The current time.
 
-        Returns:
-            list[Event]: The list of events to trigger.
+        Returns
+        -------
+        list[Event]
+            The list of events to trigger.
         """
         triggered_events: list[Event] = []
 

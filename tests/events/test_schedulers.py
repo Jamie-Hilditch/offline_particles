@@ -16,7 +16,18 @@ from offline_particles.events import (
 
 
 def _make_event(name: str = "test") -> Event:
-    """Create a simple no-op event for testing."""
+    """Create a simple no-op event for testing.
+
+    Parameters
+    ----------
+    name : str
+        The name of the event. Defaults to "test".
+
+    Returns
+    -------
+    Event
+        An Event instance with the given name and a no-op function.
+    """
 
     def noop(state: SimulationState) -> None:
         pass

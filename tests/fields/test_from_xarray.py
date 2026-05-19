@@ -18,7 +18,7 @@ class TestStaticFieldFromXarray:
         assert field.staggers == (Stagger.CENTER, Stagger.CENTER, Stagger.CENTER)
 
     def test_3d_dims_as_variable(self) -> None:
-        """dims mapping can be passed as a variable."""
+        """Dims mapping can be passed as a variable."""
         data = xr.DataArray(np.ones((3, 4, 5), dtype=np.float64), dims=["z", "y", "x"])
         dims = {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")}
         field = StaticField.from_xarray(data, dims)
@@ -111,7 +111,7 @@ class TestTimeDependentFieldFromXarray:
         assert field.spatial_shape == (4, 5, 6)
 
     def test_4d_dims_as_variable(self) -> None:
-        """dims mapping can be passed as a variable."""
+        """Dims mapping can be passed as a variable."""
         data = xr.DataArray(np.ones((3, 4, 5, 6), dtype=np.float64), dims=["t", "z", "y", "x"])
         dims = {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")}
         field = TimeDependentField.from_xarray(data, "t", dims)

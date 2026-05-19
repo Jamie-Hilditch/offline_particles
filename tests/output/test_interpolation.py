@@ -9,7 +9,13 @@ from offline_particles.output import _interpolation, interpolate_fields
 
 
 def _make_fieldset() -> Fieldset:
-    """Create a Fieldset with 1D, 2D, and 3D fields for testing."""
+    """Create a Fieldset with 1D, 2D, and 3D fields for testing.
+
+    Returns
+    -------
+    Fieldset
+        An example Fieldset containing 1D, 2D, and 3D fields for testing purposes.
+    """
     field_1d = StaticField.from_numpy(
         np.ones((5,), dtype=np.float32),
         axes=("X",),

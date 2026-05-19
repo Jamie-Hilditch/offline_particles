@@ -28,10 +28,10 @@ from ._relaxation_kernels_scalar_coefficient import (
 )
 
 __all__ = [
-    "construct_linear_relaxation_kernel",
-    "construct_quadratic_relaxation_kernel",
     "construct_linear_damping_kernel",
+    "construct_linear_relaxation_kernel",
     "construct_quadratic_damping_kernel",
+    "construct_quadratic_relaxation_kernel",
 ]
 
 

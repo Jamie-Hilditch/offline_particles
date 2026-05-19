@@ -21,12 +21,20 @@ def construct_activate_released_particles_kernel(
 ) -> BoundKernel:
     """Construct a kernel to activate particles at a given release time.
 
-    Args:
-        release_time: Binding for the release time particle property (default "release_time").
-        dtype: Data type of both the simulation time and the release_time particle property
-            (default np.float64). Use np.float64 for float-based clocks. For datetime-based
-            clocks, pass an explicit datetime64 dtype with a unit matching the simulation
-            clock's time array, e.g. np.dtype('datetime64[ns]').
+    Parameters
+    ----------
+    release_time : str, optional
+        Binding for the release time particle property (default "release_time").
+    dtype : npt.DTypeLike, optional
+        Data type of both the simulation time and the release_time particle property
+        (default np.float64). Use np.float64 for float-based clocks. For datetime-based
+        clocks, pass an explicit datetime64 dtype with a unit matching the simulation
+        clock's time array, e.g. np.dtype('datetime64[ns]').
+
+    Returns
+    -------
+    BoundKernel
+        A bound kernel that activates particles at the given release time.
     """
     release_time_declaration = ParticlePropertyDeclaration("release_time", np.dtype(dtype))
 
@@ -54,12 +62,20 @@ def construct_deactivate_retired_particles_kernel(
 ) -> BoundKernel:
     """Construct a kernel to deactivate particles at a given retirement time.
 
-    Args:
-        retirement_time: Binding for the retirement time particle property (default "retirement_time").
-        dtype: Data type of both the simulation time and the retirement_time particle property
-            (default np.float64). Use np.float64 for float-based clocks. For datetime-based
-            clocks, pass an explicit datetime64 dtype with a unit matching the simulation
-            clock's time array, e.g. np.dtype('datetime64[ns]').
+    Parameters
+    ----------
+    retirement_time : str, optional
+        Binding for the retirement time particle property (default "retirement_time").
+    dtype : npt.DTypeLike, optional
+        Data type of both the simulation time and the retirement_time particle property
+        (default np.float64). Use np.float64 for float-based clocks. For datetime-based
+        clocks, pass an explicit datetime64 dtype with a unit matching the simulation
+        clock's time array, e.g. np.dtype('datetime64[ns]').
+
+    Returns
+    -------
+    BoundKernel
+        A bound kernel that deactivates particles at the given retirement time.
     """
     retirement_time_declaration = ParticlePropertyDeclaration("retirement_time", np.dtype(dtype))
 

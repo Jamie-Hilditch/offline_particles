@@ -1,7 +1,7 @@
 """The particles."""
 
 import types
-from typing import Mapping
+from collections.abc import Mapping
 
 import numpy as np
 import numpy.typing as npt
@@ -10,13 +10,20 @@ import numpy.typing as npt
 class _FrozenArrayMapping:
     """A mapping-like object that holds equi-shaped arrays and prevents modification."""
 
-    __slots__ = ("_shape", "_dtypes", "_arrays")
+    __slots__ = ("_arrays", "_dtypes", "_shape")
 
     def __init__(self, **arrays: npt.NDArray) -> None:
         """Initialize the mapping with given arrays.
 
-        Args:
-            **arrays: The arrays to store in the mapping.
+        Parameters
+        ----------
+        **arrays : npt.NDArray
+            The arrays to store in the mapping.
+
+        Raises
+        ------
+        ValueError
+            If the arrays do not all have the same shape.
         """
         shapes = {arr.shape for arr in arrays.values()}
         if len(shapes) != 1:
@@ -111,8 +118,15 @@ class ParticlesView(_FrozenArrayMapping):
     def readonly_view(array: npt.NDArray) -> npt.NDArray:
         """Create a read-only view of the given array.
 
-        Args:
-            array: The input array.
+        Parameters
+        ----------
+        array : npt.NDArray
+            The input array.
+
+        Returns
+        -------
+        npt.NDArray
+            A read-only view of the input array.
         """
         view = array.view()
         view.setflags(write=False)

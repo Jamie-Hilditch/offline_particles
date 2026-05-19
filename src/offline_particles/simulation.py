@@ -5,7 +5,7 @@ import itertools
 import time
 import types
 import warnings
-from typing import Iterable, Mapping
+from collections.abc import Iterable, Mapping
 
 import numpy as np
 import numpy.typing as npt
@@ -53,22 +53,38 @@ class Simulation:
         *,
         bbox_history_size: int = DEFAULT_BBOX_HISTORY_SIZE,
     ) -> None:
-        """Simulation class constructor.
+        """Construct the Simulation class.
 
-        Note:
+        Parameters
+        ----------
+        clock : Clock
+            The Clock governing simulation time and iteration.
+        fieldset : Fieldset
+            The Fieldset providing velocity and other field data.
+        particle_sets : list[ParticleSet]
+            List of ParticleSet instances defining particle groups.
+        recurring_iteration_scheduler : RecurringIterationScheduler
+            Scheduler that fires events every N iterations.
+        recurring_time_scheduler : RecurringTimeScheduler
+            Scheduler that fires events every dt in time.
+        at_iteration_scheduler : AtIterationScheduler
+            Scheduler that fires events once at a specific iteration.
+        at_time_scheduler : AtTimeScheduler
+            Scheduler that fires events once at a specific time.
+        output_writers : Mapping[str, AbstractOutputWriter]
+            Mapping of output writer instances keyed by name.
+        bbox_history_size : int, optional
+            Number of bounding-box snapshots to retain for the launcher.
+
+        Raises
+        ------
+        ValueError
+            If particle set names are not unique.
+
+        Notes
+        -----
             Use :class:`SimulationBuilder` to construct a simulation rather
             than instantiating this class directly.
-
-        Args:
-            clock: The Clock governing simulation time and iteration.
-            fieldset: The Fieldset providing velocity and other field data.
-            particle_sets: List of ParticleSet instances defining particle groups.
-            recurring_iteration_scheduler: Scheduler that fires events every N iterations.
-            recurring_time_scheduler: Scheduler that fires events every dt in time.
-            at_iteration_scheduler: Scheduler that fires events once at a specific iteration.
-            at_time_scheduler: Scheduler that fires events once at a specific time.
-            output_writers: Mapping of output writer instances keyed by name.
-            bbox_history_size: Number of bounding-box snapshots to retain for the launcher.
         """
         self._clock = clock
         self._fieldset = fieldset
@@ -139,8 +155,10 @@ class Simulation:
     def fieldset(self) -> Fieldset:
         """Get the fieldset used in the simulation.
 
-        Returns:
-            Fieldset: The fieldset instance.
+        Returns
+        -------
+        Fieldset
+            The fieldset instance.
         """
         return self._fieldset
 
@@ -148,8 +166,10 @@ class Simulation:
     def time(self) -> T:
         """Get the current simulation time.
 
-        Returns:
-            float: The current time of the simulation.
+        Returns
+        -------
+        T
+            The current time of the simulation.
         """
         return self._clock.time
 
@@ -157,8 +177,10 @@ class Simulation:
     def iteration(self) -> int:
         """Get the current simulation iteration.
 
-        Returns:
-            int: The current iteration of the simulation.
+        Returns
+        -------
+        int
+            The current iteration of the simulation.
         """
         return self._clock.iteration
 
@@ -166,8 +188,10 @@ class Simulation:
     def dt(self) -> D:
         """Get the timestep size.
 
-        Returns:
-            float: The size of each timestep in the simulation.
+        Returns
+        -------
+        D
+            The size of each timestep in the simulation.
         """
         return self._clock.dt
 
@@ -175,8 +199,10 @@ class Simulation:
     def tidx(self) -> np.float64:
         """Get the current timestep index.
 
-        Returns:
-            float: The index of the current timestep.
+        Returns
+        -------
+        np.float64
+            The index of the current timestep.
         """
         return self._clock.tidx
 
@@ -184,7 +210,9 @@ class Simulation:
     def time_unit(self) -> D:
         """Get the time unit used by the timestepper.
 
-        Returns:
+        Returns
+        -------
+        D
             The time unit.
         """
         return self._clock.time_unit
@@ -193,8 +221,10 @@ class Simulation:
     def tinfo(self) -> Tinfo:
         """Get the current time information.
 
-        Returns:
-            Tinfo: The current time information named tuple.
+        Returns
+        -------
+        Tinfo
+            The current time information named tuple.
         """
         return self._clock.tinfo
 
@@ -202,8 +232,10 @@ class Simulation:
     def wall_time(self) -> np.timedelta64:
         """Get the elapsed wall time since the start of the simulation.
 
-        Returns:
-            float: The elapsed wall time in seconds.
+        Returns
+        -------
+        np.timedelta64
+            The elapsed wall time.
         """
         nanoseconds = time.perf_counter_ns() - self._wall_time_start
         return np.timedelta64(nanoseconds, "ns")
@@ -212,8 +244,10 @@ class Simulation:
     def index_padding(self) -> int:
         """Get the current index padding used by the launcher.
 
-        Returns:
-            int: The index padding.
+        Returns
+        -------
+        int
+            The index padding.
         """
         return self._launcher.index_padding
 
@@ -221,8 +255,10 @@ class Simulation:
     def forward_in_time(self) -> bool:
         """Check if the simulation is running forward in time.
 
-        Returns:
-            bool: True if the simulation is running forward in time, False otherwise.
+        Returns
+        -------
+        bool
+            True if the simulation is running forward in time, False otherwise.
         """
         return self._clock.forward_in_time
 
@@ -230,8 +266,10 @@ class Simulation:
     def iteration_stop(self) -> int | None:
         """Get the iteration stopping condition.
 
-        Returns:
-            int | None: The iteration stopping condition, or None if not set.
+        Returns
+        -------
+        int | None
+            The iteration stopping condition, or None if not set.
         """
         return self._iteration_stop
 
@@ -239,8 +277,10 @@ class Simulation:
     def time_stop(self) -> T | None:
         """Get the time stopping condition.
 
-        Returns:
-            T | None: The time stopping condition, or None if not set.
+        Returns
+        -------
+        T | None
+            The time stopping condition, or None if not set.
         """
         return self._time_stop
 
@@ -248,8 +288,10 @@ class Simulation:
     def wall_time_stop(self) -> np.timedelta64 | None:
         """Get the wall time stopping condition.
 
-        Returns:
-            np.timedelta64 | None: The wall time stopping condition, or None if not set.
+        Returns
+        -------
+        np.timedelta64 | None
+            The wall time stopping condition, or None if not set.
         """
         return self._wall_time_stop
 
@@ -258,24 +300,30 @@ class Simulation:
     def set_time(self, time: T) -> None:
         """Set the current simulation time.
 
-        Args:
-            time: The new simulation time.
+        Parameters
+        ----------
+        time : T
+            The new simulation time.
         """
         self._clock.set_time(time)
 
     def set_iteration(self, iteration: int) -> None:
         """Set the current simulation iteration.
 
-        Args:
-            iteration: The new simulation iteration.
+        Parameters
+        ----------
+        iteration : int
+            The new simulation iteration.
         """
         self._clock.set_iteration(iteration)
 
     def set_dt(self, dt: D) -> None:
         """Set the timestep size.
 
-        Args:
-            dt: The new timestep size.
+        Parameters
+        ----------
+        dt : D
+            The new timestep size.
         """
         self._clock.set_dt(dt)
 
@@ -289,21 +337,30 @@ class Simulation:
     def set_iteration_stop(self, iteration: int | None) -> None:
         """Set the iteration stopping condition.
 
-        Args:
-            iteration: The iteration to stop the simulation at, or None to disable.
+        Parameters
+        ----------
+        iteration : int | None
+            The iteration to stop the simulation at, or None to disable.
         """
         self._iteration_stop = iteration
 
     def set_time_stop(self, time: T | None) -> None:
         """Set the time stopping condition.
 
-        Args:
-            time: The time to stop the simulation at, or None to disable.
+        Parameters
+        ----------
+        time : T | None
+            The time to stop the simulation at, or None to disable.
+
+        Raises
+        ------
+        TypeError
+            If the provided time is not compatible with the current simulation time.
         """
         if time is not None:
             # check time is compatible with current simulation time
             try:
-                time < self.time  # type: ignore
+                _ = time < self.time  # type: ignore
             except TypeError as e:
                 raise TypeError(
                     f"Incompatible time type {type(time)} for simulation time type {type(self.time)}"
@@ -313,8 +370,10 @@ class Simulation:
     def set_wall_time_stop(self, wall_time: np.timedelta64 | None) -> None:
         """Set the wall time stopping condition.
 
-        Args:
-            wall_time: The wall time to stop the simulation at, or None to disable.
+        Parameters
+        ----------
+        wall_time : np.timedelta64 | None
+            The wall time to stop the simulation at, or None to disable.
         """
         self._wall_time_stop = wall_time
 
@@ -327,10 +386,14 @@ class Simulation:
     ) -> None:
         """Set the stopping conditions for the simulation.
 
-        Args:
-            iteration: The iteration to stop the simulation at, or None to disable.
-            time: The time to stop the simulation at, or None to disable.
-            wall_time: The wall time to stop the simulation at, or None to disable.
+        Parameters
+        ----------
+        iteration : int | None, optional
+            The iteration to stop the simulation at, or None to disable.
+        time : T | None, optional
+            The time to stop the simulation at, or None to disable.
+        wall_time : np.timedelta64 | None, optional
+            The wall time to stop the simulation at, or None to disable.
         """
         self.set_iteration_stop(iteration)
         self.set_time_stop(time)
@@ -340,7 +403,9 @@ class Simulation:
     def particles(self) -> Mapping[str, ParticlesView]:
         """A view into the current particle data.
 
-        Returns:
+        Returns
+        -------
+        Mapping[str, ParticlesView]
             The current state of the particles in the simulation.
         """
         return types.MappingProxyType(self._particles_view)
@@ -349,8 +414,10 @@ class Simulation:
     def recurring_iteration_scheduler(self) -> RecurringIterationScheduler:
         """Get the recurring iteration scheduler used in the simulation.
 
-        Returns:
-            RecurringIterationScheduler: The recurring iteration scheduler instance.
+        Returns
+        -------
+        RecurringIterationScheduler
+            The recurring iteration scheduler instance.
         """
         return self._recurring_iteration_scheduler
 
@@ -358,8 +425,10 @@ class Simulation:
     def recurring_time_scheduler(self) -> RecurringTimeScheduler:
         """Get the recurring time scheduler used in the simulation.
 
-        Returns:
-            RecurringTimeScheduler: The recurring time scheduler instance.
+        Returns
+        -------
+        RecurringTimeScheduler
+            The recurring time scheduler instance.
         """
         return self._recurring_time_scheduler
 
@@ -367,8 +436,10 @@ class Simulation:
     def at_iteration_scheduler(self) -> AtIterationScheduler:
         """Get the one-shot iteration scheduler used in the simulation.
 
-        Returns:
-            AtIterationScheduler: The one-shot iteration scheduler instance.
+        Returns
+        -------
+        AtIterationScheduler
+            The one-shot iteration scheduler instance.
         """
         return self._at_iteration_scheduler
 
@@ -376,8 +447,10 @@ class Simulation:
     def at_time_scheduler(self) -> AtTimeScheduler:
         """Get the one-shot time scheduler used in the simulation.
 
-        Returns:
-            AtTimeScheduler: The one-shot time scheduler instance.
+        Returns
+        -------
+        AtTimeScheduler
+            The one-shot time scheduler instance.
         """
         return self._at_time_scheduler
 
@@ -395,8 +468,10 @@ class Simulation:
     def state(self) -> SimulationState:
         """Get the current simulation state.
 
-        Returns:
-            SimulationState: A named tuple containing time, dt, tidx, wall_time and particles.
+        Returns
+        -------
+        SimulationState
+            A class containing time information and views into the particle data.
         """
         return SimulationState(
             time=self.time,
@@ -441,7 +516,13 @@ class Simulation:
             event(self.state)
 
     def run(self) -> None:
-        """Run the particle simulation until a stopping condition is met."""
+        """Run the particle simulation until a stopping condition is met.
+
+        Raises
+        ------
+        ValueError
+            If no valid stopping condition is set for the simulation.
+        """
         # check we have at least one valid stopping condition
         valid_iteration_stop = self._iteration_stop is not None and self._iteration_stop > self.iteration
         valid_time_stop = self._time_stop is not None and (
@@ -484,8 +565,24 @@ class Simulation:
         yidx: npt.ArrayLike | None = None,
         xidx: npt.ArrayLike | None = None,
     ) -> None:
-        """Set the particles indices."""
+        """Set the particles indices.
 
+        Parameters
+        ----------
+        particle_set : str
+            The name of the particle set to modify.
+        zidx : npt.ArrayLike | None, optional
+            The new z indices for the particles, or None to leave unchanged.
+        yidx : npt.ArrayLike | None, optional
+            The new y indices for the particles, or None to leave unchanged.
+        xidx : npt.ArrayLike | None, optional
+            The new x indices for the particles, or None to leave unchanged.
+
+        Raises
+        ------
+        ValueError
+            If the specified particle set does not exist in the simulation.
+        """
         if particle_set not in self._particles:
             raise ValueError(f"Particle set '{particle_set}' not found in simulation.")
         particles = self._particles[particle_set]
@@ -521,10 +618,19 @@ class Simulation:
     ) -> None:
         """Set a particle property to the given values.
 
-        Args:
-            particle_set: The name of the particle set to modify.
-            property_name: The name of the particle property to set.
-            values: The values to set the particle field to.
+        Parameters
+        ----------
+        particle_set : str
+            The name of the particle set to modify.
+        property_name : str
+            The name of the particle property to set.
+        values : npt.ArrayLike
+            The values to set the particle field to.
+
+        Raises
+        ------
+        ValueError
+            If the specified particle set does not exist in the simulation.
         """
         if particle_set not in self._particles:
             raise ValueError(f"Particle set '{particle_set}' not found in simulation.")
@@ -537,9 +643,20 @@ class Simulation:
     def run_kernel(self, name: str, kernel: BoundKernel) -> None:
         """Execute a kernel on the particles.
 
-        Args:
-            name: The name of the particle set to run the kernel on.
-            kernel: The kernel to execute.
+        Parameters
+        ----------
+        name : str
+            The name of the particle set to run the kernel on.
+        kernel : BoundKernel
+            The kernel to execute.
+
+        Raises
+        ------
+        ValueError
+            If the specified particle set does not exist in the simulation.
+            Or if the kernel requires a particle property that is not available in the simulation.
+        TypeError
+            If the kernel requires a particle property with a different dtype than what is available in the simulation
         """
         # get particles
         if name not in self._particles:
@@ -586,7 +703,7 @@ class SimulationBuilder:
         self._at_time_scheduler = AtTimeScheduler(forward_in_time=self._clock.forward_in_time)
 
         # output writers
-        self._output_writers: dict[str, tuple[AbstractOutputWriterBuilder, dict[str, ...]]] = dict()
+        self._output_writers: dict[str, tuple[AbstractOutputWriterBuilder, dict[str, ...]]] = {}
 
     @property
     def events(self) -> Iterable[Event]:
@@ -601,10 +718,19 @@ class SimulationBuilder:
     def every_n(self, n: int, event: Event, *, first: int | None = None) -> None:
         """Add an event that triggers every n iterations.
 
-        Args:
-            n (int): The interval in iterations between event triggers.
-            event (Event): The event to be added.
-            first (int, optional): The first iteration to trigger the event. Defaults to 0.
+        Parameters
+        ----------
+        n : int
+            The interval in iterations between event triggers.
+        event : Event
+            The event to be added.
+        first : int, optional
+            The first iteration to trigger the event. Defaults to 0.
+
+        Raises
+        ------
+        ValueError
+            If n is not a positive integer.
         """
         if n <= 0:
             raise ValueError("n must be a positive integer.")
@@ -615,10 +741,19 @@ class SimulationBuilder:
     def every_dt(self, dt: D, event: Event, *, first: T | None = None) -> None:
         """Add an event that triggers every dt time units.
 
-        Args:
-            dt (D): The interval in time between event triggers.
-            event (Event): The event to be added.
-            first (T): The first time to trigger the event (defaults to clock.time).
+        Parameters
+        ----------
+        dt : D
+            The interval in time between event triggers.
+        event : Event
+            The event to be added.
+        first : T, optional
+            The first time to trigger the event (defaults to clock.time).
+
+        Raises
+        ------
+        TypeError
+            If dt or first are not compatible with the timestepper's time type.
         """
         # set default first time
         clock_time = self._clock.time
@@ -651,9 +786,17 @@ class SimulationBuilder:
     def at_time(self, time: T, event: Event) -> None:
         """Add an event that triggers once at the given time.
 
-        Args:
-            time (T): The time at which to trigger the event.
-            event (Event): The event to be triggered.
+        Parameters
+        ----------
+        time : T
+            The time at which to trigger the event.
+        event : Event
+            The event to be triggered.
+
+        Raises
+        ------
+        TypeError
+            If the provided time is not compatible with the current simulation time.
         """
         # check time is compatible with clock time
         clock_time = self._clock.time
@@ -671,12 +814,22 @@ class SimulationBuilder:
 
         Exactly one of ``n`` or ``dt`` must be specified.
 
-        Args:
-            event: The event to add.
-            n: The number of iterations between event triggers.
-            dt: The time interval between event triggers.
-            first: When using ``n``, the first iteration (``int``) to trigger the event (defaults to 0).
-                When using ``dt``, the first time (``T``) to trigger the event (defaults to the current clock time).
+        Parameters
+        ----------
+        event : Event
+            The event to add.
+        n : int | None, optional
+            The number of iterations between event triggers.
+        dt : D | None, optional
+            The time interval between event triggers.
+        first : int | T | None, optional
+            When using ``n``, the first iteration (``int``) to trigger the event (defaults to 0).
+            When using ``dt``, the first time (``T``) to trigger the event (defaults to the current clock time).
+
+        Raises
+        ------
+        ValueError
+            If neither or both of ``n`` and ``dt`` are specified.
         """
         if (n is None) == (dt is None):
             raise ValueError("Exactly one of n or dt must be specified.")
@@ -690,10 +843,19 @@ class SimulationBuilder:
 
         Exactly one of ``at_iteration`` or ``at_time`` must be specified.
 
-        Args:
-            event: The event to add.
-            at_iteration: The specific iteration to trigger the event once.
-            at_time: The specific time to trigger the event once.
+        Parameters
+        ----------
+        event : Event
+            The event to add.
+        at_iteration : int | None, optional
+            The specific iteration to trigger the event once.
+        at_time : T | None, optional
+            The specific time to trigger the event once.
+
+        Raises
+        ------
+        ValueError
+            If neither or both of ``at_iteration`` and ``at_time`` are specified.
         """
         if (at_iteration is None) == (at_time is None):
             raise ValueError("Exactly one of at_iteration or at_time must be specified.")
@@ -712,11 +874,21 @@ class SimulationBuilder:
     ) -> None:
         """Add an output writer to the simulation.
 
-        Args:
-            builder: The output writer builder instance.
-            n: The number of iterations between output writes (recurring).
-            dt: The time interval between output writes (recurring).
-            first: The first iteration or time to write output (used with n or dt).
+        Parameters
+        ----------
+        builder : AbstractOutputWriterBuilder
+            The output writer builder instance.
+        n : int | None, optional
+            The number of iterations between output writes (recurring).
+        dt : D | None, optional
+            The time interval between output writes (recurring).
+        first : int | T | None, optional
+            The first iteration or time to write output (used with n or dt).
+
+        Raises
+        ------
+        ValueError
+            If an output writer with the same name already exists.
         """
         name = builder.name
         if name in self._output_writers:
@@ -730,7 +902,13 @@ class SimulationBuilder:
         self._output_writers[name] = (builder, kwargs)
 
     def build_simulation(self) -> Simulation:
-        """Build and return the Simulation."""
+        """Build and return the Simulation.
+
+        Returns
+        -------
+        Simulation
+            The constructed Simulation instance.
+        """
         # build output writers, construct events and make mapping immutable
         output_writers = {}
         time_type = self._clock.time_array.dtype

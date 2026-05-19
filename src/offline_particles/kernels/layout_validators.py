@@ -1,62 +1,150 @@
 """Functions that validate array layouts."""
 
-from typing import Callable
+from collections.abc import Callable
 
 from ..spatial_arrays import ArrayAxis, ArrayLayout
 
 
 # layout validators
 def validate_ZYX_ordering(layout: ArrayLayout) -> None:
-    """Validate that the layout has Z, Y, X axes in that order (with any staggers)."""
+    """Validate that the layout has Z, Y, X axes in that order (with any staggers).
+
+    Parameters
+    ----------
+    layout : ArrayLayout
+        The layout to validate.
+
+    Raises
+    ------
+    ValueError
+        If the layout does not have Z, Y, X axes in that order.
+    """
     expected_axes = (ArrayAxis.Z, ArrayAxis.Y, ArrayAxis.X)
     if layout.axes != expected_axes:
         raise ValueError(f"Expected axes {expected_axes} but got {layout.axes}")
 
 
 def validate_ZY_ordering(layout: ArrayLayout) -> None:
-    """Validate that the layout has Z, Y axes in that order (with any staggers)."""
+    """Validate that the layout has Z, Y axes in that order (with any staggers).
+
+    Parameters
+    ----------
+    layout : ArrayLayout
+        The layout to validate.
+
+    Raises
+    ------
+    ValueError
+        If the layout does not have Z, Y axes in that order.
+    """
     expected_axes = (ArrayAxis.Z, ArrayAxis.Y)
     if layout.axes != expected_axes:
         raise ValueError(f"Expected axes {expected_axes} but got {layout.axes}")
 
 
 def validate_YX_ordering(layout: ArrayLayout) -> None:
-    """Validate that the layout has Y, X axes in that order (with any staggers)."""
+    """Validate that the layout has Y, X axes in that order (with any staggers).
+
+    Parameters
+    ----------
+    layout : ArrayLayout
+        The layout to validate.
+
+    Raises
+    ------
+    ValueError
+        If the layout does not have Y, X axes in that order.
+    """
     expected_axes = (ArrayAxis.Y, ArrayAxis.X)
     if layout.axes != expected_axes:
         raise ValueError(f"Expected axes {expected_axes} but got {layout.axes}")
 
 
 def validate_ZX_ordering(layout: ArrayLayout) -> None:
-    """Validate that the layout has Z, X axes in that order (with any staggers)."""
+    """Validate that the layout has Z, X axes in that order (with any staggers).
+
+    Parameters
+    ----------
+    layout : ArrayLayout
+        The layout to validate.
+
+    Raises
+    ------
+    ValueError
+        If the layout does not have Z, X axes in that order.
+    """
     expected_axes = (ArrayAxis.Z, ArrayAxis.X)
     if layout.axes != expected_axes:
         raise ValueError(f"Expected axes {expected_axes} but got {layout.axes}")
 
 
 def validate_Z_ordering(layout: ArrayLayout) -> None:
-    """Validate that the layout has a single Z axis (with any staggers)."""
+    """Validate that the layout has a single Z axis (with any staggers).
+
+    Parameters
+    ----------
+    layout : ArrayLayout
+        The layout to validate.
+
+    Raises
+    ------
+    ValueError
+        If the layout does not have a single Z axis.
+    """
     expected_axes = (ArrayAxis.Z,)
     if layout.axes != expected_axes:
         raise ValueError(f"Expected axes {expected_axes} but got {layout.axes}")
 
 
 def validate_Y_ordering(layout: ArrayLayout) -> None:
-    """Validate that the layout has a single Y axis (with any staggers)."""
+    """Validate that the layout has a single Y axis (with any staggers).
+
+    Parameters
+    ----------
+    layout : ArrayLayout
+        The layout to validate.
+
+    Raises
+    ------
+    ValueError
+        If the layout does not have a single Y axis.
+    """
     expected_axes = (ArrayAxis.Y,)
     if layout.axes != expected_axes:
         raise ValueError(f"Expected axes {expected_axes} but got {layout.axes}")
 
 
 def validate_X_ordering(layout: ArrayLayout) -> None:
-    """Validate that the layout has a single X axis (with any staggers)."""
+    """Validate that the layout has a single X axis (with any staggers).
+
+    Parameters
+    ----------
+    layout : ArrayLayout
+        The layout to validate.
+
+    Raises
+    ------
+    ValueError
+        If the layout does not have a single X axis.
+    """
     expected_axes = (ArrayAxis.X,)
     if layout.axes != expected_axes:
         raise ValueError(f"Expected axes {expected_axes} but got {layout.axes}")
 
 
 def ordering_validator_factory(expected_axes: tuple[ArrayAxis, ...]) -> Callable[[ArrayLayout], None]:
-    """Factory function to create layout validators for specific axis orderings."""
+    """Create layout validators for specific axis orderings.
+
+    Parameters
+    ----------
+    expected_axes : tuple[ArrayAxis, ...]
+        The expected axes in the layout.
+
+    Returns
+    -------
+    Callable[[ArrayLayout], None]
+        A function that validates the layout against the expected axes.
+    """
 
     def validator(layout: ArrayLayout) -> None:
         if layout.axes != expected_axes:

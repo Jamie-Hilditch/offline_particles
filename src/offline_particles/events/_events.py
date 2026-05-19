@@ -2,7 +2,7 @@
 
 import dataclasses
 import types
-from typing import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 
 import numpy as np
 

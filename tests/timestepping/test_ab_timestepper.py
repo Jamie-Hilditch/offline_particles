@@ -35,7 +35,7 @@ def _make_particles() -> Particles:
 
 
 def _make_noop_kernel() -> BoundKernel:
-    def _noop(pp, sc, fd) -> None:  # noqa: ANN001
+    def _noop(pp, sc, fd) -> None:
         pass
 
     return BoundKernel(ParticleKernel(_noop))
@@ -45,7 +45,7 @@ class _RecordingLauncher:
     def __init__(self) -> None:
         self.calls = []
 
-    def launch_kernel(self, bound_kernel, particles, tinfo) -> None:  # noqa: ANN001
+    def launch_kernel(self, bound_kernel, particles, tinfo) -> None:
         self.calls.append((bound_kernel, particles, tinfo))
 
 

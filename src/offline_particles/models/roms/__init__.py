@@ -18,9 +18,9 @@ from ...kernels.validation import construct_validation_kernel
 from ...timestepping import ABTimestepper
 
 __all__ = [
-    "roms_ab3_timestepper",
-    "construct_compute_zidx_kernel",
     "construct_compute_z_kernel",
+    "construct_compute_zidx_kernel",
+    "roms_ab3_timestepper",
 ]
 
 
@@ -47,61 +47,92 @@ def roms_ab3_timestepper(
     linear_damping_coefficient: str = "linear_damping_coefficient",
     quadratic_damping_coefficient: str = "quadratic_damping_coefficient",
 ) -> ABTimestepper:
-    """Create an AB3 timestepper with ROMS advection kernels.
+    r"""Create an AB3 timestepper with ROMS advection kernels.
 
-    Keyword Args:
-        vertical_velocity: Whether to include vertical velocity advection (default True).
-        buoyant_particles: Whether to include a buoyancy driven component to the vertical velocity (default False).
-        time_unit: Unit of time for the simulation (default None). Should be the same type as dt.
-        index_padding: Index padding, i.e. the minimum amount by which the field indices
-            exceed the particle indices (default 5).
-        u: Binding for the u velocity field (default "u").
-        v: Binding for the v velocity field (default "v").
-        w: Binding for the w velocity field (default "w"). Only used if `vertical_velocity` is True.
-        dx: Binding for the x grid spacing field (default "dx").
-        dy: Binding for the y grid spacing field (default "dy").
-        h: Binding for the bathymetry field (default "h").
-        zeta: Binding for the free surface field (default "zeta").
-        C: Binding for the vertical stretching function field (default "C").
-        rho: Binding for the density field (default "rho"). Only used if `buoyant_particles` is True.
-        hc: Binding for the critical depth scalar (default "hc").
-        NZ: Binding for the number of vertical levels scalar (default "NZ").
-        g: Binding for the gravitational acceleration scalar (default "g"). Only used if `buoyant_particles` is True.
-        rho0: Binding for the reference density scalar (default "rho0"). Only used if `buoyant_particles` is True.
-        linear_damping_coefficient: Binding for the linear damping coefficient scalar (default "linear_damping_coefficient").
-            Only used if `linear_damping` is True.
-        quadratic_damping_coefficient: Binding for the quadratic damping coefficient scalar (default "quadratic_damping_coefficient").
-            Only used if `quadratic_damping` is True.
+    Parameters
+    ----------
+    vertical_velocity : bool, optional
+        Whether to include vertical velocity advection (default True).
+    buoyant_particles : bool, optional
+        Whether to include a buoyancy driven component to the vertical velocity (default False).
+    linear_damping : bool, optional
+        Whether to include linear damping of the relative vertical velocity (default False).
+    quadratic_damping : bool, optional
+        Whether to include quadratic damping of the relative vertical velocity (default False).
+    index_padding : int, optional
+        Index padding, i.e. the minimum amount by which the field indices
+        exceed the particle indices (default 5).
+    u : str, optional
+        Binding for the u velocity field (default "u").
+    v : str, optional
+        Binding for the v velocity field (default "v").
+    w : str, optional
+        Binding for the w velocity field (default "w"). Only used if `vertical_velocity` is True.
+    dx : str, optional
+        Binding for the x grid spacing field (default "dx").
+    dy : str, optional
+        Binding for the y grid spacing field (default "dy").
+    h : str, optional
+        Binding for the bathymetry field (default "h").
+    zeta : str, optional
+        Binding for the free surface field (default "zeta").
+    C : str, optional
+        Binding for the vertical stretching function field (default "C").
+    rho : str, optional
+        Binding for the density field (default "rho"). Only used if `buoyant_particles` is True.
+    hc : str, optional
+        Binding for the critical depth scalar (default "hc").
+    NZ : str, optional
+        Binding for the number of vertical levels scalar (default "NZ").
+    g : str, optional
+        Binding for the gravitational acceleration scalar (default "g"). Only used if `buoyant_particles` is True.
+    rho0 : str, optional
+        Binding for the reference density scalar (default "rho0"). Only used if `buoyant_particles` is True.
+    linear_damping_coefficient : str, optional
+        Binding for the linear damping coefficient scalar (default "linear_damping_coefficient").
+        Only used if `linear_damping` is True.
+    quadratic_damping_coefficient : str, optional
+        Binding for the quadratic damping coefficient scalar (default "quadratic_damping_coefficient").
+        Only used if `quadratic_damping` is True.
 
-    Notes:
-        ROMS uses a sigma coordinate system in the vertical. Vertical advection occurs in physical space,
-        i.e. in `z`. Therefore, after each advection step, the particle `zidx` is recomputed based on the updated `z` position.
+    Returns
+    -------
+    ABTimestepper
+        Timestepper with ROMS advection kernels.
 
-        !!! Important !!!
+    Notes
+    -----
+    ROMS uses a sigma coordinate system in the vertical. Vertical advection occurs in physical space,
+    i.e. in :math:`z`. Therefore, after each advection step, the particle `zidx` is recomputed based on the updated :math:`z` position.
+
+    .. warning::
+
         Both `z` and `zidx` must be initialised before the simulation start. `roms.construct_compute_z_kernel()` can be used to
         construct a kernel to compute `z` from `zidx` and `roms.construct_compute_zidx_kernel` can be used to construct a kernel
         to compute `zidx` from `z`.
 
-        Horizontal advection occurs in index space, i.e. in `xidx` and `yidx`.
+    Horizontal advection occurs in index space, i.e. in `xidx` and `yidx`.
 
-        Vertical advection using `w` (vertical velocity) is optional and can be disabled by setting `vertical_velocity=False`.
-        The particles can be made buoyant by setting `buoyant_particles=True`, which adds a buoyancy driven component to the
-        vertical velocity. This adds a relative vertical velocity `w_rel` to the particle. The tendency of `w_rel` is computed
-        based on the local density difference between the particle (rho_particle) and the surrounding fluid (rho_environment).
-            dw_rel/dt = (rho_environment - rho_particle) * g / rho0
-        where g is the gravitational acceleration and rho0 is a reference density. Damping can be applied to `w_rel` using linear
-        and/or quadratic damping by setting `linear_damping=True` and/or `quadratic_damping=True`.
+    Vertical advection using `w` (vertical velocity) is optional and can be disabled by setting `vertical_velocity=False`.
+    The particles can be made buoyant by setting `buoyant_particles=True`, which adds a buoyancy driven component to the
+    vertical velocity. This adds a relative vertical velocity `w_rel` to the particle. The tendency of `w_rel` is computed
+    based on the local density difference between the particle :math:`(\rho_{\mathrm{particle}})` and the surrounding fluid :math:`(\rho_{\mathrm{env}})`.
+
+    .. math::
+
+        \frac{dw_{\mathrm{rel}}}{dt} = \frac{(\rho_{\mathrm{env}} - \rho_{\mathrm{particle}})}{\rho_0}g
+
+    where :math:`g` is the gravitational acceleration and :math:`\rho_0` is a reference density. Damping can be applied to `w_rel` using linear
+    and/or quadratic damping by setting `linear_damping=True` and/or `quadratic_damping=True`.
     """
     # construct the tendency kernels based on the options
     tendency_kernels = []
 
     # horizontal advection
-    tendency_kernels.extend(
-        [
-            construct_horizontal_idx_tendency_kernel_from_velocity_field("_dxidx0", u, dx),
-            construct_horizontal_idx_tendency_kernel_from_velocity_field("_dyidx0", v, dy),
-        ]
-    )
+    tendency_kernels.extend([
+        construct_horizontal_idx_tendency_kernel_from_velocity_field("_dxidx0", u, dx),
+        construct_horizontal_idx_tendency_kernel_from_velocity_field("_dyidx0", v, dy),
+    ])
 
     # vertical advection
     if vertical_velocity:

@@ -1,7 +1,7 @@
 """Implementations of linear and quadratic relaxation tendencies for particle properties."""
 
-from functools import lru_cache
-from typing import Callable
+from collections.abc import Callable
+from functools import cache
 
 import numba
 import numpy as np
@@ -15,51 +15,68 @@ from ..interpolation import (
 from ..status import INACTIVE_FLAG
 
 __all__ = [
-    "_linear_relaxation_constant_coefficient_constant_target",
-    "_linear_relaxation_constant_coefficient_property_target",
-    "_linear_relaxation_constant_coefficient_scalar_target",
     "_linear_relaxation_constant_coefficient_1D_field_target",
     "_linear_relaxation_constant_coefficient_2D_field_target",
     "_linear_relaxation_constant_coefficient_3D_field_target",
-    "_linear_relaxation_property_coefficient_constant_target",
-    "_linear_relaxation_property_coefficient_property_target",
-    "_linear_relaxation_property_coefficient_scalar_target",
+    "_linear_relaxation_constant_coefficient_constant_target",
+    "_linear_relaxation_constant_coefficient_property_target",
+    "_linear_relaxation_constant_coefficient_scalar_target",
     "_linear_relaxation_property_coefficient_1D_field_target",
     "_linear_relaxation_property_coefficient_2D_field_target",
     "_linear_relaxation_property_coefficient_3D_field_target",
-    "_linear_relaxation_scalar_coefficient_constant_target",
-    "_linear_relaxation_scalar_coefficient_property_target",
-    "_linear_relaxation_scalar_coefficient_scalar_target",
+    "_linear_relaxation_property_coefficient_constant_target",
+    "_linear_relaxation_property_coefficient_property_target",
+    "_linear_relaxation_property_coefficient_scalar_target",
     "_linear_relaxation_scalar_coefficient_1D_field_target",
     "_linear_relaxation_scalar_coefficient_2D_field_target",
     "_linear_relaxation_scalar_coefficient_3D_field_target",
-    "_quadratic_relaxation_constant_coefficient_constant_target",
-    "_quadratic_relaxation_constant_coefficient_property_target",
-    "_quadratic_relaxation_constant_coefficient_scalar_target",
+    "_linear_relaxation_scalar_coefficient_constant_target",
+    "_linear_relaxation_scalar_coefficient_property_target",
+    "_linear_relaxation_scalar_coefficient_scalar_target",
     "_quadratic_relaxation_constant_coefficient_1D_field_target",
     "_quadratic_relaxation_constant_coefficient_2D_field_target",
     "_quadratic_relaxation_constant_coefficient_3D_field_target",
-    "_quadratic_relaxation_property_coefficient_constant_target",
-    "_quadratic_relaxation_property_coefficient_property_target",
-    "_quadratic_relaxation_property_coefficient_scalar_target",
+    "_quadratic_relaxation_constant_coefficient_constant_target",
+    "_quadratic_relaxation_constant_coefficient_property_target",
+    "_quadratic_relaxation_constant_coefficient_scalar_target",
     "_quadratic_relaxation_property_coefficient_1D_field_target",
     "_quadratic_relaxation_property_coefficient_2D_field_target",
     "_quadratic_relaxation_property_coefficient_3D_field_target",
-    "_quadratic_relaxation_scalar_coefficient_constant_target",
-    "_quadratic_relaxation_scalar_coefficient_property_target",
-    "_quadratic_relaxation_scalar_coefficient_scalar_target",
+    "_quadratic_relaxation_property_coefficient_constant_target",
+    "_quadratic_relaxation_property_coefficient_property_target",
+    "_quadratic_relaxation_property_coefficient_scalar_target",
     "_quadratic_relaxation_scalar_coefficient_1D_field_target",
     "_quadratic_relaxation_scalar_coefficient_2D_field_target",
     "_quadratic_relaxation_scalar_coefficient_3D_field_target",
+    "_quadratic_relaxation_scalar_coefficient_constant_target",
+    "_quadratic_relaxation_scalar_coefficient_property_target",
+    "_quadratic_relaxation_scalar_coefficient_scalar_target",
 ]
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_constant_coefficient_constant_target(
     relaxation_coefficient: np.inexact,
     target: np.inexact,
 ) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact]], None]:
-    """Construct a function to apply linear relaxation with constant coefficient and target."""
+    """Construct a function to apply linear relaxation with constant coefficient and target.
+
+    Parameters
+    ----------
+    relaxation_coefficient : np.inexact
+        The constant relaxation coefficient to apply.
+    target : np.inexact
+        The constant target value for the relaxation forcing.
+
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies linear relaxation with constant coefficient and target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same relaxation coefficient and target values.
+    """
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def impl(
@@ -76,11 +93,26 @@ def _linear_relaxation_constant_coefficient_constant_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_constant_coefficient_property_target(
     relaxation_coefficient: np.inexact,
 ) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], npt.NDArray[np.inexact]], None]:
-    """Construct a function to apply linear relaxation with constant coefficient and property target."""
+    """Construct a function to apply linear relaxation with constant coefficient and property target.
+
+    Parameters
+    ----------
+    relaxation_coefficient : np.inexact
+        The constant relaxation coefficient to apply.
+
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies linear relaxation with constant coefficient and property target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same relaxation coefficient.
+    """
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def impl(
@@ -98,11 +130,26 @@ def _linear_relaxation_constant_coefficient_property_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_constant_coefficient_scalar_target(
     relaxation_coefficient: np.inexact,
 ) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], np.generic], None]:
-    """Construct a function to apply linear relaxation with constant coefficient and scalar target."""
+    """Construct a function to apply linear relaxation with constant coefficient and scalar target.
+
+    Parameters
+    ----------
+    relaxation_coefficient : np.inexact
+        The constant relaxation coefficient to apply.
+
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies linear relaxation with constant coefficient and scalar target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same relaxation coefficient and target values.
+    """
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def impl(
@@ -120,7 +167,7 @@ def _linear_relaxation_constant_coefficient_scalar_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_constant_coefficient_1D_field_target(
     relaxation_coefficient: np.inexact,
     interpolation_half_width: int = 1,
@@ -139,11 +186,21 @@ def _linear_relaxation_constant_coefficient_1D_field_target(
 
     Parameters
     ----------
-    relaxation_coefficient: The constant relaxation coefficient to apply.
-    interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
+    relaxation_coefficient : np.inexact
+        The constant relaxation coefficient to apply.
+    interpolation_half_width : int, optional
+        The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to linear interpolation.
-    """
 
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies linear relaxation with constant coefficient and 1D field target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same relaxation coefficient and interpolation half-width.
+    """
     interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -175,7 +232,7 @@ def _linear_relaxation_constant_coefficient_1D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_constant_coefficient_2D_field_target(
     relaxation_coefficient: np.inexact,
     interpolation_half_width: int = 1,
@@ -196,11 +253,21 @@ def _linear_relaxation_constant_coefficient_2D_field_target(
 
     Parameters
     ----------
-    relaxation_coefficient: The constant relaxation coefficient to apply.
-    interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
+    relaxation_coefficient : np.inexact
+        The constant relaxation coefficient to apply.
+    interpolation_half_width : int, optional
+        The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to bilinear interpolation.
-    """
 
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies linear relaxation with constant coefficient and 2D field target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same relaxation coefficient and interpolation half-width.
+    """
     interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -236,7 +303,7 @@ def _linear_relaxation_constant_coefficient_2D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_constant_coefficient_3D_field_target(
     relaxation_coefficient: np.inexact,
     interpolation_half_width: int = 1,
@@ -259,11 +326,21 @@ def _linear_relaxation_constant_coefficient_3D_field_target(
 
     Parameters
     ----------
-    relaxation_coefficient: The constant relaxation coefficient to apply.
-    interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
+    relaxation_coefficient : np.inexact
+        The constant relaxation coefficient to apply.
+    interpolation_half_width : int, optional
+        The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to trilinear interpolation.
-    """
 
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies linear relaxation with constant coefficient and 3D field target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same relaxation coefficient and interpolation half-width.
+    """
     interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -305,7 +382,7 @@ def _linear_relaxation_constant_coefficient_3D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_property_coefficient_constant_target(
     target: np.inexact,
 ) -> Callable[
@@ -317,7 +394,22 @@ def _linear_relaxation_property_coefficient_constant_target(
     ],
     None,
 ]:
-    """Construct a function to apply linear relaxation with property coefficient and constant target."""
+    """Construct a function to apply linear relaxation with property coefficient and constant target.
+
+    Parameters
+    ----------
+    target : np.inexact
+        The constant target value for the relaxation forcing.
+
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies linear relaxation with property coefficient and constant target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same target value.
+    """
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def impl(
@@ -335,7 +427,7 @@ def _linear_relaxation_property_coefficient_constant_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_property_coefficient_property_target() -> Callable[
     [
         npt.NDArray[np.uint8],
@@ -346,7 +438,17 @@ def _linear_relaxation_property_coefficient_property_target() -> Callable[
     ],
     None,
 ]:
-    """Construct a function to apply linear relaxation with property coefficient and property target."""
+    """Construct a function to apply linear relaxation with property coefficient and property target.
+
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies linear relaxation with property coefficient and property target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation.
+    """
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def impl(
@@ -365,7 +467,7 @@ def _linear_relaxation_property_coefficient_property_target() -> Callable[
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_property_coefficient_scalar_target() -> Callable[
     [
         npt.NDArray[np.uint8],
@@ -376,7 +478,17 @@ def _linear_relaxation_property_coefficient_scalar_target() -> Callable[
     ],
     None,
 ]:
-    """Construct a function to apply linear relaxation with property coefficient and scalar target."""
+    """Construct a function to apply linear relaxation with property coefficient and scalar target.
+
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies linear relaxation with property coefficient and scalar target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation.
+    """
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def impl(
@@ -395,7 +507,7 @@ def _linear_relaxation_property_coefficient_scalar_target() -> Callable[
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_property_coefficient_1D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -414,10 +526,19 @@ def _linear_relaxation_property_coefficient_1D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
+    interpolation_half_width : int, optional
+        The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to linear interpolation.
-    """
 
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies linear relaxation with property coefficient and 1D field target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same interpolation half-width.
+    """
     interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -450,7 +571,7 @@ def _linear_relaxation_property_coefficient_1D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_property_coefficient_2D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -471,10 +592,19 @@ def _linear_relaxation_property_coefficient_2D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
+    interpolation_half_width : int, optional
+        The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to bilinear interpolation.
-    """
 
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies linear relaxation with property coefficient and 2D field target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same interpolation half-width.
+    """
     interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -511,7 +641,7 @@ def _linear_relaxation_property_coefficient_2D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_property_coefficient_3D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -534,10 +664,19 @@ def _linear_relaxation_property_coefficient_3D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
+    interpolation_half_width : int, optional
+        The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to trilinear interpolation.
-    """
 
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies linear relaxation with property coefficient and 3D field target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same interpolation half-width.
+    """
     interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -580,11 +719,26 @@ def _linear_relaxation_property_coefficient_3D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_scalar_coefficient_constant_target(
     target: np.inexact,
 ) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], np.generic], None]:
-    """Construct a function to apply linear relaxation with scalar coefficient and constant target."""
+    """Construct a function to apply linear relaxation with scalar coefficient and constant target.
+
+    Parameters
+    ----------
+    target : np.inexact
+        The constant target value for the relaxation forcing.
+
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies linear relaxation with scalar coefficient and constant target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same target value.
+    """
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def impl(
@@ -602,7 +756,7 @@ def _linear_relaxation_scalar_coefficient_constant_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_scalar_coefficient_property_target() -> Callable[
     [
         npt.NDArray[np.uint8],
@@ -613,7 +767,17 @@ def _linear_relaxation_scalar_coefficient_property_target() -> Callable[
     ],
     None,
 ]:
-    """Construct a function to apply linear relaxation with scalar coefficient and property target."""
+    """Construct a function to apply linear relaxation with scalar coefficient and property target.
+
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies linear relaxation with scalar coefficient and property target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation.
+    """
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def impl(
@@ -632,7 +796,7 @@ def _linear_relaxation_scalar_coefficient_property_target() -> Callable[
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_scalar_coefficient_scalar_target() -> Callable[
     [
         npt.NDArray[np.uint8],
@@ -643,7 +807,17 @@ def _linear_relaxation_scalar_coefficient_scalar_target() -> Callable[
     ],
     None,
 ]:
-    """Construct a function to apply linear relaxation with scalar coefficient and scalar target."""
+    """Construct a function to apply linear relaxation with scalar coefficient and scalar target.
+
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies linear relaxation with scalar coefficient and scalar target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation.
+    """
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def impl(
@@ -662,7 +836,7 @@ def _linear_relaxation_scalar_coefficient_scalar_target() -> Callable[
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_scalar_coefficient_1D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -681,10 +855,19 @@ def _linear_relaxation_scalar_coefficient_1D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
+    interpolation_half_width : int, optional
+        The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to linear interpolation.
-    """
 
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies linear relaxation with scalar coefficient and 1D field target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same interpolation half-width.
+    """
     interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -717,7 +900,7 @@ def _linear_relaxation_scalar_coefficient_1D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_scalar_coefficient_2D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -738,10 +921,19 @@ def _linear_relaxation_scalar_coefficient_2D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
+    interpolation_half_width : int, optional
+        The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to bilinear interpolation.
-    """
 
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies linear relaxation with scalar coefficient and 2D field target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same interpolation half-width.
+    """
     interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -778,7 +970,7 @@ def _linear_relaxation_scalar_coefficient_2D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _linear_relaxation_scalar_coefficient_3D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -801,10 +993,15 @@ def _linear_relaxation_scalar_coefficient_3D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
+    interpolation_half_width : int, optional
+        The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to trilinear interpolation.
-    """
 
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies linear relaxation with scalar coefficient and 3D field target.
+    """
     interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -852,12 +1049,29 @@ def _linear_relaxation_scalar_coefficient_3D_field_target(
 ########################
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_constant_coefficient_constant_target(
     relaxation_coefficient: np.inexact,
     target: np.inexact,
 ) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact]], None]:
-    """Construct a function to apply quadratic relaxation with constant coefficient and target."""
+    """Construct a function to apply quadratic relaxation with constant coefficient and target.
+
+    Parameters
+    ----------
+    relaxation_coefficient : np.inexact
+        The constant relaxation coefficient to apply.
+    target : np.inexact
+        The constant target value for the relaxation forcing.
+
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies quadratic relaxation with constant coefficient and target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same relaxation coefficient and target value.
+    """
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def impl(
@@ -875,11 +1089,26 @@ def _quadratic_relaxation_constant_coefficient_constant_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_constant_coefficient_property_target(
     relaxation_coefficient: np.inexact,
 ) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], npt.NDArray[np.inexact]], None]:
-    """Construct a function to apply quadratic relaxation with constant coefficient and property target."""
+    """Construct a function to apply quadratic relaxation with constant coefficient and property target.
+
+    Parameters
+    ----------
+    relaxation_coefficient : np.inexact
+        The constant relaxation coefficient to apply.
+
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies quadratic relaxation with constant coefficient and property target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same relaxation coefficient.
+    """
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def impl(
@@ -898,11 +1127,26 @@ def _quadratic_relaxation_constant_coefficient_property_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_constant_coefficient_scalar_target(
     relaxation_coefficient: np.inexact,
 ) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], np.generic], None]:
-    """Construct a function to apply quadratic relaxation with constant coefficient and scalar target."""
+    """Construct a function to apply quadratic relaxation with constant coefficient and scalar target.
+
+    Parameters
+    ----------
+    relaxation_coefficient : np.inexact
+        The constant relaxation coefficient to apply.
+
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies quadratic relaxation with constant coefficient and scalar target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same relaxation coefficient.
+    """
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def impl(
@@ -921,7 +1165,7 @@ def _quadratic_relaxation_constant_coefficient_scalar_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_constant_coefficient_1D_field_target(
     relaxation_coefficient: np.inexact,
     interpolation_half_width: int = 1,
@@ -940,11 +1184,21 @@ def _quadratic_relaxation_constant_coefficient_1D_field_target(
 
     Parameters
     ----------
-    relaxation_coefficient: The constant relaxation coefficient to apply.
-    interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
+    relaxation_coefficient : np.inexact
+        The constant relaxation coefficient to apply.
+    interpolation_half_width : int, optional
+        The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to linear interpolation.
-    """
 
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies quadratic relaxation with constant coefficient and 1D field target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same relaxation coefficient and interpolation half-width.
+    """
     interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -977,7 +1231,7 @@ def _quadratic_relaxation_constant_coefficient_1D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_constant_coefficient_2D_field_target(
     relaxation_coefficient: np.inexact,
     interpolation_half_width: int = 1,
@@ -998,11 +1252,21 @@ def _quadratic_relaxation_constant_coefficient_2D_field_target(
 
     Parameters
     ----------
-    relaxation_coefficient: The constant relaxation coefficient to apply.
-    interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
+    relaxation_coefficient : np.inexact
+        The constant relaxation coefficient to apply.
+    interpolation_half_width : int, optional
+        The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to bilinear interpolation.
-    """
 
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies quadratic relaxation with constant coefficient and 2D field target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same relaxation coefficient and interpolation half-width.
+    """
     interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -1039,7 +1303,7 @@ def _quadratic_relaxation_constant_coefficient_2D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_constant_coefficient_3D_field_target(
     relaxation_coefficient: np.inexact,
     interpolation_half_width: int = 1,
@@ -1062,11 +1326,21 @@ def _quadratic_relaxation_constant_coefficient_3D_field_target(
 
     Parameters
     ----------
-    relaxation_coefficient: The constant relaxation coefficient to apply.
-    interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
+    relaxation_coefficient : np.inexact
+        The constant relaxation coefficient to apply.
+    interpolation_half_width : int, optional
+        The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to trilinear interpolation.
-    """
 
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies quadratic relaxation with constant coefficient and 3D field target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same relaxation coefficient and interpolation half-width.
+    """
     interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -1109,7 +1383,7 @@ def _quadratic_relaxation_constant_coefficient_3D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_property_coefficient_constant_target(
     target: np.inexact,
 ) -> Callable[
@@ -1121,7 +1395,22 @@ def _quadratic_relaxation_property_coefficient_constant_target(
     ],
     None,
 ]:
-    """Construct a function to apply quadratic relaxation with property coefficient and constant target."""
+    """Construct a function to apply quadratic relaxation with property coefficient and constant target.
+
+    Parameters
+    ----------
+    target : np.inexact
+        The constant target value for the relaxation forcing.
+
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies quadratic relaxation with property coefficient and constant target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same target value.
+    """
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def impl(
@@ -1140,7 +1429,7 @@ def _quadratic_relaxation_property_coefficient_constant_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_property_coefficient_property_target() -> Callable[
     [
         npt.NDArray[np.uint8],
@@ -1151,7 +1440,17 @@ def _quadratic_relaxation_property_coefficient_property_target() -> Callable[
     ],
     None,
 ]:
-    """Construct a function to apply quadratic relaxation with property coefficient and property target."""
+    """Construct a function to apply quadratic relaxation with property coefficient and property target.
+
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies quadratic relaxation with property coefficient and property target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation.
+    """
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def impl(
@@ -1171,7 +1470,7 @@ def _quadratic_relaxation_property_coefficient_property_target() -> Callable[
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_property_coefficient_scalar_target() -> Callable[
     [
         npt.NDArray[np.uint8],
@@ -1182,7 +1481,17 @@ def _quadratic_relaxation_property_coefficient_scalar_target() -> Callable[
     ],
     None,
 ]:
-    """Construct a function to apply quadratic relaxation with property coefficient and scalar target."""
+    """Construct a function to apply quadratic relaxation with property coefficient and scalar target.
+
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies quadratic relaxation with property coefficient and scalar target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation.
+    """
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def impl(
@@ -1202,7 +1511,7 @@ def _quadratic_relaxation_property_coefficient_scalar_target() -> Callable[
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_property_coefficient_1D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -1221,10 +1530,19 @@ def _quadratic_relaxation_property_coefficient_1D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
+    interpolation_half_width : int, optional
+        The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to linear interpolation.
-    """
 
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies quadratic relaxation with property coefficient and 1D field target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same interpolation half-width.
+    """
     interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -1258,7 +1576,7 @@ def _quadratic_relaxation_property_coefficient_1D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_property_coefficient_2D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -1279,10 +1597,19 @@ def _quadratic_relaxation_property_coefficient_2D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
+    interpolation_half_width : int, optional
+        The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to bilinear interpolation.
-    """
 
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies quadratic relaxation with property coefficient and 2D field target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same interpolation half-width.
+    """
     interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -1320,7 +1647,7 @@ def _quadratic_relaxation_property_coefficient_2D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_property_coefficient_3D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -1343,10 +1670,19 @@ def _quadratic_relaxation_property_coefficient_3D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
+    interpolation_half_width : int, optional
+        The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to trilinear interpolation.
-    """
 
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies quadratic relaxation with property coefficient and 3D field target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same interpolation half-width.
+    """
     interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -1390,11 +1726,26 @@ def _quadratic_relaxation_property_coefficient_3D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_scalar_coefficient_constant_target(
     target: np.inexact,
 ) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], np.generic], None]:
-    """Construct a function to apply quadratic relaxation with scalar coefficient and constant target."""
+    """Construct a function to apply quadratic relaxation with scalar coefficient and constant target.
+
+    Parameters
+    ----------
+    target : np.inexact
+        The constant target value for the relaxation forcing.
+
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies quadratic relaxation with scalar coefficient and constant target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same target value.
+    """
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def impl(
@@ -1413,7 +1764,7 @@ def _quadratic_relaxation_scalar_coefficient_constant_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_scalar_coefficient_property_target() -> Callable[
     [
         npt.NDArray[np.uint8],
@@ -1424,7 +1775,17 @@ def _quadratic_relaxation_scalar_coefficient_property_target() -> Callable[
     ],
     None,
 ]:
-    """Construct a function to apply quadratic relaxation with scalar coefficient and property target."""
+    """Construct a function to apply quadratic relaxation with scalar coefficient and property target.
+
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies quadratic relaxation with scalar coefficient and property target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation.
+    """
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def impl(
@@ -1444,7 +1805,7 @@ def _quadratic_relaxation_scalar_coefficient_property_target() -> Callable[
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_scalar_coefficient_scalar_target() -> Callable[
     [
         npt.NDArray[np.uint8],
@@ -1455,7 +1816,17 @@ def _quadratic_relaxation_scalar_coefficient_scalar_target() -> Callable[
     ],
     None,
 ]:
-    """Construct a function to apply quadratic relaxation with scalar coefficient and scalar target."""
+    """Construct a function to apply quadratic relaxation with scalar coefficient and scalar target.
+
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies quadratic relaxation with scalar coefficient and scalar target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same target value.
+    """
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def impl(
@@ -1475,7 +1846,7 @@ def _quadratic_relaxation_scalar_coefficient_scalar_target() -> Callable[
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_scalar_coefficient_1D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -1494,10 +1865,19 @@ def _quadratic_relaxation_scalar_coefficient_1D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
+    interpolation_half_width : int, optional
+        The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to linear interpolation.
-    """
 
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies quadratic relaxation with scalar coefficient and 1D field target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same interpolation half-width.
+    """
     interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -1531,7 +1911,7 @@ def _quadratic_relaxation_scalar_coefficient_1D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_scalar_coefficient_2D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -1552,10 +1932,19 @@ def _quadratic_relaxation_scalar_coefficient_2D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
+    interpolation_half_width : int, optional
+        The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to bilinear interpolation.
-    """
 
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies quadratic relaxation with scalar coefficient and 2D field target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same interpolation half-width.
+    """
     interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
@@ -1593,7 +1982,7 @@ def _quadratic_relaxation_scalar_coefficient_2D_field_target(
     return impl
 
 
-@lru_cache(maxsize=None)
+@cache
 def _quadratic_relaxation_scalar_coefficient_3D_field_target(
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -1616,10 +2005,19 @@ def _quadratic_relaxation_scalar_coefficient_3D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width: The half-width of the interpolation stencil to use for sampling the field target.
+    interpolation_half_width : int, optional
+        The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to trilinear interpolation.
-    """
 
+    Returns
+    -------
+    Callable
+        A numba jitted function that applies quadratic relaxation with scalar coefficient and 3D field target.
+
+    Notes
+    -----
+    This factory function is cached to avoid recompilation for the same interpolation half-width.
+    """
     interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)

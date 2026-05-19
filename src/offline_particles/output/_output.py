@@ -5,7 +5,8 @@ import collections.abc
 import dataclasses
 import functools
 import types
-from typing import Any, Iterable, KeysView, Mapping
+from collections.abc import Iterable, KeysView, Mapping
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -29,8 +30,24 @@ class Output:
         dtype: npt.DTypeLike | None = None,
         **attrs: Any,
     ) -> None:
-        """Initialize the Output."""
+        """Initialize the Output.
 
+        Parameters
+        ----------
+        particle_property_name : str
+            The name of the particle property to output.
+        *kernels : BoundKernel
+            The kernels required to compute the output.
+        dtype : npt.DTypeLike, optional
+            The data type of the output.
+        **attrs : Any
+            Additional attributes for the output.
+
+        Raises
+        ------
+        ValueError
+            If the specified dtype is incompatible with the required dtype from the kernels.
+        """
         kernel_particle_property_dtypes = get_required_particle_property_dtypes(*kernels)
 
         # case 1: the particle property is already defined by the kernels
@@ -93,13 +110,35 @@ class TwoKeyDict[OT, IT, VT](collections.abc.MutableMapping[tuple[OT, IT], VT]):
         return sum(len(inner_dict) for inner_dict in self._data.values())
 
     def get_inner_mapping(self, outer_key: OT) -> Mapping[IT, VT]:
-        """Get a view of the inner mapping for a given outer key."""
+        """Get a view of the inner mapping for a given outer key.
+
+        Parameters
+        ----------
+        outer_key : OT
+            The outer key for which to retrieve the inner mapping.
+
+        Returns
+        -------
+        Mapping[IT, VT]
+            A read-only view of the inner mapping corresponding to the specified outer key.
+
+        Raises
+        ------
+        KeyError
+            If the specified outer key does not exist in the TwoKeyDict.
+        """
         if outer_key not in self._data:
             raise KeyError(f"Outer key '{outer_key}' not found.")
         return types.MappingProxyType(self._data[outer_key])
 
     def outer_keys(self) -> KeysView[OT]:
-        """Get a view of all outer keys."""
+        """Get a view of all outer keys.
+
+        Returns
+        -------
+        KeysView[OT]
+            A view of all outer keys in the TwoKeyDict.
+        """
         return self._data.keys()
 
 
@@ -110,47 +149,54 @@ class AbstractOutputWriter(abc.ABC):
     @abc.abstractmethod
     def name(self) -> str:
         """The name of the output writer."""
-        pass
 
     @property
     @abc.abstractmethod
     def outputs(self) -> Iterable[tuple[tuple[str, str], Output]]:
         """The outputs declared for this writer."""
-        pass
 
     @property
     @abc.abstractmethod
     def static_outputs(self) -> Iterable[tuple[tuple[str, str], Output]]:
         """The static (time-independent) outputs declared for this writer.
 
+        Returns
+        -------
+        Iterable[tuple[tuple[str, str], Output]]
+            An iterable of tuples containing the key (particle_set, name) and the corresponding Output object.
+
+        Notes
+        -----
         Static outputs are written once at iteration 0, after particle initialisation.
         """
-        pass
 
     @abc.abstractmethod
     def write_time(self, state: SimulationState) -> None:
         """Write the current simulation time.
 
-        Args:
-            state: The current simulation state.
+        Parameters
+        ----------
+        state : SimulationState
+            The current simulation state.
         """
-        pass
 
     @abc.abstractmethod
     def write_output(self, particle_set: str, name: str, state: SimulationState) -> None:
         """Write output for a given variable at the current time step.
 
-        Args:
-            particle_set: The set of particles for which to write output.
-            name: The name of the output variable to write.
-            state: The current simulation state.
+        Parameters
+        ----------
+        particle_set : str
+            The set of particles for which to write output.
+        name : str
+            The name of the output variable to write.
+        state : SimulationState
+            The current simulation state.
         """
-        pass
 
     @abc.abstractmethod
     def finalise_write_round(self, state: SimulationState) -> None:
         """Confirm that all outputs have been written for the current round."""
-        pass
 
     @abc.abstractmethod
     def write_static_output(self, particle_set: str, name: str, state: SimulationState) -> None:
@@ -158,29 +204,41 @@ class AbstractOutputWriter(abc.ABC):
 
         This is called at iteration 0, after particle initialisation.
 
-        Args:
-            particle_set: The set of particles for which to write the static output.
-            name: The name of the static output variable to write.
-            state: The current simulation state.
+        Parameters
+        ----------
+        particle_set : str
+            The set of particles for which to write the static output.
+        name : str
+            The name of the static output variable to write.
+        state : SimulationState
+            The current simulation state.
         """
-        pass
 
     def event_name(self, particle_set: str, name: str) -> str:
         """Generate an event name for an output.
 
-        Args:
-            particle_set: The set of particles for which to write output.
-            name: The name of the output variable.
+        Parameters
+        ----------
+        particle_set : str
+            The set of particles for which to write output.
+        name : str
+            The name of the output variable.
+
+        Returns
+        -------
+        str
+            The generated event name in the format "{writer_name}:{particle_set}:{output_name}".
         """
         return f"{self.name}:{particle_set}:{name}"
 
     def create_output_events(self) -> list[Event]:
         """Create recurring events for writing time-dependent output.
 
-        Returns:
+        Returns
+        -------
+        List[Event]
             A list of recurring events for writing time-dependent output.
         """
-
         events = []
 
         # write time
@@ -205,7 +263,9 @@ class AbstractOutputWriter(abc.ABC):
         These events are intended to be registered once at iteration 0,
         after particle initialisation.
 
-        Returns:
+        Returns
+        -------
+        List[Event]
             A list of one-shot events for writing static outputs.
         """
         events = []
@@ -223,45 +283,54 @@ class AbstractOutputWriterBuilder(abc.ABC):
     @abc.abstractmethod
     def name(self) -> str:
         """The name of the output writer."""
-        pass
 
     @property
     @abc.abstractmethod
     def outputs(self) -> Iterable[tuple[tuple[str, str], Output]]:
         """The outputs declared for this writer."""
-        pass
 
     @property
     @abc.abstractmethod
     def static_outputs(self) -> Iterable[tuple[tuple[str, str], Output]]:
         """The static (time-independent) outputs declared for this writer.
 
-        Note:
-            Static outputs are written once at iteration 0, after particle initialisation.
+        Returns
+        -------
+        Iterable[tuple[tuple[str, str], Output]]
+            An iterable of tuples containing the key (particle_set, name) and the corresponding Output object.
+
+        Notes
+        -----
+        Static outputs are written once at iteration 0, after particle initialisation.
         """
-        pass
 
     @abc.abstractmethod
     def add_output(self, particle_set: str, name: str, output: Output, **kwargs: Any) -> None:
         """Add an output to the writer.
 
-        Args:
-            particle_set: The set of particles for which to add the output.
-            name: The name of the output.
-            output: The output to add.
-            **kwargs: Additional keyword arguments.
+        Parameters
+        ----------
+        particle_set : str
+            The set of particles for which to add the output.
+        name : str
+            The name of the output.
+        output : Output
+            The output to add.
+        **kwargs : Any
+            Additional keyword arguments.
         """
-        pass
 
     @abc.abstractmethod
     def remove_output(self, particle_set: str, name: str) -> None:
         """Remove an output from the writer.
 
-        Args:
-            particle_set: The set of particles for which to remove the output.
-            name: The name of the output to remove.
+        Parameters
+        ----------
+        particle_set : str
+            The set of particles for which to remove the output.
+        name : str
+            The name of the output to remove.
         """
-        pass
 
     @abc.abstractmethod
     def add_static_output(self, particle_set: str, name: str, output: Output, **kwargs: Any) -> None:
@@ -269,23 +338,29 @@ class AbstractOutputWriterBuilder(abc.ABC):
 
         Static outputs are written once at iteration 0, after particle initialisation.
 
-        Args:
-            particle_set: The set of particles for which to add the static output.
-            name: The name of the static output.
-            output: The output to add.
-            **kwargs: Additional keyword arguments.
+        Parameters
+        ----------
+        particle_set : str
+            The set of particles for which to add the static output.
+        name : str
+            The name of the static output.
+        output : Output
+            The output to add.
+        **kwargs : Any
+            Additional keyword arguments.
         """
-        pass
 
     @abc.abstractmethod
     def remove_static_output(self, particle_set: str, name: str) -> None:
         """Remove a static output from the writer.
 
-        Args:
-            particle_set: The set of particles for which to remove the static output.
-            name: The name of the static output to remove.
+        Parameters
+        ----------
+        particle_set : str
+            The set of particles for which to remove the static output.
+        name : str
+            The name of the static output to remove.
         """
-        pass
 
     @abc.abstractmethod
     def build(
@@ -295,8 +370,10 @@ class AbstractOutputWriterBuilder(abc.ABC):
     ) -> AbstractOutputWriter:
         """Build the output writer.
 
-        Args:
-            nparticles: A mapping of particle set names to number of particles.
-            time_type: The numpy dtype for the time variable.
+        Parameters
+        ----------
+        nparticles : dict[str, int]
+            A mapping of particle set names to number of particles.
+        time_type : npt.DTypeLike
+            The numpy dtype for the time variable.
         """
-        pass

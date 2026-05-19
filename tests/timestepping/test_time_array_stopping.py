@@ -13,17 +13,47 @@ from offline_particles.timestepping import Clock
 
 
 def _make_clock(time_array: np.ndarray, dt: float) -> Clock:
-    """Create a Clock from a float64 time array and dt."""
+    """Create a Clock from a float64 time array and dt.
+
+    Parameters
+    ----------
+    time_array : np.ndarray
+        A float64 array of times.
+    dt : float
+        The time step size.
+
+    Returns
+    -------
+    Clock
+        A Clock initialized with the given time array and dt.
+    """
     return Clock(time_array, np.float64(dt))
 
 
 def _make_fieldset() -> Fieldset:
-    """Create a minimal Fieldset for testing."""
+    """Create a minimal Fieldset for testing.
+
+    Returns
+    -------
+    Fieldset
+        A minimal Fieldset with dummy dimensions.
+    """
     return Fieldset(1, 1, 1, 1)
 
 
 def _make_builder(clock: Clock) -> SimulationBuilder:
-    """Create a SimulationBuilder with an empty particle set list."""
+    """Create a SimulationBuilder with an empty particle set list.
+
+    Parameters
+    ----------
+    clock : Clock
+        The Clock to use for the simulation.
+
+    Returns
+    -------
+    SimulationBuilder
+        A builder for creating a simulation with the given clock.
+    """
     fieldset = _make_fieldset()
     builder = SimulationBuilder(clock, fieldset)
     return builder
@@ -114,8 +144,11 @@ class TestDefaultTimeStop:
 
 class TestForwardSimulationTimeArrayStop:
     def test_run_stops_at_end_of_time_array_no_explicit_stop(self) -> None:
-        """A forward simulation should stop at the end of the time array
-        even when no explicit stopping condition is set."""
+        """Default stop at end of time array for forward simulation.
+
+        A forward simulation should stop at the end of the time array
+        even when no explicit stopping condition is set.
+        """
         time_array = np.arange(0.0, 5.0, dtype=np.float64)  # [0, 1, 2, 3, 4]
         clock = _make_clock(time_array, 1.0)
         sim = _make_builder(clock).build_simulation()
@@ -134,8 +167,11 @@ class TestForwardSimulationTimeArrayStop:
         assert sim.time == pytest.approx(2.0)
 
     def test_run_valid_without_explicit_stopping_condition(self) -> None:
-        """A simulation with no explicitly user-set stopping conditions should not
-        raise 'No valid stopping condition' because the default time_stop is used."""
+        """Default time stop is valid stopping condition.
+
+        A simulation with no explicitly user-set stopping conditions should not
+        raise 'No valid stopping condition' because the default time_stop is used.
+        """
         time_array = np.array([0.0, 1.0, 2.0], dtype=np.float64)
         clock = _make_clock(time_array, 1.0)
         sim = _make_builder(clock).build_simulation()
@@ -151,8 +187,11 @@ class TestForwardSimulationTimeArrayStop:
 
 class TestBackwardSimulationTimeArrayStop:
     def test_run_stops_at_start_of_time_array_no_explicit_stop(self) -> None:
-        """A backward simulation should stop at the start of the time array
-        even when no explicit stopping condition is set."""
+        """Backward simulation stops at start of time array.
+
+        A backward simulation should stop at the start of the time array
+        even when no explicit stopping condition is set.
+        """
         time_array = np.arange(0.0, 5.0, dtype=np.float64)  # [0, 1, 2, 3, 4]
         clock = _make_clock(time_array, -1.0)
         clock.set_time(time_array[-1])
@@ -162,8 +201,11 @@ class TestBackwardSimulationTimeArrayStop:
         assert sim.time >= time_array[0]
 
     def test_run_does_not_raise_for_backward_simulation(self) -> None:
-        """Reaching the start of the time array in a backward simulation should
-        not raise an error."""
+        """Can reach the start of the time array in a backward simulation.
+
+        Reaching the start of the time array in a backward simulation should
+        not raise an error.
+        """
         time_array = np.array([0.0, 1.0, 2.0], dtype=np.float64)
         clock = _make_clock(time_array, -1.0)
         clock.set_time(time_array[-1])
@@ -190,8 +232,11 @@ class TestExplicitStoppingConditionsWithTimeArrayBound:
         assert sim.iteration == 3
 
     def test_explicit_time_stop_overrides_default(self) -> None:
-        """An explicit time stop before the end of the time array should override
-        the default time_stop."""
+        """Explicit time stop overrides the default time_stop from the time array.
+
+        An explicit time stop before the end of the time array should override
+        the default time_stop.
+        """
         time_array = np.arange(0.0, 10.0, dtype=np.float64)
         clock = _make_clock(time_array, 1.0)
         sim = _make_builder(clock).build_simulation()

@@ -1,7 +1,7 @@
 """Core functions for interpolation kernels."""
 
 import functools
-from typing import Callable
+from collections.abc import Callable
 
 import numba
 import numpy as np
@@ -10,18 +10,32 @@ import numpy.typing as npt
 from ..status import INACTIVE_FLAG
 
 __all__ = [
-    "lagrange2N_1D_particle_factory",
-    "lagrange2N_2D_particle_factory",
-    "lagrange2N_3D_particle_factory",
     "lagrange2N_1D_factory",
+    "lagrange2N_1D_particle_factory",
     "lagrange2N_2D_factory",
+    "lagrange2N_2D_particle_factory",
     "lagrange2N_3D_factory",
+    "lagrange2N_3D_particle_factory",
 ]
 
 
 @numba.njit(nogil=True, fastmath=True)
 def _truncate_index(idx: float, max_idx: int) -> int:
-    """Truncate the index to be within the bounds of the field array."""
+    """Truncate the index to be within the bounds of the field array.
+
+    Parameters
+    ----------
+    idx : float
+        The index to truncate.
+
+    max_idx : int
+        The maximum index allowed (inclusive).
+
+    Returns
+    -------
+    int
+        The truncated index, which will be in the range [0, max_idx].
+    """
     idx = int(idx)  # floor the index to get the lower index
     if idx < 0:
         return 0
@@ -31,9 +45,20 @@ def _truncate_index(idx: float, max_idx: int) -> int:
         return idx
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _lagrange_basis_polynomial(N: int) -> Callable[[float, int], float]:
-    """Return a function that computes the j-th Lagrange basis polynomial of degree 2N-1 at x."""
+    """Return a function that computes the j-th Lagrange basis polynomial of degree 2N-1 at x.
+
+    Parameters
+    ----------
+    N : int
+        The number of points on either side of the lower index to use for interpolation. The total number of points used for interpolation will be 2N.
+
+    Returns
+    -------
+    Callable[[float, int], float]
+        A numba jitted function that computes the j-th Lagrange basis polynomial of degree 2N-1 at x.
+    """
 
     @numba.njit(nogil=True, fastmath=True)
     def impl(x: float, j: int) -> float:
@@ -47,19 +72,24 @@ def _lagrange_basis_polynomial(N: int) -> Callable[[float, int], float]:
     return impl
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def lagrange2N_1D_particle_factory(N: int) -> Callable[[npt.NDArray[np.inexact], np.float64, int], np.inexact]:
-    """Factory function for 1D Lagrange polynomial interpolation of a single particle on a 2N point stencil.
+    """Create a function for 1D Lagrange polynomial interpolation of a single particle on a 2N point stencil.
 
     Parameters
     ----------
     N : int
-        The number of points on either side of the lower index to use for interpolation. The total number of points used for interpolation will be 2N.
+        The number of points on either side of the lower index to use for interpolation. The total number of points used for interpolation will be `2N`.
 
     Returns
     -------
     Callable
         A JIT compiled function implementing the 1D Lagrange polynomial interpolation for a single particle.
+
+    Raises
+    ------
+    ValueError
+        If N is not a positive integer.
 
     Notes
     -----
@@ -82,7 +112,22 @@ def lagrange2N_1D_particle_factory(N: int) -> Callable[[npt.NDArray[np.inexact],
         offset_idx: np.float64,
         max_idx: int,  # max index for the lower index to avoid out-of-bounds
     ) -> np.inexact:
-        """Implementation of a 2N point Lagrange interpolating polynomial in 1D for a single particle."""
+        """Implement a 2N point Lagrange interpolating polynomial in 1D for a single particle.
+
+        Parameters
+        ----------
+        field_array : npt.NDArray[np.inexact]
+            The 1D array of field values to interpolate from.
+        offset_idx : np.float64
+            The offset index for the particle.
+        max_idx : int
+            The maximum index allowed (inclusive).
+
+        Returns
+        -------
+        np.inexact
+            The interpolated value at the particle's position.
+        """
         # work in the field array's dtype to avoid unnecessary casts and preserve precision
         scalar_t = field_array.dtype.type
 
@@ -101,7 +146,7 @@ def lagrange2N_1D_particle_factory(N: int) -> Callable[[npt.NDArray[np.inexact],
     return impl
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def lagrange2N_1D_factory(
     N: int,
     accumulate: bool = False,
@@ -115,7 +160,7 @@ def lagrange2N_1D_factory(
     ],
     None,
 ]:
-    """Factory function creating a function implementing 1D Lagrange polynomial interpolation on a 2N point stencil.
+    """Create a function implementing 1D Lagrange polynomial interpolation on a 2N point stencil.
 
     Parameters
     ----------
@@ -128,6 +173,11 @@ def lagrange2N_1D_factory(
     -------
     Callable
         A JIT compiled function implementing the 1D Lagrange polynomial interpolation.
+
+    Raises
+    ------
+    ValueError
+        If N is not a positive integer.
 
     Notes
     -----
@@ -146,7 +196,26 @@ def lagrange2N_1D_factory(
         field_array: npt.NDArray[np.inexact],
         offset: float,
     ) -> None:
-        """Implementation of a 2N point Lagrange interpolating polynomial in 1D."""
+        """Implement a 2N point Lagrange interpolating polynomial in 1D.
+
+        Parameters
+        ----------
+        status : npt.NDArray[np.uint8]
+            The particle property array of statuses.
+        idx : npt.NDArray[np.float64]
+            The particle property array of indices.
+        output : npt.NDArray[np.inexact]
+            The particle property array to store the interpolated values.
+        field_array : npt.NDArray[np.inexact]
+            The 1D array of field values to interpolate from.
+        offset : float
+            The offset for this field.
+
+        Raises
+        ------
+        ValueError
+            If the field array does not have at least 2N points to avoid out-of-bounds memory access.
+        """
         max_idx = field_array.shape[0] - 2 * N  # max index for the lower index to avoid out-of-bounds
         if max_idx < 0:
             raise ValueError(
@@ -168,11 +237,11 @@ def lagrange2N_1D_factory(
     return impl
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def lagrange2N_2D_particle_factory(
     N: int,
 ) -> Callable[[npt.NDArray[np.inexact], np.float64, np.float64, int, int], np.inexact]:
-    """Factory function for 2D Lagrange polynomial interpolation of a single particle on a 2N point stencil.
+    """Create a function for 2D Lagrange polynomial interpolation of a single particle on a 2N point stencil.
 
     Parameters
     ----------
@@ -183,6 +252,11 @@ def lagrange2N_2D_particle_factory(
     -------
     Callable
         A JIT compiled function implementing 2D Lagrange polynomial interpolation for a single particle.
+
+    Raises
+    ------
+    ValueError
+        If N is not a positive integer.
 
     Notes
     -----
@@ -208,7 +282,26 @@ def lagrange2N_2D_particle_factory(
         max_idx_0: int,
         max_idx_1: int,
     ) -> np.inexact:
-        """Implementation of a 2N point Lagrange interpolating polynomial in 2D for a single particle."""
+        """Implement a 2N point Lagrange interpolating polynomial in 2D for a single particle.
+
+        Parameters
+        ----------
+        field_array : npt.NDArray[np.inexact]
+            The 2D array of field values to interpolate from.
+        offset_idx_0 : np.float64
+            The offset index for the particle in the first dimension.
+        offset_idx_1 : np.float64
+            The offset index for the particle in the second dimension.
+        max_idx_0 : int
+            The maximum index allowed (inclusive) in the first dimension.
+        max_idx_1 : int
+            The maximum index allowed (inclusive) in the second dimension.
+
+        Returns
+        -------
+        np.inexact
+            The interpolated value at the particle's position.
+        """
         # work in the field array's dtype to avoid unnecessary casts and preserve precision
         scalar_t = field_array.dtype.type
 
@@ -272,7 +365,7 @@ def lagrange2N_2D_particle_factory(
     return impl
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def lagrange2N_2D_factory(
     N: int,
     accumulate: bool = False,
@@ -288,7 +381,7 @@ def lagrange2N_2D_factory(
     ],
     None,
 ]:
-    """Factory function creating a function implementing 2D Lagrange polynomial interpolation on a 2N point stencil.
+    """Create a function implementing 2D Lagrange polynomial interpolation on a 2N point stencil.
 
     Parameters
     ----------
@@ -301,6 +394,11 @@ def lagrange2N_2D_factory(
     -------
     Callable
         A JIT compiled function implementing the 2D Lagrange polynomial interpolation.
+
+    Raises
+    ------
+    ValueError
+        If N is not a positive integer.
 
     Notes
     -----
@@ -322,7 +420,30 @@ def lagrange2N_2D_factory(
         offset0: float,
         offset1: float,
     ) -> None:
-        """Implementation of a 2N point Lagrange interpolating polynomial in 2D."""
+        """Implement a 2N point Lagrange interpolating polynomial in 2D.
+
+        Parameters
+        ----------
+        status : npt.NDArray[np.uint8]
+            The particle property array of statuses.
+        idx0 : npt.NDArray[np.float64]
+            The particle property array of indices in the first dimension.
+        idx1 : npt.NDArray[np.float64]
+            The particle property array of indices in the second dimension.
+        output : npt.NDArray[np.inexact]
+            The particle property array to store the interpolated values.
+        field_array : npt.NDArray[np.inexact]
+            The 2D array of field values to interpolate from.
+        offset0 : float
+            The offset for the first dimension.
+        offset1 : float
+            The offset for the second dimension.
+
+        Raises
+        ------
+        ValueError
+            If the field array does not have at least 2N points in each dimension to avoid out-of-bounds memory access.
+        """
         max_idx_0 = field_array.shape[0] - 2 * N  # max index for the lower index to avoid out-of-bounds
         max_idx_1 = field_array.shape[1] - 2 * N  # max index for the lower index to avoid out-of-bounds
         if max_idx_0 < 0 or max_idx_1 < 0:
@@ -346,11 +467,11 @@ def lagrange2N_2D_factory(
     return impl
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def lagrange2N_3D_particle_factory(
     N: int,
 ) -> Callable[[npt.NDArray[np.inexact], np.float64, np.float64, np.float64, int, int, int], np.inexact]:
-    """Factory function for 3D Lagrange polynomial interpolation of a single particle on a 2N point stencil.
+    """Create a function for 3D Lagrange polynomial interpolation of a single particle on a 2N point stencil.
 
     Parameters
     ----------
@@ -362,6 +483,11 @@ def lagrange2N_3D_particle_factory(
     Callable
         A JIT compiled function implementing 3D Lagrange polynomial interpolation for a single particle.
 
+    Raises
+    ------
+    ValueError
+        If N is not a positive integer.
+
     Notes
     -----
     This factory function is cached such that the same function will be returned for the same value of N. This saves recompiling the function if reused.
@@ -372,7 +498,6 @@ def lagrange2N_3D_particle_factory(
     I.e. 0 <= max_idx_{i} <= field.shape[i] - 1 must hold to avoid out-of-bounds memory access.
     It is the caller's responsibility to ensure that the field array has at least 2N points in each dimension to avoid out-of-bounds memory access.
     """
-
     if N <= 0:
         raise ValueError("N must be a positive integer.")
 
@@ -389,7 +514,30 @@ def lagrange2N_3D_particle_factory(
         max_idx_1: int,
         max_idx_2: int,
     ) -> np.inexact:
-        """Implementation of a 2N point Lagrange interpolating polynomial in 3D for a single particle."""
+        """Implement a 2N point Lagrange interpolating polynomial in 3D for a single particle.
+
+        Parameters
+        ----------
+        field_array : npt.NDArray[np.inexact]
+            The 3D array of field values to interpolate from.
+        offset_idx_0 : np.float64
+            The offset index for the particle in the first dimension.
+        offset_idx_1 : np.float64
+            The offset index for the particle in the second dimension.
+        offset_idx_2 : np.float64
+            The offset index for the particle in the third dimension.
+        max_idx_0 : int
+            The maximum index allowed (inclusive) in the first dimension.
+        max_idx_1 : int
+            The maximum index allowed (inclusive) in the second dimension.
+        max_idx_2 : int
+            The maximum index allowed (inclusive) in the third dimension.
+
+        Returns
+        -------
+        np.inexact
+            The interpolated value at the particle's position.
+        """
         # work in the field array's dtype to avoid unnecessary casts and preserve precision
         scalar_t = field_array.dtype.type
 
@@ -474,7 +622,7 @@ def lagrange2N_3D_particle_factory(
     return impl
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def lagrange2N_3D_factory(
     N: int,
     accumulate: bool = False,
@@ -492,7 +640,7 @@ def lagrange2N_3D_factory(
     ],
     None,
 ]:
-    """Factory function creating a function implementing 3D Lagrange polynomial interpolation on a 2N point stencil.
+    """Create a function implementing 3D Lagrange polynomial interpolation on a 2N point stencil.
 
     Parameters
     ----------
@@ -505,6 +653,11 @@ def lagrange2N_3D_factory(
     -------
     Callable
         A JIT compiled function implementing the 3D Lagrange polynomial interpolation.
+
+    Raises
+    ------
+    ValueError
+        If N is not a positive integer.
 
     Notes
     -----
@@ -527,7 +680,34 @@ def lagrange2N_3D_factory(
         offset1: float,
         offset2: float,
     ) -> None:
-        """Implementation of a 2N point Lagrange interpolating polynomial in 3D."""
+        """Implement 2N point Lagrange interpolating polynomial in 3D.
+
+        Parameters
+        ----------
+        status : npt.NDArray[np.uint8]
+            The particle property array of statuses.
+        idx0 : npt.NDArray[np.float64]
+            The particle property array of indices in the first dimension.
+        idx1 : npt.NDArray[np.float64]
+            The particle property array of indices in the second dimension.
+        idx2 : npt.NDArray[np.float64]
+            The particle property array of indices in the third dimension.
+        output : npt.NDArray[np.inexact]
+            The particle property array to store the interpolated values.
+        field_array : npt.NDArray[np.inexact]
+            The 3D array of field values to interpolate from.
+        offset0 : float
+            The offset for the first dimension.
+        offset1 : float
+            The offset for the second dimension.
+        offset2 : float
+            The offset for the third dimension.
+
+        Raises
+        ------
+        ValueError
+            If the field array does not have a sufficient number of points in any dimension.
+        """
         max_idx_0 = field_array.shape[0] - 2 * N  # max index for the lower index to avoid out-of-bounds
         max_idx_1 = field_array.shape[1] - 2 * N  # max index for the lower index to avoid out-of-bounds
         max_idx_2 = field_array.shape[2] - 2 * N  # max index for the lower index to avoid out-of-bounds
