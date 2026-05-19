@@ -1184,7 +1184,7 @@ def _quadratic_relaxation_constant_coefficient_1D_field_target(
 
     Parameters
     ----------
-    relaxation_coefficient : int
+    relaxation_coefficient : np.inexact
         The constant relaxation coefficient to apply.
     interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
@@ -1252,7 +1252,7 @@ def _quadratic_relaxation_constant_coefficient_2D_field_target(
 
     Parameters
     ----------
-    relaxation_coefficient : int
+    relaxation_coefficient : np.inexact
         The constant relaxation coefficient to apply.
     interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
@@ -1326,7 +1326,7 @@ def _quadratic_relaxation_constant_coefficient_3D_field_target(
 
     Parameters
     ----------
-    relaxation_coefficient : int
+    relaxation_coefficient : np.inexact
         The constant relaxation coefficient to apply.
     interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
