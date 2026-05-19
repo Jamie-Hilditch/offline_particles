@@ -9,4 +9,4 @@ When conducting a code review, please follow these guidelines:
 - Classes should have `__str__` and `__repr__` methods implemented, unless there is a good reason not to.
 - Some classes may also benefit from a `description` or `summary` property.
   - This is useful if any end user would benefit from a more detailed description of a class instance's behaviour.
-  - This does not supercede a proper description of class level behaviour (i.e. behaviour that applies to all instances) in the class docstring.
+  - This does not supersede a proper description of class level behaviour (i.e. behaviour that applies to all instances) in the class docstring.
