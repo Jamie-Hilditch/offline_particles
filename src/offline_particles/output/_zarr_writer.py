@@ -74,9 +74,9 @@ class ZarrOutputWriter(AbstractOutputWriter):
 
         Yields
         ------
-        tuple[str, str]
+        key : tuple[str, str]
             The key (particle_set, name)
-        Output
+        output : Output
             The corresponding Output object.
         """
         for key, zarr_output_array in self._outputs.items():
@@ -88,9 +88,9 @@ class ZarrOutputWriter(AbstractOutputWriter):
 
         Yields
         ------
-        tuple[str, str]
+        key : tuple[str, str]
             The key (particle_set, name)
-        Output
+        output : Output
             The corresponding Output object.
         """
         for key, zarr_output_array in self._static_outputs.items():
