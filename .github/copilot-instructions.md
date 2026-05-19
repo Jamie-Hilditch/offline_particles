@@ -1,0 +1,12 @@
+When conducting a code review, please follow these guidelines:
+- Ensure the docstring of any modified function, method or class is up to date.
+  - Ensure it accurately describes the behaviour.
+  - Ensure the NumPy docstring style is strictly followed.
+  - Ensure the docstring is formatted in a way that is compatible with our documentation tools (Sphinx and napoleon).
+  - This applies to both src and test code.
+- Require that the behaviour of any modified function, method or class is tested.
+  - This requires writing tests for the new behaviour introduced by the change, as well as filling in the gaps in the testing of any existing behaviour.
+- Classes should have `__str__` and `__repr__` methods implemented, unless there is a good reason not to.
+- Some classes may also benefit from a `description` or `summary` property.
+  - This is useful if any end user would benefit from a more detailed description of a class instance's behaviour.
+  - This does not supercede a proper description of class level behaviour (i.e. behaviour that applies to all instances) in the class docstring.
