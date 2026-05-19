@@ -57,7 +57,7 @@ def _regularise_DLike(dt: DLike) -> D:
 
     Parameters
     ----------
-    dt (DLike)
+    dt : DLike
         The time increment to regularise.
 
     Returns
@@ -84,9 +84,9 @@ def _convert_DLike(dt: DLike, time_unit: D) -> D:
 
     Parameters
     ----------
-    dt (DLike)
+    dt : DLike
         The time increment to convert.
-    time_unit (D)
+    time_unit : D
         The time unit to match the type of the converted dt.
 
     Returns
@@ -121,12 +121,12 @@ class Clock:
 
     Parameters
     ----------
-    time_array (npt.NDArray[T])
+    time_array : npt.NDArray[T]
         Strictly increasing 1D array of time values.
-    dt (DLike)
+    dt : DLike
         The time step. Must be positive for forward integration,
         negative for backward integration.
-    time_unit (DLike)
+    time_unit : DLike, optional
         The time unit. Determines the type of time increments. Required for dimensional time,
         defaults to np.float64(1.0) for dimensionless time.
 
@@ -207,7 +207,7 @@ class Clock:
 
         Parameters
         ----------
-        time (T)
+        time : T
             The time to get the index for.
 
         Returns
@@ -238,7 +238,7 @@ class Clock:
 
         Parameters
         ----------
-        dt (DLike)
+        dt : DLike
             The time step. Must be compatible with the time unit.
 
         Raises
@@ -264,7 +264,7 @@ class Clock:
 
         Parameters
         ----------
-        time (T)
+        time : T
             The current time. Must be within the bounds of the time array.
 
         Raises
@@ -286,7 +286,7 @@ class Clock:
 
         Parameters
         ----------
-        iteration (int)
+        iteration : int
             The current iteration. Must be non-negative.
 
         Raises

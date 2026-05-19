@@ -57,23 +57,23 @@ class Simulation:
 
         Parameters
         ----------
-        clock (Clock)
+        clock : Clock
             The Clock governing simulation time and iteration.
-        fieldset (Fieldset)
+        fieldset : Fieldset
             The Fieldset providing velocity and other field data.
-        particle_sets (list[ParticleSet])
+        particle_sets : list[ParticleSet]
             List of ParticleSet instances defining particle groups.
-        recurring_iteration_scheduler (RecurringIterationScheduler)
+        recurring_iteration_scheduler : RecurringIterationScheduler
             Scheduler that fires events every N iterations.
-        recurring_time_scheduler (RecurringTimeScheduler)
+        recurring_time_scheduler : RecurringTimeScheduler
             Scheduler that fires events every dt in time.
-        at_iteration_scheduler (AtIterationScheduler)
+        at_iteration_scheduler : AtIterationScheduler
             Scheduler that fires events once at a specific iteration.
-        at_time_scheduler (AtTimeScheduler)
+        at_time_scheduler : AtTimeScheduler
             Scheduler that fires events once at a specific time.
-        output_writers (Mapping[str, AbstractOutputWriter])
+        output_writers : Mapping[str, AbstractOutputWriter]
             Mapping of output writer instances keyed by name.
-        bbox_history_size (int)
+        bbox_history_size : int, optional
             Number of bounding-box snapshots to retain for the launcher.
 
         Raises
@@ -302,7 +302,7 @@ class Simulation:
 
         Parameters
         ----------
-        time (T)
+        time : T
             The new simulation time.
         """
         self._clock.set_time(time)
@@ -312,7 +312,7 @@ class Simulation:
 
         Parameters
         ----------
-        iteration (int)
+        iteration : int
             The new simulation iteration.
         """
         self._clock.set_iteration(iteration)
@@ -322,7 +322,7 @@ class Simulation:
 
         Parameters
         ----------
-        dt (D)
+        dt : D
             The new timestep size.
         """
         self._clock.set_dt(dt)
@@ -339,7 +339,7 @@ class Simulation:
 
         Parameters
         ----------
-        iteration (int | None)
+        iteration : int | None
             The iteration to stop the simulation at, or None to disable.
         """
         self._iteration_stop = iteration
@@ -349,7 +349,7 @@ class Simulation:
 
         Parameters
         ----------
-        time (T | None)
+        time : T | None
             The time to stop the simulation at, or None to disable.
 
         Raises
@@ -372,7 +372,7 @@ class Simulation:
 
         Parameters
         ----------
-        wall_time (np.timedelta64 | None)
+        wall_time : np.timedelta64 | None
             The wall time to stop the simulation at, or None to disable.
         """
         self._wall_time_stop = wall_time
@@ -388,11 +388,11 @@ class Simulation:
 
         Parameters
         ----------
-        iteration (int | None)
+        iteration : int | None, optional
             The iteration to stop the simulation at, or None to disable.
-        time (T | None)
+        time : T | None, optional
             The time to stop the simulation at, or None to disable.
-        wall_time (np.timedelta64 | None)
+        wall_time : np.timedelta64 | None, optional
             The wall time to stop the simulation at, or None to disable.
         """
         self.set_iteration_stop(iteration)
@@ -569,13 +569,13 @@ class Simulation:
 
         Parameters
         ----------
-        particle_set: str
+        particle_set : str
             The name of the particle set to modify.
-        zidx: npt.ArrayLike | None
+        zidx : npt.ArrayLike | None, optional
             The new z indices for the particles, or None to leave unchanged.
-        yidx: npt.ArrayLike | None
+        yidx : npt.ArrayLike | None, optional
             The new y indices for the particles, or None to leave unchanged.
-        xidx: npt.ArrayLike | None
+        xidx : npt.ArrayLike | None, optional
             The new x indices for the particles, or None to leave unchanged.
 
         Raises
@@ -620,11 +620,11 @@ class Simulation:
 
         Parameters
         ----------
-        particle_set (str)
+        particle_set : str
             The name of the particle set to modify.
-        property_name (str)
+        property_name : str
             The name of the particle property to set.
-        values (npt.ArrayLike)
+        values : npt.ArrayLike
             The values to set the particle field to.
 
         Raises
@@ -645,9 +645,9 @@ class Simulation:
 
         Parameters
         ----------
-        name (str)
+        name : str
             The name of the particle set to run the kernel on.
-        kernel (BoundKernel)
+        kernel : BoundKernel
             The kernel to execute.
 
         Raises
@@ -720,11 +720,11 @@ class SimulationBuilder:
 
         Parameters
         ----------
-        n (int)
+        n : int
             The interval in iterations between event triggers.
-        event (Event)
+        event : Event
             The event to be added.
-        first (int, optional)
+        first : int, optional
             The first iteration to trigger the event. Defaults to 0.
 
         Raises
@@ -743,11 +743,11 @@ class SimulationBuilder:
 
         Parameters
         ----------
-        dt (D)
+        dt : D
             The interval in time between event triggers.
-        event (Event)
+        event : Event
             The event to be added.
-        first (T)
+        first : T, optional
             The first time to trigger the event (defaults to clock.time).
 
         Raises
@@ -788,9 +788,9 @@ class SimulationBuilder:
 
         Parameters
         ----------
-        time (T)
+        time : T
             The time at which to trigger the event.
-        event (Event)
+        event : Event
             The event to be triggered.
 
         Raises
@@ -816,13 +816,13 @@ class SimulationBuilder:
 
         Parameters
         ----------
-        event (Event)
+        event : Event
             The event to add.
-        n (int | None)
+        n : int | None, optional
             The number of iterations between event triggers.
-        dt (D | None)
+        dt : D | None, optional
             The time interval between event triggers.
-        first (int | T | None)
+        first : int | T | None, optional
             When using ``n``, the first iteration (``int``) to trigger the event (defaults to 0).
             When using ``dt``, the first time (``T``) to trigger the event (defaults to the current clock time).
 
@@ -845,11 +845,11 @@ class SimulationBuilder:
 
         Parameters
         ----------
-        event (Event)
+        event : Event
             The event to add.
-        at_iteration (int | None)
+        at_iteration : int | None, optional
             The specific iteration to trigger the event once.
-        at_time (T | None)
+        at_time : T | None, optional
             The specific time to trigger the event once.
 
         Raises
@@ -876,13 +876,14 @@ class SimulationBuilder:
 
         Parameters
         ----------
-        builder (AbstractOutputWriterBuilder)
+        builder : AbstractOutputWriterBuilder
             The output writer builder instance.
-        n (int | None)
+        n : int | None, optional
             The number of iterations between output writes (recurring).
-        dt (D | None)
+        dt : D | None, optional
             The time interval between output writes (recurring).
-            first: The first iteration or time to write output (used with n or dt).
+        first : int | T | None, optional
+            The first iteration or time to write output (used with n or dt).
 
         Raises
         ------

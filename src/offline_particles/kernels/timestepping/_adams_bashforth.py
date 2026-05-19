@@ -108,7 +108,7 @@ def ab_initialisation_factory(order: int) -> Callable[[npt.NDArray[np.uint8]], N
 
     Parameters
     ----------
-    order (int)
+    order : int
         Order of Adams-Bashforth scheme.
 
     Returns

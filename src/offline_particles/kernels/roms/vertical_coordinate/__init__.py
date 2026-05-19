@@ -38,17 +38,17 @@ def construct_compute_z_kernel(
 
     Parameters
     ----------
-    z (str)
+    z : str, optional
         Binding for the particle property to store the computed physical vertical position.
-    hc (str)
+    hc : str, optional
         Binding for the critical depth scalar
-    NZ (str)
+    NZ : str, optional
         Binding for the scalar giving the number of vertical rho levels.
-    h (str)
+    h : str, optional
         Binding for the bathymetry field
-    zeta (str)
+    zeta : str, optional
         Binding for the sea surface height field
-    C (str)
+    C : str, optional
         Binding for the vertical stretching function field
 
     Returns
@@ -104,17 +104,17 @@ def construct_compute_zidx_kernel(
 
     Parameters
     ----------
-    z (str)
+    z : str, optional
         Binding for the particle property giving the physical vertical position.
-    hc (str)
+    hc : str, optional
         Binding for the critical depth scalar
-    NZ (str)
+    NZ : str, optional
         Binding for the scalar giving the number of vertical rho levels.
-    h (str)
+    h : str, optional
         Binding for the bathymetry field
-    zeta (str)
+    zeta : str, optional
         Binding for the sea surface height field
-    C (str)
+    C : str, optional
         Binding for the vertical stretching function field
 
     Returns

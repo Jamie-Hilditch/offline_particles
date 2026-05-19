@@ -23,9 +23,9 @@ def construct_activate_released_particles_kernel(
 
     Parameters
     ----------
-    release_time (str)
+    release_time : str, optional
         Binding for the release time particle property (default "release_time").
-    dtype (npt.DTypeLike, optional)
+    dtype : npt.DTypeLike, optional
         Data type of both the simulation time and the release_time particle property
         (default np.float64). Use np.float64 for float-based clocks. For datetime-based
         clocks, pass an explicit datetime64 dtype with a unit matching the simulation
@@ -64,9 +64,9 @@ def construct_deactivate_retired_particles_kernel(
 
     Parameters
     ----------
-    retirement_time (str, optional)
+    retirement_time : str, optional
         Binding for the retirement time particle property (default "retirement_time").
-    dtype (npt.DTypeLike, optional)
+    dtype : npt.DTypeLike, optional
         Data type of both the simulation time and the retirement_time particle property
         (default np.float64). Use np.float64 for float-based clocks. For datetime-based
         clocks, pass an explicit datetime64 dtype with a unit matching the simulation

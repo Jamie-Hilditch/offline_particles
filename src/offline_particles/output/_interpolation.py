@@ -21,13 +21,13 @@ def interpolate_fields(
 
     Parameters
     ----------
-    fieldset (Fieldset)
+    fieldset : Fieldset
         The fieldset containing the fields to interpolate.
-    variables (str | Iterable[str])
+    variables : str | Iterable[str]
         A string or an iterable of variable names to interpolate.
-    N (int, optional)
+    N : int, optional
         The half width of the Lagrange interpolation stencil. Defaults to 1, which corresponds to linear interpolation.
-    particle_property_prefix (str, optional)
+    particle_property_prefix : str, optional
         The prefix for the particle array to store the output data, by default '_output'.
 
     Returns

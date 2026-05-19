@@ -113,11 +113,11 @@ class ZarrOutputWriter(AbstractOutputWriter):
 
         Parameters
         ----------
-        particle_set (str)
+        particle_set : str
             The set of particles for which to write output.
-        name (str)
+        name : str
             The name of the output variable to write.
-        state (SimulationState)
+        state : SimulationState
             The current simulation state.
 
         Raises
@@ -144,11 +144,11 @@ class ZarrOutputWriter(AbstractOutputWriter):
 
         Parameters
         ----------
-        particle_set (str)
+        particle_set : str
             The set of particles for which to write the static output.
-        name (str)
+        name : str
             The name of the static output variable to write.
-        state (SimulationState)
+        state : SimulationState
             The current simulation state.
 
         Raises
@@ -284,11 +284,11 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
 
         Parameters
         ----------
-        particle_set (str)
+        particle_set : str
             The particle set to which the output belongs.
-        name (str)
+        name : str
             The name of the output. Also used as the Zarr array name unless 'name' is given in kwargs.
-        output (Output)
+        output : Output
             The output to add.
         **kwargs (dict[str, Any])
             Additional keyword arguments passed to Zarr.create_array for this output.
@@ -314,9 +314,9 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
 
         Parameters
         ----------
-        particle_set (str)
+        particle_set : str
             The particle set to which the output belongs.
-        name (str)
+        name : str
             The name of the output to remove.
 
         Raises
@@ -335,11 +335,11 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
 
         Parameters
         ----------
-        particle_set (str)
+        particle_set : str
             The particle set to which the static output belongs.
-        name (str)
+        name : str
             The name of the static output. Also used as the Zarr array name unless 'name' is given in kwargs.
-        output (Output)
+        output : Output
             The output to add.
         **kwargs (dict[str, Any])
             Additional keyword arguments passed to Zarr.create_array for this output.
@@ -369,9 +369,9 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
 
         Parameters
         ----------
-        particle_set (str)
+        particle_set : str
             The particle set to which the static output belongs.
-        name (str)
+        name : str
             The name of the static output to remove.
 
         Raises

@@ -63,9 +63,9 @@ def _linear_relaxation_constant_coefficient_constant_target(
 
     Parameters
     ----------
-    relaxation_coefficient (np.inexact)
+    relaxation_coefficient : np.inexact
         The constant relaxation coefficient to apply.
-    target (np.inexact)
+    target : np.inexact
         The constant target value for the relaxation forcing.
 
     Returns
@@ -101,7 +101,7 @@ def _linear_relaxation_constant_coefficient_property_target(
 
     Parameters
     ----------
-    relaxation_coefficient (np.inexact)
+    relaxation_coefficient : np.inexact
         The constant relaxation coefficient to apply.
 
     Returns
@@ -138,7 +138,7 @@ def _linear_relaxation_constant_coefficient_scalar_target(
 
     Parameters
     ----------
-    relaxation_coefficient (np.inexact)
+    relaxation_coefficient : np.inexact
         The constant relaxation coefficient to apply.
 
     Returns
@@ -186,9 +186,9 @@ def _linear_relaxation_constant_coefficient_1D_field_target(
 
     Parameters
     ----------
-    relaxation_coefficient (np.inexact)
+    relaxation_coefficient : np.inexact
         The constant relaxation coefficient to apply.
-    interpolation_half_width (int)
+    interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to linear interpolation.
 
@@ -253,9 +253,9 @@ def _linear_relaxation_constant_coefficient_2D_field_target(
 
     Parameters
     ----------
-    relaxation_coefficient (np.inexact)
+    relaxation_coefficient : np.inexact
         The constant relaxation coefficient to apply.
-    interpolation_half_width (int)
+    interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to bilinear interpolation.
 
@@ -326,9 +326,9 @@ def _linear_relaxation_constant_coefficient_3D_field_target(
 
     Parameters
     ----------
-    relaxation_coefficient (np.inexact)
+    relaxation_coefficient : np.inexact
         The constant relaxation coefficient to apply.
-    interpolation_half_width (int)
+    interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to trilinear interpolation.
 
@@ -398,7 +398,7 @@ def _linear_relaxation_property_coefficient_constant_target(
 
     Parameters
     ----------
-    target (np.inexact)
+    target : np.inexact
         The constant target value for the relaxation forcing.
 
     Returns
@@ -526,7 +526,7 @@ def _linear_relaxation_property_coefficient_1D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width (int)
+    interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to linear interpolation.
 
@@ -592,7 +592,7 @@ def _linear_relaxation_property_coefficient_2D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width (int)
+    interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to bilinear interpolation.
 
@@ -664,7 +664,7 @@ def _linear_relaxation_property_coefficient_3D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width (int)
+    interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to trilinear interpolation.
 
@@ -727,7 +727,7 @@ def _linear_relaxation_scalar_coefficient_constant_target(
 
     Parameters
     ----------
-    target (np.inexact)
+    target : np.inexact
         The constant target value for the relaxation forcing.
 
     Returns
@@ -855,7 +855,7 @@ def _linear_relaxation_scalar_coefficient_1D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width (int)
+    interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to linear interpolation.
 
@@ -921,7 +921,7 @@ def _linear_relaxation_scalar_coefficient_2D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width (int)
+    interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to bilinear interpolation.
 
@@ -993,7 +993,7 @@ def _linear_relaxation_scalar_coefficient_3D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width (int)
+    interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to trilinear interpolation.
 
@@ -1058,9 +1058,9 @@ def _quadratic_relaxation_constant_coefficient_constant_target(
 
     Parameters
     ----------
-    relaxation_coefficient (np.inexact)
+    relaxation_coefficient : np.inexact
         The constant relaxation coefficient to apply.
-    target (np.inexact)
+    target : np.inexact
         The constant target value for the relaxation forcing.
 
     Returns
@@ -1097,7 +1097,7 @@ def _quadratic_relaxation_constant_coefficient_property_target(
 
     Parameters
     ----------
-    relaxation_coefficient (np.inexact)
+    relaxation_coefficient : np.inexact
         The constant relaxation coefficient to apply.
 
     Returns
@@ -1135,7 +1135,7 @@ def _quadratic_relaxation_constant_coefficient_scalar_target(
 
     Parameters
     ----------
-    relaxation_coefficient (np.inexact)
+    relaxation_coefficient : np.inexact
         The constant relaxation coefficient to apply.
 
     Returns
@@ -1184,9 +1184,9 @@ def _quadratic_relaxation_constant_coefficient_1D_field_target(
 
     Parameters
     ----------
-    relaxation_coefficient (int)
+    relaxation_coefficient : int
         The constant relaxation coefficient to apply.
-    interpolation_half_width (int)
+    interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to linear interpolation.
 
@@ -1252,9 +1252,9 @@ def _quadratic_relaxation_constant_coefficient_2D_field_target(
 
     Parameters
     ----------
-    relaxation_coefficient (int)
+    relaxation_coefficient : int
         The constant relaxation coefficient to apply.
-    interpolation_half_width (int)
+    interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to bilinear interpolation.
 
@@ -1326,9 +1326,9 @@ def _quadratic_relaxation_constant_coefficient_3D_field_target(
 
     Parameters
     ----------
-    relaxation_coefficient (int)
+    relaxation_coefficient : int
         The constant relaxation coefficient to apply.
-    interpolation_half_width (int)
+    interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to trilinear interpolation.
 
@@ -1399,7 +1399,7 @@ def _quadratic_relaxation_property_coefficient_constant_target(
 
     Parameters
     ----------
-    target (np.inexact)
+    target : np.inexact
         The constant target value for the relaxation forcing.
 
     Returns
@@ -1530,7 +1530,7 @@ def _quadratic_relaxation_property_coefficient_1D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width (int)
+    interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to linear interpolation.
 
@@ -1597,7 +1597,7 @@ def _quadratic_relaxation_property_coefficient_2D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width (int)
+    interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to bilinear interpolation.
 
@@ -1670,7 +1670,7 @@ def _quadratic_relaxation_property_coefficient_3D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width (int)
+    interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to trilinear interpolation.
 
@@ -1734,7 +1734,7 @@ def _quadratic_relaxation_scalar_coefficient_constant_target(
 
     Parameters
     ----------
-    target (np.inexact)
+    target : np.inexact
         The constant target value for the relaxation forcing.
 
     Returns
@@ -1865,7 +1865,7 @@ def _quadratic_relaxation_scalar_coefficient_1D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width (int)
+    interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to linear interpolation.
 
@@ -1932,7 +1932,7 @@ def _quadratic_relaxation_scalar_coefficient_2D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width (int)
+    interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to bilinear interpolation.
 
@@ -2005,7 +2005,7 @@ def _quadratic_relaxation_scalar_coefficient_3D_field_target(
 
     Parameters
     ----------
-    interpolation_half_width (int)
+    interpolation_half_width : int, optional
         The half-width of the interpolation stencil to use for sampling the field target.
         Default is 1, which corresponds to trilinear interpolation.
 

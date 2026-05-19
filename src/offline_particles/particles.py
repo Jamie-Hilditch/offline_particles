@@ -120,7 +120,7 @@ class ParticlesView(_FrozenArrayMapping):
 
         Parameters
         ----------
-        array (npt.NDArray)
+        array : npt.NDArray
             The input array.
 
         Returns

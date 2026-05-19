@@ -208,9 +208,9 @@ class AbstractOutputWriter(abc.ABC):
 
         Parameters
         ----------
-        particle_set (str)
+        particle_set : str
             The set of particles for which to write output.
-        name (str)
+        name : str
             The name of the output variable.
 
         Returns

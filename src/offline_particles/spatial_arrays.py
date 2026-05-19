@@ -39,7 +39,7 @@ class Stagger(enum.StrEnum):
 
         Parameters
         ----------
-        N (int)
+        N : int
             Size of the centered dimension.
 
         Returns
@@ -96,7 +96,7 @@ class ArrayAxis(enum.StrEnum):
 
         Parameters
         ----------
-        axis (ArrayAxis | str)
+        axis : ArrayAxis | str
             Either an existing ``ArrayAxis`` member, a canonical value (``"Z"``, ``"Y"``, ``"X"``),
             or an alias name (e.g. ``"DEPTH"``, ``"LATITUDE"``, ``"LON"``).
 
@@ -186,7 +186,7 @@ class BBox:
 
         Parameters
         ----------
-        axis (ArrayAxis)
+        axis : ArrayAxis
             The axis for which to retrieve the bounding box limits.
 
         Returns
@@ -412,11 +412,11 @@ def _compute_new_bounds(
 
     Parameters
     ----------
-    dim_bounds (tuple[float, float])
+    dim_bounds : tuple[float, float]
         The minimum and maximum bounds of the dimension.
-    offset (float)
+    offset : float
         The offset to apply to the indices based on the staggering of the grid.
-    bounds (npt.NDArray[np.int_])
+    bounds : npt.NDArray[np.int_]
         The array containing the chunk boundaries for the dimension.
 
     Returns
@@ -440,11 +440,11 @@ def compute_new_lower_bound(
 
     Parameters
     ----------
-    dim_min (float)
+    dim_min : float
         The minimum bound of the dimension.
-    offset (float)
+    offset : float
         The offset to apply to the indices based on the staggering of the grid.
-    bounds (npt.NDArray[np.int_])
+    bounds : npt.NDArray[np.int_]
         The array containing the chunk boundaries for the dimension.
 
     Returns
@@ -470,11 +470,11 @@ def compute_new_upper_bound(
 
     Parameters
     ----------
-    dim_max (float)
+    dim_max : float
         The maximum bound of the dimension.
-    offset (float)
+    offset : float
         The offset to apply to the indices based on the staggering of the grid.
-    bounds (npt.NDArray[np.int_])
+    bounds : npt.NDArray[np.int_]
         The array containing the chunk boundaries for the dimension.
 
     Returns

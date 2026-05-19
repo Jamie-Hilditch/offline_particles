@@ -21,9 +21,9 @@ def _particle_property_declarations(dtype: np.inexact, order: int) -> list[Parti
 
     Parameters
     ----------
-    dtype (np.inexact)
+    dtype : np.inexact
         Data type of the particle properties.
-    order (int)
+    order : int
         Order of the Adams-Bashforth scheme.
 
     Returns
