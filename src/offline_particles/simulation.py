@@ -405,7 +405,7 @@ class Simulation:
 
         Returns
         -------
-        Mapping[str, ParticlesView]:
+        Mapping[str, ParticlesView]
             The current state of the particles in the simulation.
         """
         return types.MappingProxyType(self._particles_view)

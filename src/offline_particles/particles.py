@@ -17,7 +17,7 @@ class _FrozenArrayMapping:
 
         Parameters
         ----------
-        **arrays (npt.NDArray)
+        **arrays : npt.NDArray
             The arrays to store in the mapping.
 
         Raises
