@@ -39,8 +39,7 @@ line-length = 120
 
 [tool.ruff.lint]
 pydocstyle.convention = "numpy"
-select = ["D", "DOC"]
-extend-select = ["I"]
+extend-select = ["D", "DOC", "I"]
 ignore = [
   "D1", # Missing public docstrings
   "E266"
