@@ -82,12 +82,15 @@ class RecurringIterationScheduler:
     def __call__(self, iteration: int) -> list[Event]:
         """Get the events to trigger at the given iteration.
 
-        Args:
-            iteration (int): The current iteration.
+        Parameters
+        ----------
+        iteration : int
+            The current iteration.
 
         Returns
         -------
-            list[Event]: The list of events to trigger.
+        list[Event]
+            The list of events to trigger.
         """
         triggered_events: list[Event] = []
 
@@ -225,7 +228,8 @@ class AtIterationScheduler:
 
         Yields
         ------
-            Event: The next registered event.
+        event : Event
+            The next registered event.
         """
         for event_list in self._events.values():
             for event in event_list:
@@ -289,7 +293,7 @@ class AtTimeScheduler:
 
         Yields
         ------
-        Event
+        event : Event
             The next registered event.
         """
         for event_list in self._events.values():
