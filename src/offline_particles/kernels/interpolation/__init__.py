@@ -30,6 +30,7 @@ from ._lagrange import (
     lagrange2N_3D_factory,
     lagrange2N_3D_particle_factory,
 )
+from ._lagrange_mapped import lagrange2N_mapped_particle_factory
 
 __all__ = [
     "bicubic_interpolation_factory",
@@ -62,6 +63,7 @@ __all__ = [
     "lagrange2N_2D_particle_factory",
     "lagrange2N_3D_factory",
     "lagrange2N_3D_particle_factory",
+    "lagrange2N_mapped_particle_factory",
     "linear_interpolation_factory",
     "linear_interpolation_particle",
     "tricubic_interpolation_factory",
