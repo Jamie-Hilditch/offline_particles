@@ -68,7 +68,7 @@ def _regularise_DLike(dt: DLike) -> D:
     Raises
     ------
     TypeError
-        If dt is not a np.floating, np.timedelta64, or float.
+        If dt is not a np.floating, np.timedelta64, float or int.
     """
     match dt:
         case np.floating() | np.timedelta64():
@@ -76,7 +76,7 @@ def _regularise_DLike(dt: DLike) -> D:
         case float() | int():
             return np.float64(dt)
         case _:
-            raise TypeError(f"dt must be a np.floating, np.timedelta64, or float, got {type(dt)!r}")
+            raise TypeError(f"dt must be a np.floating, np.timedelta64, float or int got {type(dt)!r}")
 
 
 def _convert_DLike(dt: DLike, time_unit: D) -> D:
