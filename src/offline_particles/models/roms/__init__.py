@@ -47,7 +47,7 @@ def roms_ab3_timestepper(
     linear_damping_coefficient: str = "linear_damping_coefficient",
     quadratic_damping_coefficient: str = "quadratic_damping_coefficient",
 ) -> ABTimestepper:
-    """Create an AB3 timestepper with ROMS advection kernels.
+    r"""Create an AB3 timestepper with ROMS advection kernels.
 
     Parameters
     ----------
@@ -98,23 +98,28 @@ def roms_ab3_timestepper(
 
     Notes
     -----
-        ROMS uses a sigma coordinate system in the vertical. Vertical advection occurs in physical space,
-        i.e. in `z`. Therefore, after each advection step, the particle `zidx` is recomputed based on the updated `z` position.
+    ROMS uses a sigma coordinate system in the vertical. Vertical advection occurs in physical space,
+    i.e. in :math:`z`. Therefore, after each advection step, the particle `zidx` is recomputed based on the updated :math:`z` position.
 
-        !!! Important !!!
+    .. warning::
+
         Both `z` and `zidx` must be initialised before the simulation start. `roms.construct_compute_z_kernel()` can be used to
         construct a kernel to compute `z` from `zidx` and `roms.construct_compute_zidx_kernel` can be used to construct a kernel
         to compute `zidx` from `z`.
 
-        Horizontal advection occurs in index space, i.e. in `xidx` and `yidx`.
+    Horizontal advection occurs in index space, i.e. in `xidx` and `yidx`.
 
-        Vertical advection using `w` (vertical velocity) is optional and can be disabled by setting `vertical_velocity=False`.
-        The particles can be made buoyant by setting `buoyant_particles=True`, which adds a buoyancy driven component to the
-        vertical velocity. This adds a relative vertical velocity `w_rel` to the particle. The tendency of `w_rel` is computed
-        based on the local density difference between the particle (rho_particle) and the surrounding fluid (rho_environment).
-            dw_rel/dt = (rho_environment - rho_particle) * g / rho0
-        where g is the gravitational acceleration and rho0 is a reference density. Damping can be applied to `w_rel` using linear
-        and/or quadratic damping by setting `linear_damping=True` and/or `quadratic_damping=True`.
+    Vertical advection using `w` (vertical velocity) is optional and can be disabled by setting `vertical_velocity=False`.
+    The particles can be made buoyant by setting `buoyant_particles=True`, which adds a buoyancy driven component to the
+    vertical velocity. This adds a relative vertical velocity `w_rel` to the particle. The tendency of `w_rel` is computed
+    based on the local density difference between the particle :math:`(\rho_{\mathrm{particle}})` and the surrounding fluid :math:`(\rho_{\mathrm{env}})`.
+
+    .. math::
+
+        \frac{dw_{\mathrm{rel}}}{dt} = \frac{(\rho_{\mathrm{env}} - \rho_{\mathrm{particle}})}{\rho_0}g
+
+    where :math:`g` is the gravitational acceleration and :math:`\rho_0` is a reference density. Damping can be applied to `w_rel` using linear
+    and/or quadratic damping by setting `linear_damping=True` and/or `quadratic_damping=True`.
     """
     # construct the tendency kernels based on the options
     tendency_kernels = []
