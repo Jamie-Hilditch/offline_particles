@@ -17,10 +17,10 @@ def _make_clock(time_array: np.ndarray, dt: float) -> Clock:
 
     Parameters
     ----------
-        time_array : np.ndarray
-            A float64 array of times.
-        dt : float
-            The time step size.
+    time_array : np.ndarray
+        A float64 array of times.
+    dt : float
+        The time step size.
 
     Returns
     -------
@@ -35,7 +35,8 @@ def _make_fieldset() -> Fieldset:
 
     Returns
     -------
-        Fieldset: A minimal Fieldset with dummy dimensions.
+    Fieldset
+        A minimal Fieldset with dummy dimensions.
     """
     return Fieldset(1, 1, 1, 1)
 
