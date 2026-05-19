@@ -24,14 +24,19 @@ def _make_state(
 
     Parameters
     ----------
-        nparticles (int): The number of particles in the set.
-        property_values (dict | None): Optional dictionary of property names and their values.
-        time (float): The simulation time.
-        particle_set (str): The name of the particle set.
+        nparticles : int
+            The number of particles in the set.
+        property_values : dict, optional
+            Optional dictionary of property names and their values.
+        time : float
+            The simulation time.
+        particle_set : str
+            The name of the particle set.
 
     Returns
     -------
-        SimulationState: A SimulationState containing the specified particle set.
+    SimulationState
+        A SimulationState containing the specified particle set.
     """
     kwargs: dict = {"xidx": np.dtype(np.float64), "yidx": np.dtype(np.float64)}
     if property_values:
@@ -65,11 +70,16 @@ def _make_multi_set_state(
 
     Parameters
     ----------
-        nparticles_ps1 (int): Number of particles in the first particle set.
-        nparticles_ps2 (int): Number of particles in the second particle set.
-        values_ps1 (list | None): Optional list of values for the first particle set's 'xidx' property.
-        values_ps2 (list | None): Optional list of values for the second particle set's 'xidx' property.
-        time (float): The simulation time.
+        nparticles_ps1 : int
+            Number of particles in the first particle set.
+        nparticles_ps2 : int
+            Number of particles in the second particle set.
+        values_ps1 : list, optional
+            Optional list of values for the first particle set's 'xidx' property.
+        values_ps2 : list, optional
+            Optional list of values for the second particle set's 'xidx' property.
+        time : float
+            The simulation time.
 
     Returns
     -------

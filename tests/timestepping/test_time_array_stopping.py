@@ -17,12 +17,15 @@ def _make_clock(time_array: np.ndarray, dt: float) -> Clock:
 
     Parameters
     ----------
-        time_array (np.ndarray): A float64 array of times.
-        dt (float): The time step size.
+        time_array : np.ndarray
+            A float64 array of times.
+        dt : float
+            The time step size.
 
     Returns
     -------
-        Clock: A Clock initialized with the given time array and dt.
+    Clock
+        A Clock initialized with the given time array and dt.
     """
     return Clock(time_array, np.float64(dt))
 
@@ -42,11 +45,13 @@ def _make_builder(clock: Clock) -> SimulationBuilder:
 
     Parameters
     ----------
-        clock (Clock): The Clock to use for the simulation.
+        clock : Clock
+            The Clock to use for the simulation.
 
     Returns
     -------
-        SimulationBuilder: A builder for creating a simulation with the given clock.
+    SimulationBuilder
+        A builder for creating a simulation with the given clock.
     """
     fieldset = _make_fieldset()
     builder = SimulationBuilder(clock, fieldset)
