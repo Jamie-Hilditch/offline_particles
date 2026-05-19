@@ -127,7 +127,8 @@ class RecurringTimeScheduler:
 
         Yields
         ------
-            Event: The next registered event.
+        event : Event
+            The next registered event.
         """
         for event_list in self._events.values():
             for _, event in event_list:
