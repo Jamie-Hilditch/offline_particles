@@ -235,7 +235,7 @@ class Simulation:
         Returns
         -------
         np.timedelta64
-            The elapsed wall time in seconds.
+            The elapsed wall time.
         """
         nanoseconds = time.perf_counter_ns() - self._wall_time_start
         return np.timedelta64(nanoseconds, "ns")

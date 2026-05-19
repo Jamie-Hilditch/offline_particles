@@ -154,7 +154,7 @@ class Launcher:
         return self._index_padding
 
     def set_index_padding(self, index_padding: int, force: bool = False) -> None:
-        """Set the index padding using by this launcher.
+        """Set the index padding used by this launcher.
 
         Parameters
         ----------
@@ -275,15 +275,10 @@ def _compute_particle_bounds(
     -------
     float
         zmin : Minimum z index of active particles.
-    float
         zmax : Maximum z index of active particles.
-    float
         ymin : Minimum y index of active particles.
-    float
         ymax : Maximum y index of active particles.
-    float
         xmin : Minimum x index of active particles.
-    float
         xmax : Maximum x index of active particles.
     """
     zmin = np.inf
