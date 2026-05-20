@@ -1,4 +1,4 @@
-"""Tests for ParticleKernel, BoundKernel, and get_required_particle_property_dtypes."""
+"""Tests for ParticleKernel and BoundKernel."""
 
 import numpy as np
 import pytest
@@ -9,7 +9,6 @@ from offline_particles.kernels import (
     ParticleKernel,
     ParticlePropertyDeclaration,
     ScalarDeclaration,
-    get_required_particle_property_dtypes,
 )
 
 # ---------------------------------------------------------------------------
@@ -51,7 +50,7 @@ class TestParticleKernelConstruction:
         decl = ParticlePropertyDeclaration("x", np.float64)
         kernel = ParticleKernel(_noop, [decl])
         assert "x" in kernel.particle_properties
-        assert kernel.particle_properties["x"].dtype == np.dtype(np.float64)
+        assert kernel.particle_properties["x"].dtype_constraints == (np.float64,)
 
     def test_scalars_stored(self) -> None:
         decl = ScalarDeclaration("_dt", np.float64)
@@ -243,51 +242,3 @@ class TestBoundKernelChaining:
         assert "x" in chained.particle_property_bindings
         assert "y" in chained.particle_property_bindings
 
-
-# ---------------------------------------------------------------------------
-# get_required_particle_property_dtypes
-# ---------------------------------------------------------------------------
-
-
-class TestGetRequiredParticlePropertyDtypes:
-    def test_single_kernel(self) -> None:
-        kernel = ParticleKernel(_noop, [ParticlePropertyDeclaration("x", np.float64)])
-        bound = BoundKernel(kernel)
-        dtypes = get_required_particle_property_dtypes(bound)
-        assert dtypes["x"] == np.dtype(np.float64)
-
-    def test_multiple_kernels_no_overlap(self) -> None:
-        k1 = ParticleKernel(_noop, [ParticlePropertyDeclaration("x", np.float64)])
-        k2 = ParticleKernel(_noop2, [ParticlePropertyDeclaration("y", np.float32)])
-        b1 = BoundKernel(k1)
-        b2 = BoundKernel(k2)
-        dtypes = get_required_particle_property_dtypes(b1, b2)
-        assert dtypes["x"] == np.dtype(np.float64)
-        assert dtypes["y"] == np.dtype(np.float32)
-
-    def test_conflicting_dtypes_raises(self) -> None:
-        k1 = ParticleKernel(_noop, [ParticlePropertyDeclaration("x", np.float64)])
-        k2 = ParticleKernel(_noop2, [ParticlePropertyDeclaration("x", np.int32)])
-        b1 = BoundKernel(k1)
-        b2 = BoundKernel(k2)
-        with pytest.raises(ValueError, match="Conflicting"):
-            get_required_particle_property_dtypes(b1, b2)
-
-    def test_same_dtype_no_conflict(self) -> None:
-        k1 = ParticleKernel(_noop, [ParticlePropertyDeclaration("x", np.float64)])
-        k2 = ParticleKernel(_noop2, [ParticlePropertyDeclaration("x", np.float64)])
-        b1 = BoundKernel(k1)
-        b2 = BoundKernel(k2)
-        dtypes = get_required_particle_property_dtypes(b1, b2)
-        assert dtypes["x"] == np.dtype(np.float64)
-
-    def test_uses_binding_name_not_declared_name(self) -> None:
-        kernel = ParticleKernel(_noop, [ParticlePropertyDeclaration("x", np.float64)])
-        bound = BoundKernel(kernel, particle_property_bindings={"x": "xidx"})
-        dtypes = get_required_particle_property_dtypes(bound)
-        assert "xidx" in dtypes
-        assert "x" not in dtypes
-
-    def test_empty_returns_empty(self) -> None:
-        dtypes = get_required_particle_property_dtypes()
-        assert dict(dtypes) == {}
