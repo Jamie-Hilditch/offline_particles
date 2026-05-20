@@ -241,4 +241,3 @@ class TestBoundKernelChaining:
         chained = b1.chain_with(b2)
         assert "x" in chained.particle_property_bindings
         assert "y" in chained.particle_property_bindings
-

@@ -11,7 +11,6 @@ import numpy as np
 import numpy.typing as npt
 
 from ..fields import Field, FieldData
-from ..particles import Particles, ParticlesView
 from ..spatial_arrays import ArrayLayout
 
 # these type aliases are manually documented in the module docstring for better formatting in the docs,
@@ -123,7 +122,7 @@ class FieldDataDeclaration(KernelInputDeclaration):
 
     @property
     def _doc_string_part(self) -> str:
-        return f"{super()._doc_string_part} with {len(self._layout_validators)} layout validators"
+        return f"'{self.name}' ({self._constraint_str}) with {len(self._layout_validators)} layout validators"
 
 
 class ParticleKernel:
@@ -419,13 +418,13 @@ class BoundKernel:
             for declared_name, bound_name in self.field_data_bindings.items()
         }
 
-    def validate_particles(self, particles: Particles | ParticlesView) -> None:
+    def validate_particles(self, particles: Mapping[str, npt.NDArray]) -> None:
         """Validate that the particles have required particle properties of the correct data types.
 
         Parameters
         ----------
-        particles : Particles | ParticlesView
-            The particles to validate.
+        particles : Mapping[str, npt.NDArray]
+            A mapping from particle property names to their corresponding arrays.
 
         Raises
         ------
