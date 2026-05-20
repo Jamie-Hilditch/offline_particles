@@ -241,3 +241,26 @@ class TestBoundKernelChaining:
         chained = b1.chain_with(b2)
         assert "x" in chained.particle_property_bindings
         assert "y" in chained.particle_property_bindings
+
+
+class TestBoundKernelValidation:
+    def test_validate_particles_missing_property_raises(self) -> None:
+        kernel = ParticleKernel(_noop, [ParticlePropertyDeclaration("x", np.float32)])
+        bound = BoundKernel(kernel)
+        particles = {"y": np.zeros(3, dtype=np.float32)}
+        with pytest.raises(KeyError):
+            bound.validate_particles(particles)
+
+    def test_validate_particles_invalid_dtype_raises(self) -> None:
+        kernel = ParticleKernel(_noop, [ParticlePropertyDeclaration("x", np.float32)])
+        bound = BoundKernel(kernel)
+        particles = {"x": np.zeros(3, dtype=np.int32)}
+        with pytest.raises(TypeError):
+            bound.validate_particles(particles)
+
+    def test_validate_particles_accepts_valid_dtype(self) -> None:
+        kernel = ParticleKernel(_noop, [ParticlePropertyDeclaration("x", np.float32)])
+        bound = BoundKernel(kernel)
+        particles = {"x": np.zeros(3, dtype=np.float32)}
+        # should not raise
+        bound.validate_particles(particles)
