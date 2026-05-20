@@ -53,10 +53,6 @@ class KernelInputDeclaration:
     def _doc_string_part(self) -> str:
         return f"'{self.name}' ({self._constraint_str})"
 
-
-class ParticlePropertyDeclaration(KernelInputDeclaration):
-    """Declaration of a particle property required by a kernel."""
-
     def validate_dtype(self, dtype: type[np.generic] | np.dtype) -> None:
         """Validate that the dtype satisfies the declared constraints.
 
@@ -72,8 +68,12 @@ class ParticlePropertyDeclaration(KernelInputDeclaration):
         """
         if not any(np.issubdtype(dtype, constraint) for constraint in self.dtype_constraints):
             raise TypeError(
-                f"Kernel particle property '{self.name}' has dtype constraints `{self._constraint_str}`, but the provided dtype '{dtype}' does not satisfy these constraints."
+                f"Kernel input '{self.name}' has dtype constraints `{self._constraint_str}`, but the provided dtype '{dtype}' does not satisfy these constraints."
             )
+
+
+class ParticlePropertyDeclaration(KernelInputDeclaration):
+    """Declaration of a particle property required by a kernel."""
 
 
 class ScalarDeclaration(KernelInputDeclaration):
@@ -111,14 +111,24 @@ class FieldDataDeclaration(KernelInputDeclaration):
         Raises
         ------
         TypeError
-            If the field's dtype does not match the declaration's dtype.
+            If the field's dtype does not match the declaration's dtype or if the field does not satisfy the layout constraints.
+        ValueError
+            If the field does not satisfy the layout constraints.
         """
-        if not any(np.issubdtype(field.output_dtype, dtype) for dtype in self.dtype_constraints):
+        try:
+            self.validate_dtype(field.output_dtype)
+        except TypeError as e:
             raise TypeError(
-                f"Kernel field data '{self.name}' has dtype constraints `{self._constraint_str}`, but field has dtype '{field.output_dtype}'."
-            )
+                f"Input Field does not satisfy the dtype constraints for kernel field data '{self.name}'"
+            ) from e
+
         for validator in self._layout_validators:
-            validator(field.layout)
+            try:
+                validator(field.layout)
+            except Exception as e:
+                raise ValueError(
+                    f"Input Field does not satisfy the layout constraints for kernel field data '{self.name}'"
+                ) from e
 
     @property
     def _doc_string_part(self) -> str:
