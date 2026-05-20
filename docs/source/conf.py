@@ -100,7 +100,6 @@ def apply_kernels_module_overrides(app):
         ParticleKernel,
         ParticlePropertyDeclaration,
         ScalarDeclaration,
-        get_required_particle_property_dtypes,
     )
 
     _module = kernels_module.__name__
@@ -110,7 +109,6 @@ def apply_kernels_module_overrides(app):
         ParticleKernel,
         ParticlePropertyDeclaration,
         ScalarDeclaration,
-        get_required_particle_property_dtypes,
     ]:
         _obj.__module__ = _module
 

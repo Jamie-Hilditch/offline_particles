@@ -80,11 +80,11 @@ def construct_1D_interpolation_kernel(
     validator = ordering_validator_factory((axis,))
 
     # get types for field and output
-    field_dtype = np.dtype(field_dtype)
+    field_dtype = np.dtype(field_dtype).type
     if output_dtype is None:
         output_dtype = field_dtype
     else:
-        output_dtype = np.dtype(output_dtype)
+        output_dtype = np.dtype(output_dtype).type
 
     # select kernel function implementation based on accumulate flag
     kernel_function_impl = lagrange2N_1D_factory(N, accumulate)
@@ -184,11 +184,11 @@ def construct_2D_interpolation_kernel(
     validator = ordering_validator_factory((axis_0, axis_1))
 
     # get types for field and output
-    field_dtype = np.dtype(field_dtype)
+    field_dtype = np.dtype(field_dtype).type
     if output_dtype is None:
         output_dtype = field_dtype
     else:
-        output_dtype = np.dtype(output_dtype)
+        output_dtype = np.dtype(output_dtype).type
 
     # select kernel function implementation
     kernel_function_impl = lagrange2N_2D_factory(N, accumulate)
@@ -294,11 +294,11 @@ def construct_3D_interpolation_kernel(
     validator = ordering_validator_factory((axis_0, axis_1, axis_2))
 
     # get types for field and output
-    field_dtype = np.dtype(field_dtype)
+    field_dtype = np.dtype(field_dtype).type
     if output_dtype is None:
         output_dtype = field_dtype
     else:
-        output_dtype = np.dtype(output_dtype)
+        output_dtype = np.dtype(output_dtype).type
 
     # select kernel function implementation
     kernel_function_impl = lagrange2N_3D_factory(N, accumulate)

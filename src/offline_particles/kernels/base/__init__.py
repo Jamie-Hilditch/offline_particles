@@ -37,8 +37,8 @@ def construct_copy_property_kernel(
     BoundKernel
         A bound kernel that copies the source property to the destination property.
     """
-    source_declaration = ParticlePropertyDeclaration("source", np.dtype(dtype))
-    destination_declaration = ParticlePropertyDeclaration("destination", np.dtype(dtype))
+    source_declaration = ParticlePropertyDeclaration("source", np.dtype(dtype).type)
+    destination_declaration = ParticlePropertyDeclaration("destination", np.dtype(dtype).type)
 
     kernel = ParticleKernel(
         copy_property,
@@ -79,8 +79,8 @@ def construct_add_property_kernel(
     BoundKernel
         A bound kernel that adds the source property to the destination property.
     """
-    source_declaration = ParticlePropertyDeclaration("source", np.dtype(dtype))
-    destination_declaration = ParticlePropertyDeclaration("destination", np.dtype(dtype))
+    source_declaration = ParticlePropertyDeclaration("source", np.dtype(dtype).type)
+    destination_declaration = ParticlePropertyDeclaration("destination", np.dtype(dtype).type)
 
     kernel = ParticleKernel(
         add_property,
@@ -121,8 +121,8 @@ def construct_subtract_property_kernel(
     BoundKernel
         A bound kernel that subtracts the source property from the destination property.
     """
-    source_declaration = ParticlePropertyDeclaration("source", np.dtype(dtype))
-    destination_declaration = ParticlePropertyDeclaration("destination", np.dtype(dtype))
+    source_declaration = ParticlePropertyDeclaration("source", np.dtype(dtype).type)
+    destination_declaration = ParticlePropertyDeclaration("destination", np.dtype(dtype).type)
 
     kernel = ParticleKernel(
         subtract_property,
@@ -163,8 +163,8 @@ def construct_multiply_property_kernel(
     BoundKernel
         A bound kernel that multiplies the destination property by the source property.
     """
-    source_declaration = ParticlePropertyDeclaration("source", np.dtype(dtype))
-    destination_declaration = ParticlePropertyDeclaration("destination", np.dtype(dtype))
+    source_declaration = ParticlePropertyDeclaration("source", np.dtype(dtype).type)
+    destination_declaration = ParticlePropertyDeclaration("destination", np.dtype(dtype).type)
 
     kernel = ParticleKernel(
         multiply_property,
@@ -205,8 +205,8 @@ def construct_divide_property_kernel(
     BoundKernel
         A bound kernel that divides the destination property by the source property.
     """
-    source_declaration = ParticlePropertyDeclaration("source", np.dtype(dtype))
-    destination_declaration = ParticlePropertyDeclaration("destination", np.dtype(dtype))
+    source_declaration = ParticlePropertyDeclaration("source", np.dtype(dtype).type)
+    destination_declaration = ParticlePropertyDeclaration("destination", np.dtype(dtype).type)
 
     kernel = ParticleKernel(
         divide_property,

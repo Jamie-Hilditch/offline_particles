@@ -36,7 +36,7 @@ def construct_activate_released_particles_kernel(
     BoundKernel
         A bound kernel that activates particles at the given release time.
     """
-    release_time_declaration = ParticlePropertyDeclaration("release_time", np.dtype(dtype))
+    release_time_declaration = ParticlePropertyDeclaration("release_time", np.dtype(dtype).type)
 
     kernel = ParticleKernel(
         activate_released_particles,
@@ -77,7 +77,7 @@ def construct_deactivate_retired_particles_kernel(
     BoundKernel
         A bound kernel that deactivates particles at the given retirement time.
     """
-    retirement_time_declaration = ParticlePropertyDeclaration("retirement_time", np.dtype(dtype))
+    retirement_time_declaration = ParticlePropertyDeclaration("retirement_time", np.dtype(dtype).type)
 
     kernel = ParticleKernel(
         deactivate_retired_particles,

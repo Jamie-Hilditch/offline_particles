@@ -11,6 +11,7 @@ import numpy as np
 import numpy.typing as npt
 
 from ..fields import Field, FieldData
+from ..particles import Particles, ParticlesView
 from ..spatial_arrays import ArrayLayout
 
 # these type aliases are manually documented in the module docstring for better formatting in the docs,
@@ -28,19 +29,52 @@ class KernelInputDeclaration:
     """Declaration of a kernel input."""
 
     name: str
-    dtype: np.dtype[np.generic]
+    dtype_constraints: tuple[type[np.generic], ...]
 
-    def __init__(self, name: str, dtype: npt.DTypeLike) -> None:
+    def __init__(self, name: str, dtype_constraints: type[np.generic] | Iterable[type[np.generic]]) -> None:
+        match dtype_constraints:
+            case type() as dtype:
+                dtypes = (dtype,)
+            case Iterable() as dtypes:
+                dtypes = tuple(dtypes)
+            case _:
+                raise TypeError("dtype_constraints must be a type or an iterable of types")
+        for dtype in dtypes:
+            if not isinstance(dtype, type) or not issubclass(dtype, np.generic):
+                raise TypeError(f"dtype_constraints must be a subtype of np.generic, got {dtype}")
+
         object.__setattr__(self, "name", name)
-        object.__setattr__(self, "dtype", np.dtype(dtype))
+        object.__setattr__(self, "dtype_constraints", dtypes)
+
+    @property
+    def _constraint_str(self) -> str:
+        return " | ".join(str(dtype) for dtype in self.dtype_constraints)
 
     @property
     def _doc_string_part(self) -> str:
-        return f"'{self.name}' ({self.dtype})"
+        return f"'{self.name}' ({self._constraint_str})"
 
 
 class ParticlePropertyDeclaration(KernelInputDeclaration):
     """Declaration of a particle property required by a kernel."""
+
+    def validate_dtype(self, dtype: type[np.generic] | np.dtype) -> None:
+        """Validate that the dtype satisfies the declared constraints.
+
+        Parameters
+        ----------
+        dtype : type[np.generic] | np.dtype
+            The dtype to validate.
+
+        Raises
+        ------
+        TypeError
+            If the dtype does not satisfy the declaration's dtype constraints.
+        """
+        if not any(np.issubdtype(dtype, constraint) for constraint in self.dtype_constraints):
+            raise TypeError(
+                f"Kernel particle property '{self.name}' has dtype constraints `{self._constraint_str}`, but the provided dtype '{dtype}' does not satisfy these constraints."
+            )
 
 
 class ScalarDeclaration(KernelInputDeclaration):
@@ -56,11 +90,16 @@ class FieldDataDeclaration(KernelInputDeclaration):
     def __init__(
         self,
         name: str,
-        dtype: npt.DTypeLike,
-        layout_validators: Iterable[LayoutValidator] = (),
+        dtype_constraints: type[np.generic] | Iterable[type[np.generic]],
+        layout_validators: LayoutValidator | Iterable[LayoutValidator] = (),
     ) -> None:
-        KernelInputDeclaration.__init__(self, name, dtype)
-        object.__setattr__(self, "_layout_validators", tuple(layout_validators))
+        if callable(layout_validators):
+            validators = (layout_validators,)
+        else:
+            validators = tuple(layout_validators)
+
+        KernelInputDeclaration.__init__(self, name, dtype_constraints)
+        object.__setattr__(self, "_layout_validators", validators)
 
     def validate_field(self, field: Field) -> None:
         """Validate that a field matches this declaration.
@@ -75,16 +114,16 @@ class FieldDataDeclaration(KernelInputDeclaration):
         TypeError
             If the field's dtype does not match the declaration's dtype.
         """
-        if field.output_dtype != self.dtype:
+        if not any(np.issubdtype(field.output_dtype, dtype) for dtype in self.dtype_constraints):
             raise TypeError(
-                f"Kernel field data '{self.name}' has dtype '{self.dtype}', but field has dtype '{field.output_dtype}'."
+                f"Kernel field data '{self.name}' has dtype constraints `{self._constraint_str}`, but field has dtype '{field.output_dtype}'."
             )
         for validator in self._layout_validators:
             validator(field.layout)
 
     @property
     def _doc_string_part(self) -> str:
-        return f"'{self.name}' ({self.dtype}) with {len(self._layout_validators)} layout validators"
+        return f"{super()._doc_string_part} with {len(self._layout_validators)} layout validators"
 
 
 class ParticleKernel:
@@ -298,10 +337,15 @@ class BoundKernel:
 
         # bind inputs defaulting to the declared names
         self._particle_property_bindings = {
-            name: particle_property_bindings.pop(name, name) for name in kernel.particle_properties
+            declared_name: particle_property_bindings.pop(declared_name, declared_name)
+            for declared_name in kernel.particle_properties
         }
-        self._scalar_bindings = {name: scalar_bindings.pop(name, name) for name in kernel.scalars}
-        self._field_data_bindings = {name: field_data_bindings.pop(name, name) for name in kernel.field_data}
+        self._scalar_bindings = {
+            declared_name: scalar_bindings.pop(declared_name, declared_name) for declared_name in kernel.scalars
+        }
+        self._field_data_bindings = {
+            declared_name: field_data_bindings.pop(declared_name, declared_name) for declared_name in kernel.field_data
+        }
 
         # error if unused bindings
         if particle_property_bindings:
@@ -321,18 +365,79 @@ class BoundKernel:
 
     @property
     def particle_property_bindings(self) -> Mapping[str, str]:
-        """The particle property bindings."""
+        """The particle property bindings.
+
+        A mapping from declared names to bound names.
+        """
         return types.MappingProxyType(self._particle_property_bindings)
 
     @property
     def scalar_bindings(self) -> Mapping[str, str]:
-        """The scalar bindings."""
+        """The scalar bindings.
+
+        A mapping from declared names to bound names.
+        """
         return types.MappingProxyType(self._scalar_bindings)
 
     @property
     def field_data_bindings(self) -> Mapping[str, str]:
-        """The field data bindings."""
+        """The field data bindings.
+
+        A mapping from declared names to bound names.
+        """
         return types.MappingProxyType(self._field_data_bindings)
+
+    @property
+    def particle_property_declarations(self) -> dict[str, ParticlePropertyDeclaration]:
+        """The particle property declarations.
+
+        A mapping from bound names to declarations.
+        """
+        return {
+            bound_name: self.kernel.particle_properties[declared_name]
+            for declared_name, bound_name in self.particle_property_bindings.items()
+        }
+
+    @property
+    def scalar_declarations(self) -> dict[str, ScalarDeclaration]:
+        """The scalar declarations.
+
+        A mapping from bound names to declarations.
+        """
+        return {
+            bound_name: self.kernel.scalars[declared_name] for declared_name, bound_name in self.scalar_bindings.items()
+        }
+
+    @property
+    def field_data_declarations(self) -> dict[str, FieldDataDeclaration]:
+        """The field data declarations.
+
+        A mapping from bound names to declarations.
+        """
+        return {
+            bound_name: self.kernel.field_data[declared_name]
+            for declared_name, bound_name in self.field_data_bindings.items()
+        }
+
+    def validate_particles(self, particles: Particles | ParticlesView) -> None:
+        """Validate that the particles have required particle properties of the correct data types.
+
+        Parameters
+        ----------
+        particles : Particles | ParticlesView
+            The particles to validate.
+
+        Raises
+        ------
+        KeyError
+            If the particles do not have a required particle property.
+        """
+        for declared_name, bound_name in self._particle_property_bindings.items():
+            if bound_name not in particles:
+                raise KeyError(f"Particle property '{bound_name}' is required but not found in the particles.")
+            # get declaration and validate dtype
+            particle_property_declaration = self._kernel.particle_properties[declared_name]
+            particle_property_declaration.validate_dtype(particles[bound_name].dtype)
 
     def rebind(
         self,
@@ -380,16 +485,16 @@ class BoundKernel:
         doc_lines = [f"Kernel Binding for {kernel}"]
 
         doc_lines.extend(_new_doc_section("Particle Property Bindings"))
-        for name, binding in self._particle_property_bindings.items():
-            doc_lines.append(f"'{binding}' → {kernel.particle_properties[name]._doc_string_part}")
+        for bound_name, declaration in self.particle_property_declarations.items():
+            doc_lines.append(f"'{bound_name}' → {declaration._doc_string_part}")
 
         doc_lines.extend(_new_doc_section("Scalar Bindings"))
-        for name, binding in self._scalar_bindings.items():
-            doc_lines.append(f"'{binding}' → {kernel.scalars[name]._doc_string_part}")
+        for bound_name, declaration in self.scalar_declarations.items():
+            doc_lines.append(f"'{bound_name}' → {declaration._doc_string_part}")
 
         doc_lines.extend(_new_doc_section("Field Data Bindings"))
-        for name, binding in self._field_data_bindings.items():
-            doc_lines.append(f"'{binding}' → {kernel.field_data[name]._doc_string_part}")
+        for bound_name, declaration in self.field_data_declarations.items():
+            doc_lines.append(f"'{bound_name}' → {declaration._doc_string_part}")
 
         return "\n".join(doc_lines)
 
@@ -438,40 +543,6 @@ class BoundKernel:
             A new BoundKernel that combines the underlying kernels and their bindings.
         """
         return self.__class__.chain(self, *others)
-
-
-def get_required_particle_property_dtypes(*bound_kernels: BoundKernel) -> Mapping[str, np.dtype]:
-    """Get the required particle properties types from bound kernels.
-
-    Parameters
-    ----------
-    *bound_kernels : BoundKernel
-        The bound kernels to get the required particle properties from.
-
-    Returns
-    -------
-    Mapping[str, np.dtype]
-        A mapping of bound particle property names to their dtypes.
-
-    Raises
-    ------
-    ValueError
-        If there are conflicting dtype declarations for the same particle property name.
-    """
-    required: dict[str, np.dtype] = {}
-    for kb in bound_kernels:
-        for name in kb.particle_property_bindings:
-            binding = kb.particle_property_bindings[name]
-            particle_property = kb.kernel.particle_properties[name]
-            if binding in required:
-                if required[binding] != particle_property.dtype:
-                    raise ValueError(
-                        f"Conflicting dtype declarations for particle property '{binding}': "
-                        f"{required[binding]} vs {particle_property.dtype}"
-                    )
-            else:
-                required[binding] = particle_property.dtype
-    return types.MappingProxyType(required)
 
 
 # helper functions

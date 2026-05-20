@@ -6,6 +6,8 @@ from collections.abc import Mapping
 import numpy as np
 import numpy.typing as npt
 
+from .kernels import BoundKernel, ParticlePropertyDeclaration
+
 
 class _FrozenArrayMapping:
     """A mapping-like object that holds equi-shaped arrays and prevents modification."""
@@ -44,6 +46,9 @@ class _FrozenArrayMapping:
 
     def __getitem__(self, name: str) -> npt.NDArray:
         return object.__getattribute__(self, "_arrays")[name]
+
+    def __contains__(self, name: str) -> bool:
+        return name in object.__getattribute__(self, "_arrays")
 
     @property
     def shape(self) -> tuple[int, ...]:
@@ -88,7 +93,7 @@ class Particles(_FrozenArrayMapping):
 
         Args:
             nparticles: The number of particles.
-            **properties: Particle property declarations.
+            **bound_property_dtypes: The bound property dtypes.
         """
         object.__setattr__(self, "_length", nparticles)
         arrays = {binding: np.zeros((nparticles,), dtype=dtype) for binding, dtype in bound_property_dtypes.items()}
@@ -97,6 +102,49 @@ class Particles(_FrozenArrayMapping):
 
     def __len__(self) -> int:
         return object.__getattribute__(self, "_length")
+
+    @classmethod
+    def build_from_kernels(
+        cls, nparticles: int, specified_dtypes: Mapping[str, npt.DTypeLike], kernels: list[BoundKernel]
+    ) -> "Particles":
+        """Initialize a Particles object from a list of particle property declarations.
+
+        Parameters
+        ----------
+        nparticles : int
+            The number of particles.
+        specified_dtypes : Mapping[str, npt.DTypeLike]
+            The specified dtypes for the particle properties.
+        kernels : list[BoundKernel]
+            The bound kernels to use for initializing the particles.
+
+        Returns
+        -------
+        Particles
+            A Particles object satisfying the constraints specified by the kernels.
+        """
+        # first collect all the names of the properties we need to initialize and the declarations that apply to them
+        declarations_by_binding: dict[str, list[ParticlePropertyDeclaration]] = {}
+        for kernel in kernels:
+            for name, declaration in kernel.particle_property_declarations.items():
+                decls = declarations_by_binding.setdefault(name, [])
+                decls.append(declaration)
+
+        # now, for each property, find a valid dtype that satisfies all of its declarations
+        bound_property_dtypes = {}
+        for name, declarations in declarations_by_binding.items():
+            if name in specified_dtypes:
+                # if the user specified a dtype for this property, we use it
+                dtype = np.dtype(specified_dtypes[name])
+                for declaration in declarations:
+                    declaration.validate_dtype(dtype)
+                bound_property_dtypes[name] = np.dtype(specified_dtypes[name])
+            else:
+                # otherwise, we find a valid dtype that satisfies all declarations for this property
+                bound_property_dtypes[name] = _find_valid_particle_property_dtype(declarations)
+
+        # construct the Particles object with the determined dtypes
+        return cls(nparticles, **bound_property_dtypes)
 
 
 class ParticlesView(_FrozenArrayMapping):
@@ -134,3 +182,60 @@ class ParticlesView(_FrozenArrayMapping):
 
     def __len__(self) -> int:
         return object.__getattribute__(self, "_length")
+
+
+_CONCRETE_NUMPY_TYPES_BY_PREFERENCE = (
+    # defaults that cover most use cases
+    np.float64,
+    np.float32,
+    np.complex128,
+    np.int32,
+    np.uint8,
+    np.dtype("datetime64[ns]"),
+    np.dtype("timedelta64[ns]"),
+    # rest of the float types
+    np.float16,
+    np.longdouble,
+    # rest of the complex types
+    np.complex64,
+    np.clongdouble,
+    # rest of the int types
+    np.int8,
+    np.int16,
+    np.int64,
+    # rest of the uint types
+    np.uint16,
+    np.uint32,
+    np.uint64,
+)
+
+
+def _find_valid_particle_property_dtype(declarations: list[ParticlePropertyDeclaration]) -> np.dtype:
+    """Find a valid dtype for a particle property given a set of declarations.
+
+    Parameters
+    ----------
+    declarations : Iterable[ParticlePropertyDeclaration]
+        The declarations to find a valid dtype for.
+
+    Returns
+    -------
+    np.dtype
+        A valid dtype that satisfies all declarations.
+
+    Raises
+    ------
+    ValueError
+        If no valid dtype can be found that satisfies all declarations.
+    """
+    for dtype in _CONCRETE_NUMPY_TYPES_BY_PREFERENCE:
+        try:
+            for declaration in declarations:
+                declaration.validate_dtype(dtype)
+            return np.dtype(dtype)
+        except TypeError:
+            continue
+
+    constraint_strings = [d._constraint_str for d in declarations]
+    constraint_message = "[ " + " ], [ ".join(constraint_strings) + " ]"
+    raise ValueError(f"No valid dtype found for particle property with constraints {constraint_message}.")

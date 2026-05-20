@@ -19,7 +19,7 @@ from .events import (
     SimulationState,
 )
 from .fieldset import Fieldset
-from .kernels import BoundKernel, get_required_particle_property_dtypes
+from .kernels import BoundKernel
 from .launcher import Launcher, Tinfo
 from .output import AbstractOutputWriter, AbstractOutputWriterBuilder
 from .particles import Particles, ParticlesView
@@ -35,6 +35,7 @@ class ParticleSet:
     name: str
     nparticles: int
     timestepper: Timestepper
+    property_dtypes: dict[str, npt.DTypeLike] = dataclasses.field(default_factory=dict)
 
 
 class Simulation:
@@ -126,8 +127,7 @@ class Simulation:
             kernel_count += len(kernels)
 
             # then merge required particle properties from all kernels
-            particle_property_dtypes = get_required_particle_property_dtypes(*kernels)
-            self._particles[name] = Particles(nparticles, **particle_property_dtypes)
+            self._particles[name] = Particles.build_from_kernels(nparticles, pset.property_dtypes, kernels)
             self._particles_view[name] = ParticlesView(self._particles[name])
 
         # print a warning if kernel count is larger that history size
@@ -652,29 +652,22 @@ class Simulation:
 
         Raises
         ------
-        ValueError
+        KeyError
             If the specified particle set does not exist in the simulation.
             Or if the kernel requires a particle property that is not available in the simulation.
-        TypeError
-            If the kernel requires a particle property with a different dtype than what is available in the simulation
         """
         # get particles
         if name not in self._particles:
-            raise ValueError(f"Particle set '{name}' not found in simulation.")
+            raise KeyError(f"Particle set '{name}' not found in simulation.")
         particles = self._particles[name]
 
         # check required particle properties are available
-        required_property_dtypes = get_required_particle_property_dtypes(kernel)
-        for binding, dtype in required_property_dtypes.items():
-            if binding not in particles.arrays:
-                raise ValueError(
-                    f"Particle property '{binding}' required by kernel is not available in the simulation."
+        for bound_name, declaration in kernel.particle_property_declarations.items():
+            if bound_name not in particles.arrays:
+                raise KeyError(
+                    f"Particle property '{bound_name}' required by kernel is not available in the simulation."
                 )
-            if particles.arrays[binding].dtype != dtype:
-                raise TypeError(
-                    f"Particle property '{binding}' has dtype {particles.arrays[binding].dtype}, "
-                    f"but kernel declares dtype {dtype}."
-                )
+            declaration.validate_dtype(particles.arrays[bound_name].dtype)
         self._launcher.launch_kernel(kernel, particles, self.tinfo)
 
 

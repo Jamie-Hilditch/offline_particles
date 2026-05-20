@@ -30,4 +30,4 @@ def construct_time_declaration(time_dtype: npt.DTypeLike) -> ScalarDeclaration:
     ScalarDeclaration
         A ScalarDeclaration for the simulation time.
     """
-    return ScalarDeclaration("_time", np.dtype(time_dtype))
+    return ScalarDeclaration("_time", np.dtype(time_dtype).type)

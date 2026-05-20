@@ -84,16 +84,15 @@ def construct_relaxation_kernel_constant_coefficient_constant_target(
     ValueError
         If the form is not "linear" or "quadratic".
     """
-    dtype = np.dtype(dtype)
-    dtype_constructor = dtype.type
+    dtype = np.dtype(dtype).type
 
     if form == "linear":
         kernel_function_impl = _linear_relaxation_constant_coefficient_constant_target(
-            dtype_constructor(relaxation_coefficient), dtype_constructor(target)
+            dtype(relaxation_coefficient), dtype(target)
         )
     elif form == "quadratic":
         kernel_function_impl = _quadratic_relaxation_constant_coefficient_constant_target(
-            dtype_constructor(relaxation_coefficient), dtype_constructor(target)
+            dtype(relaxation_coefficient), dtype(target)
         )
     else:
         raise ValueError(f"Invalid form: {form}. Must be 'linear' or 'quadratic'.")
@@ -162,17 +161,12 @@ def construct_relaxation_kernel_constant_coefficient_property_target(
     ValueError
         If the form is not "linear" or "quadratic".
     """
-    dtype = np.dtype(dtype)
-    dtype_constructor = dtype.type
+    dtype = np.dtype(dtype).type
 
     if form == "linear":
-        kernel_function_impl = _linear_relaxation_constant_coefficient_property_target(
-            dtype_constructor(relaxation_coefficient)
-        )
+        kernel_function_impl = _linear_relaxation_constant_coefficient_property_target(dtype(relaxation_coefficient))
     elif form == "quadratic":
-        kernel_function_impl = _quadratic_relaxation_constant_coefficient_property_target(
-            dtype_constructor(relaxation_coefficient)
-        )
+        kernel_function_impl = _quadratic_relaxation_constant_coefficient_property_target(dtype(relaxation_coefficient))
     else:
         raise ValueError(f"Invalid form: {form}. Must be 'linear' or 'quadratic'.")
 
@@ -243,17 +237,12 @@ def construct_relaxation_kernel_constant_coefficient_scalar_target(
     ValueError
         If the form is not "linear" or "quadratic".
     """
-    dtype = np.dtype(dtype)
-    dtype_constructor = dtype.type
+    dtype = np.dtype(dtype).type
 
     if form == "linear":
-        kernel_function_impl = _linear_relaxation_constant_coefficient_scalar_target(
-            dtype_constructor(relaxation_coefficient)
-        )
+        kernel_function_impl = _linear_relaxation_constant_coefficient_scalar_target(dtype(relaxation_coefficient))
     elif form == "quadratic":
-        kernel_function_impl = _quadratic_relaxation_constant_coefficient_scalar_target(
-            dtype_constructor(relaxation_coefficient)
-        )
+        kernel_function_impl = _quadratic_relaxation_constant_coefficient_scalar_target(dtype(relaxation_coefficient))
     else:
         raise ValueError(f"Invalid form: {form}. Must be 'linear' or 'quadratic'.")
 
@@ -476,40 +465,39 @@ def construct_relaxation_kernel_constant_coefficient_field_target(
     ValueError
         If the form is not "linear" or "quadratic", or if the array layout is not supported.
     """
-    dtype = np.dtype(dtype)
-    dtype_constructor = dtype.type
+    dtype = np.dtype(dtype).type
 
     match form, array_layout.axes:
         # 1D field target
         case "linear", (axis0,):
             kernel_function_impl = _linear_relaxation_constant_coefficient_1D_field_target(
-                dtype_constructor(relaxation_coefficient), interpolation_half_width
+                dtype(relaxation_coefficient), interpolation_half_width
             )
             index_declarations = [_INDEX_DECLARATION_MAPPING[axis0]]
             kernel_function = _construct_1d_kernel_function(kernel_function_impl, axis0)
         case "quadratic", (axis0,):
             kernel_function_impl = _quadratic_relaxation_constant_coefficient_1D_field_target(
-                dtype_constructor(relaxation_coefficient), interpolation_half_width
+                dtype(relaxation_coefficient), interpolation_half_width
             )
             index_declarations = [_INDEX_DECLARATION_MAPPING[axis0]]
             kernel_function = _construct_1d_kernel_function(kernel_function_impl, axis0)
         # 2D field target
         case "linear", (axis0, axis1):
             kernel_function_impl = _linear_relaxation_constant_coefficient_2D_field_target(
-                dtype_constructor(relaxation_coefficient), interpolation_half_width
+                dtype(relaxation_coefficient), interpolation_half_width
             )
             index_declarations = [_INDEX_DECLARATION_MAPPING[axis0], _INDEX_DECLARATION_MAPPING[axis1]]
             kernel_function = _construct_2d_kernel_function(kernel_function_impl, axis0, axis1)
         case "quadratic", (axis0, axis1):
             kernel_function_impl = _quadratic_relaxation_constant_coefficient_2D_field_target(
-                dtype_constructor(relaxation_coefficient), interpolation_half_width
+                dtype(relaxation_coefficient), interpolation_half_width
             )
             index_declarations = [_INDEX_DECLARATION_MAPPING[axis0], _INDEX_DECLARATION_MAPPING[axis1]]
             kernel_function = _construct_2d_kernel_function(kernel_function_impl, axis0, axis1)
         # 3D field target
         case "linear", (axis0, axis1, axis2):
             kernel_function_impl = _linear_relaxation_constant_coefficient_3D_field_target(
-                dtype_constructor(relaxation_coefficient), interpolation_half_width
+                dtype(relaxation_coefficient), interpolation_half_width
             )
             index_declarations = [
                 _INDEX_DECLARATION_MAPPING[axis0],
@@ -519,7 +507,7 @@ def construct_relaxation_kernel_constant_coefficient_field_target(
             kernel_function = _construct_3d_kernel_function(kernel_function_impl, axis0, axis1, axis2)
         case "quadratic", (axis0, axis1, axis2):
             kernel_function_impl = _quadratic_relaxation_constant_coefficient_3D_field_target(
-                dtype_constructor(relaxation_coefficient), interpolation_half_width
+                dtype(relaxation_coefficient), interpolation_half_width
             )
             index_declarations = [
                 _INDEX_DECLARATION_MAPPING[axis0],

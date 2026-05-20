@@ -16,7 +16,7 @@ from ._adams_bashforth import ab2_update, ab3_update, ab_bump_status, ab_initial
 
 
 # particle property declarations for Adams-Bashforth
-def _particle_property_declarations(dtype: np.inexact, order: int) -> list[ParticlePropertyDeclaration]:
+def _particle_property_declarations(dtype: type[np.inexact], order: int) -> list[ParticlePropertyDeclaration]:
     """Create particle property declarations for Adams-Bashforth kernels.
 
     Parameters
@@ -31,10 +31,10 @@ def _particle_property_declarations(dtype: np.inexact, order: int) -> list[Parti
     list[ParticlePropertyDeclaration]
         List of particle property declarations for the property plus its current and previous tendencies.
     """
-    prop_declaration = ParticlePropertyDeclaration("prop", np.dtype(dtype))
-    dprop_0_declaration = ParticlePropertyDeclaration("dprop_0", np.dtype(dtype))
-    dprop_1_declaration = ParticlePropertyDeclaration("dprop_1", np.dtype(dtype))
-    dprop_2_declaration = ParticlePropertyDeclaration("dprop_2", np.dtype(dtype))
+    prop_declaration = ParticlePropertyDeclaration("prop", dtype)
+    dprop_0_declaration = ParticlePropertyDeclaration("dprop_0", dtype)
+    dprop_1_declaration = ParticlePropertyDeclaration("dprop_1", dtype)
+    dprop_2_declaration = ParticlePropertyDeclaration("dprop_2", dtype)
 
     declarations = [
         STATUS_DECLARATION,
