@@ -8,7 +8,12 @@ import numpy.typing as npt
 
 from .kernels import BoundKernel, ParticlePropertyDeclaration
 
-REQUIRED_PARTICLE_PROPERTY_FIELDS = {"status": np.uint8, "zidx": np.float64, "yidx": np.float64, "xidx": np.float64}
+_REQUIRED_PARTICLE_PROPERTY_FIELDS = {
+    "status": np.dtype(np.uint8),
+    "zidx": np.dtype(np.float64),
+    "yidx": np.dtype(np.float64),
+    "xidx": np.dtype(np.float64),
+}
 
 
 class _FrozenArrayMapping:
@@ -99,9 +104,37 @@ class Particles(_FrozenArrayMapping):
             The number of particles.
         bound_property_dtypes : Mapping[str, np.dtype]
             The bound property dtypes.
+
+        Raises
+        ------
+        ValueError
+            If a passed dtype is incompatible with the required dtypes.
         """
         object.__setattr__(self, "_length", nparticles)
-        arrays = {binding: np.zeros((nparticles,), dtype=dtype) for binding, dtype in bound_property_dtypes.items()}
+
+        # sort the additional bindings alphabetically, but with private fields (those starting with "_") coming after public ones
+        bindings = sorted(bound_property_dtypes.keys(), key=lambda binding: (binding.startswith("_"), binding))
+        bindings_dtypes = {binding: np.dtype(bound_property_dtypes[binding]) for binding in bindings}
+
+        # remove any required fields from the additional bindings, since we already created arrays for those and checked their dtypes
+        for required_binding, dtype in _REQUIRED_PARTICLE_PROPERTY_FIELDS.items():
+            provided_dtype = bindings_dtypes.pop(required_binding, None)
+            if provided_dtype is None:
+                continue
+            if provided_dtype != dtype:
+                raise ValueError(
+                    f"Invalid dtype for required particle property '{required_binding}'. Provided dtype {provided_dtype} is not equal to required dtype {dtype}."
+                )
+
+        # build up arrays starting with the required fields
+        arrays = {
+            binding: np.zeros((nparticles,), dtype=dtype)
+            for binding, dtype in _REQUIRED_PARTICLE_PROPERTY_FIELDS.items()
+        }
+
+        # now add the additional fields, checking that they are compatible with any arrays we already created for the required fields
+        for binding, dtype in bindings_dtypes.items():
+            arrays[binding] = np.zeros((nparticles,), dtype=dtype)
 
         super().__init__(arrays=arrays)
 
