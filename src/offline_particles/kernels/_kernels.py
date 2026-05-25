@@ -111,7 +111,7 @@ class FieldDataDeclaration(KernelInputDeclaration):
         Raises
         ------
         TypeError
-            If the field's dtype does not match the declaration's dtype or if the field does not satisfy the layout constraints.
+            If the field's dtype does not match the declaration's dtype.
         ValueError
             If the field does not satisfy the layout constraints.
         """
