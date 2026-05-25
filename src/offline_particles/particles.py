@@ -91,9 +91,12 @@ class Particles(_FrozenArrayMapping):
     def __init__(self, nparticles: int, **bound_property_dtypes: np.dtype) -> None:
         """Initialize the Particles object.
 
-        Args:
-            nparticles: The number of particles.
-            **bound_property_dtypes: The bound property dtypes.
+        Parameters
+        ----------
+        nparticles : int
+            The number of particles.
+        **bound_property_dtypes : np.dtype
+            The bound property dtypes.
         """
         object.__setattr__(self, "_length", nparticles)
         arrays = {binding: np.zeros((nparticles,), dtype=dtype) for binding, dtype in bound_property_dtypes.items()}
@@ -155,8 +158,10 @@ class ParticlesView(_FrozenArrayMapping):
     def __init__(self, parent: Particles) -> None:
         """Initialize the ParticlesView.
 
-        Args:
-            parent: The parent Particles object.
+        Parameters
+        ----------
+        parent : Particles
+            The parent :class:`Particles` object.
         """
         arrays = {name: self.readonly_view(array) for name, array in parent.arrays.items()}
         object.__setattr__(self, "_length", len(parent))
