@@ -883,6 +883,6 @@ def construct_advection_kernel(
     kernel = advection_particle_kernel_factory(velocity_dim_ordering, scaling_dim_ordering, N, metric)
     return BoundKernel(
         kernel,
-        particle_property_bindings={idx_tendency_binding: "idx_tendency"},
-        field_data_bindings={velocity_binding: "velocity", scaling_binding: "scaling"},
+        particle_property_bindings={"idx_tendency": idx_tendency_binding},
+        field_data_bindings={"velocity": velocity_binding, "scaling": scaling_binding},
     )
