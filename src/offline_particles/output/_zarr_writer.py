@@ -140,12 +140,12 @@ class ZarrOutputWriter(AbstractOutputWriter):
         zarr_output_array = self._outputs[key]
         output = zarr_output_array.output
         array = zarr_output_array.array
-        property_property = output.particle_property
+        particle_property = output.particle_property
 
         # write output
         time_size, particle_size = array.shape
         array.resize((time_size + 1, particle_size))
-        array[-1, :] = state.particles[particle_set][property_property]
+        array[-1, :] = state.particles[particle_set][particle_property]
 
     def write_static_output(self, particle_set: str, name: str, state: SimulationState) -> None:
         """Write a static (time-independent) output variable once.
@@ -175,9 +175,9 @@ class ZarrOutputWriter(AbstractOutputWriter):
         zarr_output_array = self._static_outputs[key]
         output = zarr_output_array.output
         array = zarr_output_array.array
-        property_property = output.particle_property
+        particle_property = output.particle_property
 
-        array[:] = state.particles[particle_set][property_property]
+        array[:] = state.particles[particle_set][particle_property]
 
     def finalise_write_round(self, state: SimulationState) -> None:
         """Confirm that all outputs have been written for the current round and then increments the count.
