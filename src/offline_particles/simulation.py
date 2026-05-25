@@ -487,16 +487,16 @@ class Simulation:
     def step(self) -> None:
         """Advance the particle simulation by one timestep."""
         # run all pre step kernels
-        for name, particles in self._particles.items():
-            self._timesteppers[name].run_pre_step(particles, self._launcher, self._clock)
+        for pset_name, particles in self._particles.items():
+            self._timesteppers[pset_name].run_pre_step(particles, self._launcher, self._clock)
         # run main step
-        for name, particles in self._particles.items():
-            self._timesteppers[name].run_step(particles, self._launcher, self._clock)
+        for pset_name, particles in self._particles.items():
+            self._timesteppers[pset_name].run_step(particles, self._launcher, self._clock)
         # advance time
         self._clock.advance_time()
         # run all post step kernels
-        for name, particles in self._particles.items():
-            self._timesteppers[name].run_post_step(particles, self._launcher, self._clock)
+        for pset_name, particles in self._particles.items():
+            self._timesteppers[pset_name].run_post_step(particles, self._launcher, self._clock)
 
     def _invoke_events(self) -> None:
         """Invoke any scheduled events at the current time or iteration."""
@@ -508,8 +508,8 @@ class Simulation:
         )
         for event in events_to_be_invoked:
             # launch kernels
-            for name, particles in self._particles.items():
-                kernels = event.kernels.get(name, ())
+            for pset_name, particles in self._particles.items():
+                kernels = event.kernels.get(pset_name, ())
                 for kernel in kernels:
                     self._launcher.launch_kernel(kernel, particles, self.tinfo)
             # invoke event function
@@ -533,8 +533,8 @@ class Simulation:
             raise ValueError("No valid stopping condition set for simulation.")
 
         # run initialisation kernels
-        for name, particles in self._particles.items():
-            self._timesteppers[name].run_initialisation(particles, self._launcher, self._clock)
+        for pset_name, particles in self._particles.items():
+            self._timesteppers[pset_name].run_initialisation(particles, self._launcher, self._clock)
         # invoke events at initial time / iteration
         self._invoke_events()
 
@@ -580,11 +580,11 @@ class Simulation:
 
         Raises
         ------
-        ValueError
+        KeyError
             If the specified particle set does not exist in the simulation.
         """
         if particle_set not in self._particles:
-            raise ValueError(f"Particle set '{particle_set}' not found in simulation.")
+            raise KeyError(f"Particle set '{particle_set}' not found in simulation.")
         particles = self._particles[particle_set]
 
         # first make the inputs compatible with the particle arrays
@@ -629,23 +629,23 @@ class Simulation:
 
         Raises
         ------
-        ValueError
+        KeyError
             If the specified particle set does not exist in the simulation.
         """
         if particle_set not in self._particles:
-            raise ValueError(f"Particle set '{particle_set}' not found in simulation.")
+            raise KeyError(f"Particle set '{particle_set}' not found in simulation.")
 
         particle_property = self._particles[particle_set][property_name]
         values_array = np.asarray(values, dtype=particle_property.dtype)
         values_array = np.broadcast_to(values_array, particle_property.shape)
         particle_property[:] = values_array
 
-    def run_kernel(self, name: str, kernel: BoundKernel) -> None:
+    def run_kernel(self, particle_set: str, kernel: BoundKernel) -> None:
         """Execute a kernel on the particles.
 
         Parameters
         ----------
-        name : str
+        particle_set : str
             The name of the particle set to run the kernel on.
         kernel : BoundKernel
             The kernel to execute.
@@ -657,9 +657,9 @@ class Simulation:
             Or if the kernel requires a particle property that is not available in the simulation.
         """
         # get particles
-        if name not in self._particles:
-            raise KeyError(f"Particle set '{name}' not found in simulation.")
-        particles = self._particles[name]
+        if particle_set not in self._particles:
+            raise KeyError(f"Particle set '{particle_set}' not found in simulation.")
+        particles = self._particles[particle_set]
 
         # check required particle properties are available
         for bound_name, declaration in kernel.particle_property_declarations.items():
