@@ -152,6 +152,7 @@ def lagrange2N_mapped_particle_factory(dim_ordering: tuple[ArrayAxis, ...], N: i
     ValueError
         If there are duplicate dimensions in `dim_ordering`.
         If the number of dimensions in the field array is not supported.
+        If `N` is not a positive integer. From underlying Lagrange interpolation factories.
     """
     # check the dim_ordering is unique
     if len(set(dim_ordering)) != len(dim_ordering):
