@@ -92,6 +92,6 @@ def interpolate_fields(
             case _:
                 raise ValueError(f"Field '{var}' has unsupported number of axes: {len(field.axes)}")
 
-        outputs[var] = Output(particle_property, kernel)
+        outputs[var] = Output(particle_property, dtype=dtype, kernels=(kernel,))
 
     return outputs

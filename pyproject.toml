@@ -42,6 +42,7 @@ pydocstyle.convention = "numpy"
 extend-select = ["D", "DOC", "I"]
 ignore = [
   "D1", # Missing public docstrings
+  "DOC502", # docstring-extraneous-exception (we want to document all exceptions, even if they are raised via another function)
   "E266"
 ]
 

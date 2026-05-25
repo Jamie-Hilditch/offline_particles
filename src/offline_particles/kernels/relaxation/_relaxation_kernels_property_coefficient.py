@@ -82,13 +82,12 @@ def construct_relaxation_kernel_property_coefficient_constant_target(
     ValueError
         If the form is not "linear" or "quadratic".
     """
-    dtype = np.dtype(dtype)
-    dtype_constructor = dtype.type
+    dtype = np.dtype(dtype).type
 
     if form == "linear":
-        kernel_function_impl = _linear_relaxation_property_coefficient_constant_target(dtype_constructor(target))
+        kernel_function_impl = _linear_relaxation_property_coefficient_constant_target(dtype(target))
     elif form == "quadratic":
-        kernel_function_impl = _quadratic_relaxation_property_coefficient_constant_target(dtype_constructor(target))
+        kernel_function_impl = _quadratic_relaxation_property_coefficient_constant_target(dtype(target))
     else:
         raise ValueError(f"Invalid form: {form}. Must be 'linear' or 'quadratic'.")
 
@@ -157,7 +156,7 @@ def construct_relaxation_kernel_property_coefficient_property_target(
     ValueError
         If the form is not "linear" or "quadratic".
     """
-    dtype = np.dtype(dtype)
+    dtype = np.dtype(dtype).type
 
     if form == "linear":
         kernel_function_impl = _linear_relaxation_property_coefficient_property_target()
@@ -234,7 +233,7 @@ def construct_relaxation_kernel_property_coefficient_scalar_target(
     ValueError
         If the form is not "linear" or "quadratic".
     """
-    dtype = np.dtype(dtype)
+    dtype = np.dtype(dtype).type
 
     if form == "linear":
         kernel_function_impl = _linear_relaxation_property_coefficient_scalar_target()
@@ -468,7 +467,7 @@ def construct_relaxation_kernel_property_coefficient_field_target(
     ValueError
         If the form is not "linear" or "quadratic", or if the array layout is not supported.
     """
-    dtype = np.dtype(dtype)
+    dtype = np.dtype(dtype).type
 
     match form, array_layout.axes:
         # 1D field target

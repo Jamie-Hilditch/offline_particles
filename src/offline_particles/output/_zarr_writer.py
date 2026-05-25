@@ -46,11 +46,18 @@ class ZarrOutputWriter(AbstractOutputWriter):
     ) -> None:
         """Initialize the Zarr output writer.
 
-        Args:
-            store: The Zarr store to write to.
-            time_arrays: A dictionary mapping particle sets to Zarr arrays for time output.
-            outputs: A two-key mapping from particle set names and output names to ZarrOutputArrays for time-dependent outputs.
-            static_outputs: A two-key mapping from particle set names and static output names to ZarrOutputArrays for static outputs.
+        Parameters
+        ----------
+        name : str
+            The name of the output writer.
+        store : zarr.storage.StoreLike
+            The Zarr store to write to.
+        time_arrays : Mapping[str, zarr.Array]
+            A dictionary mapping particle sets to Zarr arrays for time output.
+        outputs : TwoKeyDict[str, str, ZarrOutputArray]
+            A two-key mapping from particle set names and output names to ZarrOutputArrays for time-dependent outputs.
+        static_outputs : TwoKeyDict[str, str, ZarrOutputArray]
+            A two-key mapping from particle set names and static output names to ZarrOutputArrays for static outputs.
         """
         self._name = name
         self._store = store
@@ -133,12 +140,12 @@ class ZarrOutputWriter(AbstractOutputWriter):
         zarr_output_array = self._outputs[key]
         output = zarr_output_array.output
         array = zarr_output_array.array
-        property_name = output.particle_property.name
+        particle_property = output.particle_property
 
         # write output
         time_size, particle_size = array.shape
         array.resize((time_size + 1, particle_size))
-        array[-1, :] = state.particles[particle_set][property_name]
+        array[-1, :] = state.particles[particle_set][particle_property]
 
     def write_static_output(self, particle_set: str, name: str, state: SimulationState) -> None:
         """Write a static (time-independent) output variable once.
@@ -168,9 +175,9 @@ class ZarrOutputWriter(AbstractOutputWriter):
         zarr_output_array = self._static_outputs[key]
         output = zarr_output_array.output
         array = zarr_output_array.array
-        property_name = output.particle_property.name
+        particle_property = output.particle_property
 
-        array[:] = state.particles[particle_set][property_name]
+        array[:] = state.particles[particle_set][particle_property]
 
     def finalise_write_round(self, state: SimulationState) -> None:
         """Confirm that all outputs have been written for the current round and then increments the count.
@@ -222,15 +229,22 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
     ) -> None:
         """Initialize the Zarr output writer builder.
 
-        Args:
-            store: The Zarr store to write to.
-
-        Keywords:
-            chunksize: The chunk size for the particle dimension.
-            time_name: The name of the time output array.
-            overwrite: Whether to overwrite existing data in the store.
-            array_kwargs: Default keyword arguments passed to Zarr.create_array for all outputs.
-            time_array_kwargs: Keyword arguments passed, in addition to array_kwargs, to Zarr.create_array for the time array.
+        Parameters
+        ----------
+        name : str
+            The name of the output writer to build.
+        store : zarr.storage.StoreLike
+            The Zarr store to write to.
+        chunksize : int, optional
+            The chunk size for the particle dimension.
+        time_name : str, optional
+            The name of the time output array.
+        overwrite : bool, optional
+            Whether to overwrite existing data in the store.
+        array_kwargs : dict[str, Any] | None, optional
+            Default keyword arguments passed to Zarr.create_array for all outputs.
+        time_array_kwargs : dict[str, Any] | None, optional
+            Keyword arguments passed, in addition to array_kwargs, to Zarr.create_array for the time array.
         """
         self._name = name
         self._store = store
@@ -477,7 +491,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             self._store,
             name=f"{particle_set}/{name}",
             shape=shape,
-            dtype=output.particle_property.dtype,
+            dtype=output.dtype,
             chunks=chunks,
             attributes=output.attrs,
             dimension_names=(self._time_name, particle_set),
@@ -518,7 +532,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             self._store,
             name=f"{particle_set}/{name}",
             shape=shape,
-            dtype=output.particle_property.dtype,
+            dtype=output.dtype,
             chunks=chunks,
             attributes=output.attrs,
             dimension_names=(particle_set,),

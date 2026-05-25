@@ -191,7 +191,7 @@ class TestLayoutValidatorsWithFieldDataDeclaration:
         data = np.ones((5, 6), dtype=np.float64)
         field = StaticField.from_numpy(data, ("Y", "X"), ("center", "center"))
         decl = FieldDataDeclaration("u", np.float64, [validate_ZYX_ordering])
-        with pytest.raises(ValueError, match="Expected axes"):
+        with pytest.raises(ValueError, match="layout constraints"):
             decl.validate_field(field)
 
     def test_validate_field_passes_with_no_validators(self) -> None:
@@ -227,7 +227,7 @@ class TestLayoutValidatorsWithFieldDataDeclaration:
         data = np.ones((5, 6), dtype=np.float64)
         field = StaticField.from_numpy(data, ("Y", "X"), ("center", "center"))
         decl = FieldDataDeclaration("u", np.float64, [validate_YX_ordering, validate_ZYX_ordering])
-        with pytest.raises(ValueError, match="Expected axes"):
+        with pytest.raises(ValueError, match="layout constraints"):
             decl.validate_field(field)
 
 

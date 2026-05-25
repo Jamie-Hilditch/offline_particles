@@ -79,12 +79,12 @@ class TestInterpolateFields:
     def test_custom_particle_property_prefix(self) -> None:
         fs = _make_fieldset()
         outputs = interpolate_fields(fs, ["u"], particle_property_prefix="_custom")
-        assert outputs["u"].particle_property.name.startswith("_custom")
+        assert outputs["u"].particle_property.startswith("_custom")
 
     def test_default_particle_property_prefix(self) -> None:
         fs = _make_fieldset()
         outputs = interpolate_fields(fs, ["u"])
-        assert outputs["u"].particle_property.name.startswith("_output")
+        assert outputs["u"].particle_property.startswith("_output")
 
     def test_variables_can_be_supplied_as_any_iterable(self) -> None:
         fs = _make_fieldset()

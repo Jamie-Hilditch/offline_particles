@@ -61,21 +61,21 @@ class TestConstructLinearInterpolationKernel:
 
     def test_default_field_dtype_is_float64(self) -> None:
         kernel = construct_1D_interpolation_kernel("Z", "temperature", "temp_field")
-        assert kernel.kernel.field_data["field"].dtype == np.dtype(np.float64)
+        assert kernel.kernel.field_data["field"].dtype_constraints == (np.float64,)
 
     def test_custom_field_dtype_is_applied(self) -> None:
         kernel = construct_1D_interpolation_kernel("Z", "temperature", "temp_field", field_dtype=np.float32)
-        assert kernel.kernel.field_data["field"].dtype == np.dtype(np.float32)
+        assert kernel.kernel.field_data["field"].dtype_constraints == (np.float32,)
 
     def test_output_dtype_defaults_to_field_dtype(self) -> None:
         kernel = construct_1D_interpolation_kernel("Z", "temperature", "temp_field", field_dtype=np.float32)
-        assert kernel.kernel.particle_properties["output"].dtype == np.dtype(np.float32)
+        assert kernel.kernel.particle_properties["output"].dtype_constraints == (np.float32,)
 
     def test_custom_output_dtype_is_applied(self) -> None:
         kernel = construct_1D_interpolation_kernel(
             "Z", "temperature", "temp_field", field_dtype=np.float64, output_dtype=np.float32
         )
-        assert kernel.kernel.particle_properties["output"].dtype == np.dtype(np.float32)
+        assert kernel.kernel.particle_properties["output"].dtype_constraints == (np.float32,)
 
     def test_invalid_axis_string_raises(self) -> None:
         with pytest.raises(ValueError, match="not a valid ArrayAxis"):
@@ -146,21 +146,21 @@ class TestConstructBilinearInterpolationKernel:
 
     def test_default_field_dtype_is_float64(self) -> None:
         kernel = construct_2D_interpolation_kernel(("Z", "Y"), "temperature", "temp_field")
-        assert kernel.kernel.field_data["field"].dtype == np.dtype(np.float64)
+        assert kernel.kernel.field_data["field"].dtype_constraints == (np.float64,)
 
     def test_custom_field_dtype_is_applied(self) -> None:
         kernel = construct_2D_interpolation_kernel(("Z", "Y"), "temperature", "temp_field", field_dtype=np.float32)
-        assert kernel.kernel.field_data["field"].dtype == np.dtype(np.float32)
+        assert kernel.kernel.field_data["field"].dtype_constraints == (np.float32,)
 
     def test_output_dtype_defaults_to_field_dtype(self) -> None:
         kernel = construct_2D_interpolation_kernel(("Z", "Y"), "temperature", "temp_field", field_dtype=np.float32)
-        assert kernel.kernel.particle_properties["output"].dtype == np.dtype(np.float32)
+        assert kernel.kernel.particle_properties["output"].dtype_constraints == (np.float32,)
 
     def test_custom_output_dtype_is_applied(self) -> None:
         kernel = construct_2D_interpolation_kernel(
             ("Z", "Y"), "temperature", "temp_field", field_dtype=np.float64, output_dtype=np.float32
         )
-        assert kernel.kernel.particle_properties["output"].dtype == np.dtype(np.float32)
+        assert kernel.kernel.particle_properties["output"].dtype_constraints == (np.float32,)
 
     def test_wrong_number_of_axes_raises(self) -> None:
         with pytest.raises(ValueError, match="axes must be a tuple of two elements"):
@@ -239,21 +239,21 @@ class TestConstructTrilinearInterpolationKernel:
 
     def test_default_field_dtype_is_float64(self) -> None:
         kernel = construct_3D_interpolation_kernel(("Z", "Y", "X"), "temperature", "temp_field")
-        assert kernel.kernel.field_data["field"].dtype == np.dtype(np.float64)
+        assert kernel.kernel.field_data["field"].dtype_constraints == (np.float64,)
 
     def test_custom_field_dtype_is_applied(self) -> None:
         kernel = construct_3D_interpolation_kernel(("Z", "Y", "X"), "temperature", "temp_field", field_dtype=np.float32)
-        assert kernel.kernel.field_data["field"].dtype == np.dtype(np.float32)
+        assert kernel.kernel.field_data["field"].dtype_constraints == (np.float32,)
 
     def test_output_dtype_defaults_to_field_dtype(self) -> None:
         kernel = construct_3D_interpolation_kernel(("Z", "Y", "X"), "temperature", "temp_field", field_dtype=np.float32)
-        assert kernel.kernel.particle_properties["output"].dtype == np.dtype(np.float32)
+        assert kernel.kernel.particle_properties["output"].dtype_constraints == (np.float32,)
 
     def test_custom_output_dtype_is_applied(self) -> None:
         kernel = construct_3D_interpolation_kernel(
             ("Z", "Y", "X"), "temperature", "temp_field", field_dtype=np.float64, output_dtype=np.float32
         )
-        assert kernel.kernel.particle_properties["output"].dtype == np.dtype(np.float32)
+        assert kernel.kernel.particle_properties["output"].dtype_constraints == (np.float32,)
 
     def test_wrong_number_of_axes_raises(self) -> None:
         with pytest.raises(ValueError, match="axes must be a tuple of three elements"):
