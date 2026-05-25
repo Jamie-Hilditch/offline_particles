@@ -128,7 +128,9 @@ class Particles(_FrozenArrayMapping):
                 continue
             if provided_dtype != dtype:
                 raise ValueError(
-                    f"Invalid dtype for required particle property '{required_binding}'. Provided dtype {provided_dtype} is not equal to required dtype {dtype}."
+                    f"Invalid dtype for required particle property "
+                    f"'{required_binding}'. Provided dtype {provided_dtype} "
+                    f"is not equal to required dtype {dtype}."
                 )
 
         # build up arrays starting with the required fields
