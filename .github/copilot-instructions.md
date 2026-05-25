@@ -2,6 +2,7 @@ When conducting a code review, please follow these guidelines:
 - Ensure the docstring of any modified function, method or class is up to date.
   - Ensure it accurately describes the behaviour.
   - Ensure the NumPy docstring style is strictly followed.
+  - The "Raises" section should document all exceptions raised either directly in the function/method/class or indirectly via another function/method/class defined in this code base. Exceptions raised via external libraries may be documented if appropriate.
   - Ensure the docstring is formatted in a way that is compatible with our documentation tools (Sphinx and napoleon).
   - This applies to both src and test code.
 - Require that the behaviour of any modified function, method or class is tested.
@@ -10,3 +11,4 @@ When conducting a code review, please follow these guidelines:
 - Some classes may also benefit from a `description` or `summary` property.
   - This is useful if any end user would benefit from a more detailed description of a class instance's behaviour.
   - This does not supersede a proper description of class level behaviour (i.e. behaviour that applies to all instances) in the class docstring.
+- This code base is still in development and hence breaking changes are to be expected. However, if a change has a downstream impact on another part of this code base, ensure that this is noted in the code review.
