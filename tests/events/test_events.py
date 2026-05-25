@@ -12,7 +12,7 @@ from offline_particles.particles import Particles, ParticlesView
 
 
 def _make_state(time: float = 0.0, iteration: int = 0) -> SimulationState:
-    particles = Particles(3, x=np.dtype(np.float64))
+    particles = Particles(3, {"x": np.dtype(np.float64)})
     view = ParticlesView(particles)
     return SimulationState(
         time=np.float64(time),

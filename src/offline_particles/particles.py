@@ -8,18 +8,20 @@ import numpy.typing as npt
 
 from .kernels import BoundKernel, ParticlePropertyDeclaration
 
+REQUIRED_PARTICLE_PROPERTY_FIELDS = {"status": np.uint8, "zidx": np.float64, "yidx": np.float64, "xidx": np.float64}
+
 
 class _FrozenArrayMapping:
     """A mapping-like object that holds equi-shaped arrays and prevents modification."""
 
     __slots__ = ("_arrays", "_dtypes", "_shape")
 
-    def __init__(self, **arrays: npt.NDArray) -> None:
+    def __init__(self, arrays: Mapping[str, npt.NDArray]) -> None:
         """Initialize the mapping with given arrays.
 
         Parameters
         ----------
-        **arrays : npt.NDArray
+        arrays : Mapping[str, npt.NDArray]
             The arrays to store in the mapping.
 
         Raises
@@ -88,20 +90,20 @@ class _FrozenArrayMapping:
 class Particles(_FrozenArrayMapping):
     __slots__ = ("_length",)
 
-    def __init__(self, nparticles: int, **bound_property_dtypes: np.dtype) -> None:
+    def __init__(self, nparticles: int, bound_property_dtypes: Mapping[str, np.dtype]) -> None:
         """Initialize the Particles object.
 
         Parameters
         ----------
         nparticles : int
             The number of particles.
-        **bound_property_dtypes : np.dtype
+        bound_property_dtypes : Mapping[str, np.dtype]
             The bound property dtypes.
         """
         object.__setattr__(self, "_length", nparticles)
         arrays = {binding: np.zeros((nparticles,), dtype=dtype) for binding, dtype in bound_property_dtypes.items()}
 
-        super().__init__(**arrays)
+        super().__init__(arrays=arrays)
 
     def __len__(self) -> int:
         return object.__getattribute__(self, "_length")
@@ -147,7 +149,7 @@ class Particles(_FrozenArrayMapping):
                 bound_property_dtypes[name] = _find_valid_particle_property_dtype(declarations)
 
         # construct the Particles object with the determined dtypes
-        return cls(nparticles, **bound_property_dtypes)
+        return cls(nparticles, bound_property_dtypes=bound_property_dtypes)
 
 
 class ParticlesView(_FrozenArrayMapping):
@@ -165,7 +167,7 @@ class ParticlesView(_FrozenArrayMapping):
         """
         arrays = {name: self.readonly_view(array) for name, array in parent.arrays.items()}
         object.__setattr__(self, "_length", len(parent))
-        super().__init__(**arrays)
+        super().__init__(arrays=arrays)
 
     @staticmethod
     def readonly_view(array: npt.NDArray) -> npt.NDArray:
