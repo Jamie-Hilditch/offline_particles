@@ -85,6 +85,47 @@ class TestFrozenArrayMappingShapeCheck:
 
 
 class TestParticles:
+    def test_required_particle_properties_are_created_with_required_dtypes(self) -> None:
+        p = Particles(4, {"temperature": np.dtype(np.float32)})
+
+        assert "status" in p.arrays
+        assert "zidx" in p.arrays
+        assert "yidx" in p.arrays
+        assert "xidx" in p.arrays
+        assert p["status"].dtype == np.dtype(np.uint8)
+        assert p["zidx"].dtype == np.dtype(np.float64)
+        assert p["yidx"].dtype == np.dtype(np.float64)
+        assert p["xidx"].dtype == np.dtype(np.float64)
+
+    @pytest.mark.parametrize(
+        ("field", "bad_dtype"),
+        [
+            ("status", np.dtype(np.int32)),
+            ("zidx", np.dtype(np.float32)),
+            ("yidx", np.dtype(np.int32)),
+            ("xidx", np.dtype(np.float32)),
+        ],
+    )
+    def test_incompatible_required_field_dtype_raises_value_error(self, field: str, bad_dtype: np.dtype) -> None:
+        with pytest.raises(ValueError, match="Invalid dtype for required particle property"):
+            Particles(4, {field: bad_dtype})
+
+    def test_compatible_required_field_dtype_is_accepted(self) -> None:
+        p = Particles(
+            4,
+            {
+                "status": np.dtype(np.uint8),
+                "zidx": np.dtype(np.float64),
+                "yidx": np.dtype(np.float64),
+                "xidx": np.dtype(np.float64),
+            },
+        )
+
+        assert p["status"].dtype == np.dtype(np.uint8)
+        assert p["zidx"].dtype == np.dtype(np.float64)
+        assert p["yidx"].dtype == np.dtype(np.float64)
+        assert p["xidx"].dtype == np.dtype(np.float64)
+
     def test_creates_zero_arrays(self) -> None:
         p = Particles(4, {"x": np.dtype(np.float64)})
         np.testing.assert_array_equal(p["x"], np.zeros(4))
