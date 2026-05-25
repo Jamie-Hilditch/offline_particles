@@ -14,6 +14,7 @@ import numpy.typing as npt
 
 from ...spatial_arrays import ArrayAxis
 from .._kernels import (
+    BoundKernel,
     FieldDataDeclaration,
     FieldDataType,
     ParticleKernel,
@@ -26,10 +27,10 @@ from ..interpolation import lagrange2N_mapped_particle_factory
 from ..layout_validators import ordering_validator_factory
 from ..status import INACTIVE_FLAG
 
-__all__ = ["advection_kernel_factory"]
+__all__ = ["advection_particle_kernel_factory", "construct_advection_kernel"]
 
 
-def _advection_1D_1D_factory(velocity_interpolator, scaling_interpolator, N: int, metric: bool = True):
+def _advection_1D_1D_factory(velocity_interpolator, scaling_interpolator, N: int, metric: bool):
     r"""Create a particle advection implementation for 1D velocity and 1D scaling fields.
 
     Parameters
@@ -40,9 +41,9 @@ def _advection_1D_1D_factory(velocity_interpolator, scaling_interpolator, N: int
         A 1D scaling factor interpolator.
     N : int
         The half-width of the interpolation stencil.
-    metric : bool, optional
+    metric : bool
         Whether the scaling factor should be interpreted as a metric (multiplied by the velocity) or
-        as a grid spacing (divided from the velocity) in the advection calculation, by default True
+        as a grid spacing (divided from the velocity) in the advection calculation.
 
     Returns
     -------
@@ -90,7 +91,7 @@ def _advection_1D_1D_factory(velocity_interpolator, scaling_interpolator, N: int
     return advection_1D_1D
 
 
-def _advection_1D_2D_factory(velocity_interpolator, scaling_interpolator, N: int, metric: bool = True):
+def _advection_1D_2D_factory(velocity_interpolator, scaling_interpolator, N: int, metric: bool):
     r"""Create a particle advection implementation for 1D velocity and 2D scaling fields.
 
     Parameters
@@ -101,9 +102,9 @@ def _advection_1D_2D_factory(velocity_interpolator, scaling_interpolator, N: int
         A 2D scaling factor interpolator.
     N : int
         The half-width of the interpolation stencil.
-    metric : bool, optional
+    metric : bool
         Whether the scaling factor should be interpreted as a metric (multiplied by the velocity) or
-        as a grid spacing (divided from the velocity) in the advection calculation, by default True
+        as a grid spacing (divided from the velocity) in the advection calculation.
 
     Returns
     -------
@@ -162,7 +163,7 @@ def _advection_1D_2D_factory(velocity_interpolator, scaling_interpolator, N: int
     return advection_1D_2D
 
 
-def _advection_1D_3D_factory(velocity_interpolator, scaling_interpolator, N: int, metric: bool = True):
+def _advection_1D_3D_factory(velocity_interpolator, scaling_interpolator, N: int, metric: bool):
     r"""Create a particle advection implementation for 1D velocity and 3D scaling fields.
 
     Parameters
@@ -173,9 +174,9 @@ def _advection_1D_3D_factory(velocity_interpolator, scaling_interpolator, N: int
         A 3D scaling factor interpolator.
     N : int
         The half-width of the interpolation stencil.
-    metric : bool, optional
+    metric : bool
         Whether the scaling factor should be interpreted as a metric (multiplied by the velocity) or
-        as a grid spacing (divided from the velocity) in the advection calculation, by default True
+        as a grid spacing (divided from the velocity) in the advection calculation.
 
     Returns
     -------
@@ -238,7 +239,7 @@ def _advection_1D_3D_factory(velocity_interpolator, scaling_interpolator, N: int
     return advection_1D_3D
 
 
-def _advection_2D_1D_factory(velocity_interpolator, scaling_interpolator, N: int, metric: bool = True):
+def _advection_2D_1D_factory(velocity_interpolator, scaling_interpolator, N: int, metric: bool):
     r"""Create a particle advection implementation for 2D velocity and 1D scaling fields.
 
     Parameters
@@ -249,9 +250,9 @@ def _advection_2D_1D_factory(velocity_interpolator, scaling_interpolator, N: int
         A 1D scaling factor interpolator.
     N : int
         The half-width of the interpolation stencil.
-    metric : bool, optional
+    metric : bool
         Whether the scaling factor should be interpreted as a metric (multiplied by the velocity) or
-        as a grid spacing (divided from the velocity) in the advection calculation, by default True
+        as a grid spacing (divided from the velocity) in the advection calculation.
 
     Returns
     -------
@@ -308,7 +309,7 @@ def _advection_2D_1D_factory(velocity_interpolator, scaling_interpolator, N: int
     return advection_2D_1D
 
 
-def _advection_2D_2D_factory(velocity_interpolator, scaling_interpolator, N: int, metric: bool = True):
+def _advection_2D_2D_factory(velocity_interpolator, scaling_interpolator, N: int, metric: bool):
     r"""Create a particle advection implementation for 2D velocity and 2D scaling fields.
 
     Parameters
@@ -319,9 +320,9 @@ def _advection_2D_2D_factory(velocity_interpolator, scaling_interpolator, N: int
         A 2D scaling factor interpolator.
     N : int
         The half-width of the interpolation stencil.
-    metric : bool, optional
+    metric : bool
         Whether the scaling factor should be interpreted as a metric (multiplied by the velocity) or
-        as a grid spacing (divided from the velocity) in the advection calculation, by default True
+        as a grid spacing (divided from the velocity) in the advection calculation.
 
     Returns
     -------
@@ -389,7 +390,7 @@ def _advection_2D_2D_factory(velocity_interpolator, scaling_interpolator, N: int
     return advection_2D_2D
 
 
-def _advection_2D_3D_factory(velocity_interpolator, scaling_interpolator, N: int, metric: bool = True):
+def _advection_2D_3D_factory(velocity_interpolator, scaling_interpolator, N: int, metric: bool):
     r"""Create a particle advection implementation for 2D velocity and 3D scaling fields.
 
     Parameters
@@ -400,9 +401,9 @@ def _advection_2D_3D_factory(velocity_interpolator, scaling_interpolator, N: int
         A 3D scaling factor interpolator.
     N : int
         The half-width of the interpolation stencil.
-    metric : bool, optional
+    metric : bool
         Whether the scaling factor should be interpreted as a metric (multiplied by the velocity) or
-        as a grid spacing (divided from the velocity) in the advection calculation, by default True
+        as a grid spacing (divided from the velocity) in the advection calculation.
 
     Returns
     -------
@@ -480,7 +481,7 @@ def _advection_2D_3D_factory(velocity_interpolator, scaling_interpolator, N: int
     return advection_2D_3D
 
 
-def _advection_3D_1D_factory(velocity_interpolator, scaling_interpolator, N: int, metric: bool = True):
+def _advection_3D_1D_factory(velocity_interpolator, scaling_interpolator, N: int, metric: bool):
     r"""Create a particle advection implementation for 3D velocity and 1D scaling fields.
 
     Parameters
@@ -491,9 +492,9 @@ def _advection_3D_1D_factory(velocity_interpolator, scaling_interpolator, N: int
         A 1D scaling factor interpolator.
     N : int
         The half-width of the interpolation stencil.
-    metric : bool, optional
+    metric : bool
         Whether the scaling factor should be interpreted as a metric (multiplied by the velocity) or
-        as a grid spacing (divided from the velocity) in the advection calculation, by default True
+        as a grid spacing (divided from the velocity) in the advection calculation.
 
     Returns
     -------
@@ -554,7 +555,7 @@ def _advection_3D_1D_factory(velocity_interpolator, scaling_interpolator, N: int
     return advection_3D_1D
 
 
-def _advection_3D_2D_factory(velocity_interpolator, scaling_interpolator, N: int, metric: bool = True):
+def _advection_3D_2D_factory(velocity_interpolator, scaling_interpolator, N: int, metric: bool):
     r"""Create a particle advection implementation for 3D velocity and 2D scaling fields.
 
     Parameters
@@ -565,9 +566,9 @@ def _advection_3D_2D_factory(velocity_interpolator, scaling_interpolator, N: int
         A 2D scaling factor interpolator.
     N : int
         The half-width of the interpolation stencil.
-    metric : bool, optional
+    metric : bool
         Whether the scaling factor should be interpreted as a metric (multiplied by the velocity) or
-        as a grid spacing (divided from the velocity) in the advection calculation, by default True
+        as a grid spacing (divided from the velocity) in the advection calculation.
 
     Returns
     -------
@@ -645,7 +646,7 @@ def _advection_3D_2D_factory(velocity_interpolator, scaling_interpolator, N: int
     return advection_3D_2D
 
 
-def _advection_3D_3D_factory(velocity_interpolator, scaling_interpolator, N: int, metric: bool = True):
+def _advection_3D_3D_factory(velocity_interpolator, scaling_interpolator, N: int, metric: bool):
     r"""Create a particle advection implementation for 3D velocity and 3D scaling fields.
 
     Parameters
@@ -656,9 +657,9 @@ def _advection_3D_3D_factory(velocity_interpolator, scaling_interpolator, N: int
         A 3D scaling factor interpolator.
     N : int
         The half-width of the interpolation stencil.
-    metric : bool, optional
+    metric : bool
         Whether the scaling factor should be interpreted as a metric (multiplied by the velocity) or
-        as a grid spacing (divided from the velocity) in the advection calculation, by default True
+        as a grid spacing (divided from the velocity) in the advection calculation.
 
     Returns
     -------
@@ -741,10 +742,10 @@ def _advection_3D_3D_factory(velocity_interpolator, scaling_interpolator, N: int
     return advection_3D_3D
 
 
-def advection_kernel_factory(
+def advection_particle_kernel_factory(
     velocity_dim_ordering: tuple[ArrayAxis, ...],
     scaling_dim_ordering: tuple[ArrayAxis, ...],
-    N: int,
+    N: int = 1,
     metric: bool = True,
 ) -> ParticleKernel:
     """Create a particle advection kernel for the given velocity and spatial dimension orderings.
@@ -755,8 +756,8 @@ def advection_kernel_factory(
         The ordering of dimensions in the velocity field.
     scaling_dim_ordering : tuple[ArrayAxis, ...]
         The ordering of dimensions in the scaling field.
-    N : int
-        The half-width of the interpolation stencil.
+    N : int, optional
+        The half-width of the interpolation stencil. Defaults to 1 (linear interpolation).
     metric : bool, optional
         Whether to interpret the scaling as a metric (multiply velocity) or grid spacing (divided from the velocity) in the advection calculation.
         Default is True.
@@ -836,3 +837,51 @@ def advection_kernel_factory(
     )
 
     return kernel
+
+
+def construct_advection_kernel(
+    idx_tendency_binding: str,
+    velocity_binding: str,
+    scaling_binding: str,
+    velocity_dim_ordering: tuple[ArrayAxis, ...],
+    scaling_dim_ordering: tuple[ArrayAxis, ...],
+    N: int = 1,
+    metric: bool = True,
+) -> BoundKernel:
+    """Create an advection kernel for the given velocity and spatial dimension orderings.
+
+    Parameters
+    ----------
+    idx_tendency_binding : str
+        The binding for the index tendency particle property.
+    velocity_binding : str
+        The binding for the velocity field.
+    scaling_binding : str
+        The binding for the scaling field.
+    velocity_dim_ordering : tuple[ArrayAxis, ...]
+        The ordering of dimensions in the velocity field.
+    scaling_dim_ordering : tuple[ArrayAxis, ...]
+        The ordering of dimensions in the scaling field.
+    N : int, optional
+        The half-width of the interpolation stencil. Defaults to 1 (linear interpolation).
+    metric : bool, optional
+        Whether to interpret the scaling as a metric (multiply velocity) or grid spacing (divided from the velocity) in the advection calculation.
+        Default is True.
+
+    Returns
+    -------
+    BoundKernel
+        A bound kernel implementing advection.
+
+    Raises
+    ------
+    ValueError
+        If the dimensionality of the velocity or spatial fields is not supported.
+        From :function:`advection_particle_kernel_factory`.
+    """
+    kernel = advection_particle_kernel_factory(velocity_dim_ordering, scaling_dim_ordering, N, metric)
+    return BoundKernel(
+        kernel,
+        particle_property_bindings={idx_tendency_binding: "idx_tendency"},
+        field_data_bindings={velocity_binding: "velocity", scaling_binding: "scaling"},
+    )
