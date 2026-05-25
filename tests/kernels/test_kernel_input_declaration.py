@@ -86,6 +86,9 @@ class TestRequiredParticlePropertyDeclarations:
         assert _REQUIRED_PARTICLE_PROPERTY_FIELDS[expected_name] == expected_dtype
 
     def test_required_particle_property_names_match_particles_module(self) -> None:
-        assert {STATUS_DECLARATION.name, ZIDX_DECLARATION.name, YIDX_DECLARATION.name, XIDX_DECLARATION.name} == set(
-            _REQUIRED_PARTICLE_PROPERTY_FIELDS
-        )
+        assert {
+            STATUS_DECLARATION.name,
+            ZIDX_DECLARATION.name,
+            YIDX_DECLARATION.name,
+            XIDX_DECLARATION.name,
+        } == set(_REQUIRED_PARTICLE_PROPERTY_FIELDS)

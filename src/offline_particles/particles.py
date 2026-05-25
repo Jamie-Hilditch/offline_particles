@@ -103,7 +103,12 @@ class Particles(_FrozenArrayMapping):
         nparticles : int
             The number of particles.
         bound_property_dtypes : Mapping[str, np.dtype]
-            The bound property dtypes.
+            Dtypes for additional particle properties to create. The required
+            particle properties ``status``, ``zidx``, ``yidx``, and ``xidx``
+            are always created with their required dtypes, even if they are
+            not included in this mapping. If this mapping includes any of
+            those required property names, the provided dtypes are only used
+            for validation and must exactly match the required dtypes.
 
         Raises
         ------
@@ -123,7 +128,9 @@ class Particles(_FrozenArrayMapping):
                 continue
             if provided_dtype != dtype:
                 raise ValueError(
-                    f"Invalid dtype for required particle property '{required_binding}'. Provided dtype {provided_dtype} is not equal to required dtype {dtype}."
+                    f"Invalid dtype for required particle property "
+                    f"'{required_binding}'. Provided dtype {provided_dtype} "
+                    f"is not equal to required dtype {dtype}."
                 )
 
         # build up arrays starting with the required fields
