@@ -8,18 +8,25 @@ import numpy.typing as npt
 
 from .kernels import BoundKernel, ParticlePropertyDeclaration
 
+_REQUIRED_PARTICLE_PROPERTY_FIELDS = {
+    "status": np.dtype(np.uint8),
+    "zidx": np.dtype(np.float64),
+    "yidx": np.dtype(np.float64),
+    "xidx": np.dtype(np.float64),
+}
+
 
 class _FrozenArrayMapping:
     """A mapping-like object that holds equi-shaped arrays and prevents modification."""
 
     __slots__ = ("_arrays", "_dtypes", "_shape")
 
-    def __init__(self, **arrays: npt.NDArray) -> None:
+    def __init__(self, arrays: Mapping[str, npt.NDArray]) -> None:
         """Initialize the mapping with given arrays.
 
         Parameters
         ----------
-        **arrays : npt.NDArray
+        arrays : Mapping[str, npt.NDArray]
             The arrays to store in the mapping.
 
         Raises
@@ -32,7 +39,7 @@ class _FrozenArrayMapping:
             raise ValueError("All arrays must have the same shape. Got shapes: " + ", ".join(str(s) for s in shapes))
         object.__setattr__(self, "_shape", shapes.pop())
         object.__setattr__(self, "_dtypes", types.MappingProxyType({name: arr.dtype for name, arr in arrays.items()}))
-        object.__setattr__(self, "_arrays", types.MappingProxyType(arrays))
+        object.__setattr__(self, "_arrays", types.MappingProxyType(dict(arrays)))
 
     def __setattr__(self, name, value):
         raise AttributeError(f"{self.__class__.__name__} is immutable")
@@ -88,20 +95,55 @@ class _FrozenArrayMapping:
 class Particles(_FrozenArrayMapping):
     __slots__ = ("_length",)
 
-    def __init__(self, nparticles: int, **bound_property_dtypes: np.dtype) -> None:
+    def __init__(self, nparticles: int, bound_property_dtypes: Mapping[str, np.dtype]) -> None:
         """Initialize the Particles object.
 
         Parameters
         ----------
         nparticles : int
             The number of particles.
-        **bound_property_dtypes : np.dtype
-            The bound property dtypes.
+        bound_property_dtypes : Mapping[str, np.dtype]
+            Dtypes for additional particle properties to create. The required
+            particle properties ``status``, ``zidx``, ``yidx``, and ``xidx``
+            are always created with their required dtypes, even if they are
+            not included in this mapping. If this mapping includes any of
+            those required property names, the provided dtypes are only used
+            for validation and must exactly match the required dtypes.
+
+        Raises
+        ------
+        ValueError
+            If a passed dtype is incompatible with the required dtypes.
         """
         object.__setattr__(self, "_length", nparticles)
-        arrays = {binding: np.zeros((nparticles,), dtype=dtype) for binding, dtype in bound_property_dtypes.items()}
 
-        super().__init__(**arrays)
+        # sort the additional bindings alphabetically, but with private fields (those starting with "_") coming after public ones
+        bindings = sorted(bound_property_dtypes.keys(), key=lambda binding: (binding.startswith("_"), binding))
+        bindings_dtypes = {binding: np.dtype(bound_property_dtypes[binding]) for binding in bindings}
+
+        # remove any required fields from the additional bindings, since we already created arrays for those and checked their dtypes
+        for required_binding, dtype in _REQUIRED_PARTICLE_PROPERTY_FIELDS.items():
+            provided_dtype = bindings_dtypes.pop(required_binding, None)
+            if provided_dtype is None:
+                continue
+            if provided_dtype != dtype:
+                raise ValueError(
+                    f"Invalid dtype for required particle property "
+                    f"'{required_binding}'. Provided dtype {provided_dtype} "
+                    f"is not equal to required dtype {dtype}."
+                )
+
+        # build up arrays starting with the required fields
+        arrays = {
+            binding: np.zeros((nparticles,), dtype=dtype)
+            for binding, dtype in _REQUIRED_PARTICLE_PROPERTY_FIELDS.items()
+        }
+
+        # now add the additional fields, checking that they are compatible with any arrays we already created for the required fields
+        for binding, dtype in bindings_dtypes.items():
+            arrays[binding] = np.zeros((nparticles,), dtype=dtype)
+
+        super().__init__(arrays=arrays)
 
     def __len__(self) -> int:
         return object.__getattribute__(self, "_length")
@@ -147,7 +189,7 @@ class Particles(_FrozenArrayMapping):
                 bound_property_dtypes[name] = _find_valid_particle_property_dtype(declarations)
 
         # construct the Particles object with the determined dtypes
-        return cls(nparticles, **bound_property_dtypes)
+        return cls(nparticles, bound_property_dtypes=bound_property_dtypes)
 
 
 class ParticlesView(_FrozenArrayMapping):
@@ -165,7 +207,7 @@ class ParticlesView(_FrozenArrayMapping):
         """
         arrays = {name: self.readonly_view(array) for name, array in parent.arrays.items()}
         object.__setattr__(self, "_length", len(parent))
-        super().__init__(**arrays)
+        super().__init__(arrays=arrays)
 
     @staticmethod
     def readonly_view(array: npt.NDArray) -> npt.NDArray:

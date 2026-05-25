@@ -35,7 +35,7 @@ def _make_state(nparticles: int = 5, property_values: dict | None = None) -> Sim
         for name, values in property_values.items():
             kwargs[name] = np.asarray(values).dtype
 
-    particles = Particles(nparticles, **kwargs)
+    particles = Particles(nparticles, kwargs)
 
     if property_values:
         for name, values in property_values.items():

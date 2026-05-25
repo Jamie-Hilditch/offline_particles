@@ -43,7 +43,7 @@ def _make_state(
         for name, values in property_values.items():
             kwargs[name] = np.asarray(values).dtype
 
-    p = Particles(nparticles, **kwargs)
+    p = Particles(nparticles, kwargs)
 
     if property_values:
         for name, values in property_values.items():
@@ -86,11 +86,11 @@ def _make_multi_set_state(
     SimulationState
         A SimulationState containing two particle sets.
     """
-    p1 = Particles(nparticles_ps1, xidx=np.dtype(np.float64))
+    p1 = Particles(nparticles_ps1, {"xidx": np.dtype(np.float64)})
     if values_ps1 is not None:
         p1["xidx"][:] = np.asarray(values_ps1, dtype=np.float64)
 
-    p2 = Particles(nparticles_ps2, xidx=np.dtype(np.float64))
+    p2 = Particles(nparticles_ps2, {"xidx": np.dtype(np.float64)})
     if values_ps2 is not None:
         p2["xidx"][:] = np.asarray(values_ps2, dtype=np.float64)
 

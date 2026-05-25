@@ -2,6 +2,13 @@ import numpy as np
 import pytest
 
 from offline_particles.kernels._kernels import KernelInputDeclaration
+from offline_particles.kernels.input_declarations import (
+    STATUS_DECLARATION,
+    XIDX_DECLARATION,
+    YIDX_DECLARATION,
+    ZIDX_DECLARATION,
+)
+from offline_particles.particles import _REQUIRED_PARTICLE_PROPERTY_FIELDS
 
 
 class TestKernelInputDeclarationConstruction:
@@ -56,3 +63,32 @@ class TestKernelInputDeclarationValidateDtype:
 
         with pytest.raises(TypeError, match="dtype constraints"):
             declaration.validate_dtype(np.int32)
+
+
+class TestRequiredParticlePropertyDeclarations:
+    @pytest.mark.parametrize(
+        ("declaration", "expected_name", "expected_dtype"),
+        [
+            (STATUS_DECLARATION, "status", np.dtype(np.uint8)),
+            (ZIDX_DECLARATION, "zidx", np.dtype(np.float64)),
+            (YIDX_DECLARATION, "yidx", np.dtype(np.float64)),
+            (XIDX_DECLARATION, "xidx", np.dtype(np.float64)),
+        ],
+    )
+    def test_required_particle_property_declarations_match_particles_module(
+        self,
+        declaration: KernelInputDeclaration,
+        expected_name: str,
+        expected_dtype: np.dtype,
+    ) -> None:
+        assert declaration.name == expected_name
+        assert declaration.dtype_constraints == (expected_dtype.type,)
+        assert _REQUIRED_PARTICLE_PROPERTY_FIELDS[expected_name] == expected_dtype
+
+    def test_required_particle_property_names_match_particles_module(self) -> None:
+        assert {
+            STATUS_DECLARATION.name,
+            ZIDX_DECLARATION.name,
+            YIDX_DECLARATION.name,
+            XIDX_DECLARATION.name,
+        } == set(_REQUIRED_PARTICLE_PROPERTY_FIELDS)

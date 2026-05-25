@@ -18,10 +18,12 @@ def _make_clock() -> Clock:
 def _make_particles() -> Particles:
     particles = Particles(
         3,
-        status=np.dtype(np.uint8),
-        zidx=np.dtype(np.float64),
-        yidx=np.dtype(np.float64),
-        xidx=np.dtype(np.float64),
+        {
+            "status": np.dtype(np.uint8),
+            "zidx": np.dtype(np.float64),
+            "yidx": np.dtype(np.float64),
+            "xidx": np.dtype(np.float64),
+        },
     )
     particles["status"][:] = np.array(
         [
