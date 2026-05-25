@@ -48,7 +48,7 @@ def _advection_1D_1D_factory(velocity_interpolator, scaling_interpolator, N: int
     Returns
     -------
     Callable
-        Aparticle advection implementation.
+        A particle advection implementation.
 
     Notes
     -----
