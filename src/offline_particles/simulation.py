@@ -655,6 +655,8 @@ class Simulation:
         KeyError
             If the specified particle set does not exist in the simulation.
             Or if the kernel requires a particle property that is not available in the simulation.
+        TypeError
+            If a required particle property has an incompatible dtype. From :meth:`~ParticlePropertyDeclaration.validate_dtype`.
         """
         # get particles
         if particle_set not in self._particles:
