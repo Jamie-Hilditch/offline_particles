@@ -150,8 +150,14 @@ def lagrange2N_mapped_particle_factory(dim_ordering: tuple[ArrayAxis, ...], N: i
     Raises
     ------
     ValueError
+        If there are duplicate dimensions in `dim_ordering`.
         If the number of dimensions in the field array is not supported.
     """
+    # check the dim_ordering is unique
+    if len(set(dim_ordering)) != len(dim_ordering):
+        raise ValueError(
+            f"Duplicate dimensions in dim_ordering: {dim_ordering}. Each dimension should only appear once."
+        )
     # tuple of indices for the axes in the field array, numba should treat this as a compile time constant
     axis_indices = tuple(_AXIS_ENUMERATION[axis] for axis in dim_ordering)
 
