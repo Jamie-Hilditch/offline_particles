@@ -329,6 +329,24 @@ class BoundKernel:
         scalar_bindings: Mapping[str, str] | None = None,
         field_data_bindings: Mapping[str, str] | None = None,
     ):
+        """Create a bound kernel.
+
+        Parameters
+        ----------
+        kernel : ParticleKernel
+            The kernel to bind.
+        particle_property_bindings : Mapping[str, str], optional
+            A mapping of declared particle property names to bound names. If not provided, the declared names are used as bound names.
+        scalar_bindings : Mapping[str, str], optional
+            A mapping of declared scalar names to bound names. If not provided, the declared names are used as bound names.
+        field_data_bindings : Mapping[str, str], optional
+            A mapping of declared field data names to bound names. If not provided, the declared names are used as bound names.
+
+        Raises
+        ------
+        ValueError
+            If there are unused bindings in any of the provided binding mappings.
+        """
         self._kernel = kernel
 
         # defaults for optional arguments
@@ -440,6 +458,9 @@ class BoundKernel:
         ------
         KeyError
             If the particles do not have a required particle property.
+        TypeError
+            If a particle property has a dtype that does not satisfy the declaration's dtype constraints.
+            From :meth:`~ParticlePropertyDeclaration.validate_dtype` for each particle property.
         """
         for declared_name, bound_name in self._particle_property_bindings.items():
             if bound_name not in particles:
