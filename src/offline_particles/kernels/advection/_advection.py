@@ -771,6 +771,7 @@ def advection_particle_kernel_factory(
     ------
     ValueError
         If the dimensionality of the velocity or spatial fields is not supported.
+        If either dim_ordering is an invalid argument to :function:`lagrange2N_mapped_particle_factory`.
     """
     velocity_interpolator = lagrange2N_mapped_particle_factory(velocity_dim_ordering, N)
     scaling_interpolator = lagrange2N_mapped_particle_factory(scaling_dim_ordering, N)
@@ -876,7 +877,7 @@ def construct_advection_kernel(
     Raises
     ------
     ValueError
-        If the dimensionality of the velocity or spatial fields is not supported.
+        If the dimensionality of the velocity or spatial fields is not supported or the dim_ordering arguments are invalid.
         From :function:`advection_particle_kernel_factory`.
     """
     kernel = advection_particle_kernel_factory(velocity_dim_ordering, scaling_dim_ordering, N, metric)
