@@ -6,6 +6,7 @@ This allows us to use the same interpolation functions for different field array
 without needing to write separate interpolation functions for each layout.
 """
 
+import functools
 from collections.abc import Callable
 
 import numba
@@ -18,6 +19,7 @@ from ._lagrange import lagrange2N_1D_particle_factory, lagrange2N_2D_particle_fa
 _AXIS_ENUMERATION = {ArrayAxis.Z: 0, ArrayAxis.Y: 1, ArrayAxis.X: 2}
 
 
+@functools.cache
 def _lagrange2N_1D_mapped_particle_factory(axis_index: int, N: int) -> Callable:
     """Create a 1D field interpolator for the given axis and interpolation stencil size.
 
@@ -50,6 +52,7 @@ def _lagrange2N_1D_mapped_particle_factory(axis_index: int, N: int) -> Callable:
     return lagrange2N_1D_mapped_particle
 
 
+@functools.cache
 def _lagrange2N_2D_mapped_particle_factory(axis_index_0: int, axis_index_1: int, N: int) -> Callable:
     """Create a 2D field interpolator for the given axes and interpolation stencil size.
 
@@ -88,6 +91,7 @@ def _lagrange2N_2D_mapped_particle_factory(axis_index_0: int, axis_index_1: int,
     return lagrange2N_2D_mapped_particle
 
 
+@functools.cache
 def _lagrange2N_3D_mapped_particle_factory(axis_index_0: int, axis_index_1: int, axis_index_2: int, N: int) -> Callable:
     """Create a 3D field interpolator for the given interpolation stencil size.
 
@@ -132,6 +136,7 @@ def _lagrange2N_3D_mapped_particle_factory(axis_index_0: int, axis_index_1: int,
     return lagrange2N_3D_mapped_particle
 
 
+@functools.cache
 def lagrange2N_mapped_particle_factory(dim_ordering: tuple[ArrayAxis, ...], N: int) -> Callable:
     """Create a field interpolator for the given field array layout and interpolation stencil size.
 

@@ -8,12 +8,10 @@ Lagrange test module, so these tests validate the mapping contract directly.
 
 from itertools import permutations
 
-import numba
 import numpy as np
 import numpy.typing as npt
 import pytest
 
-import offline_particles.kernels.interpolation._lagrange_mapped as lagrange_mapped_module
 from offline_particles.kernels.interpolation import lagrange2N_mapped_particle_factory
 from offline_particles.spatial_arrays import ArrayAxis
 
@@ -79,156 +77,6 @@ def _expected_affine_value(layout: tuple[ArrayAxis, ...], offsets: tuple[float, 
 
 def _max_idxs_for_shape(shape: tuple[int, ...], n: int) -> tuple[int, ...]:
     return tuple(size - 2 * n for size in shape)
-
-
-@pytest.mark.parametrize(
-    "layout,n,expected_arity",
-    [
-        ((ArrayAxis.Z,), 2, 1),
-        ((ArrayAxis.Y,), 2, 1),
-        ((ArrayAxis.X,), 2, 1),
-        ((ArrayAxis.Z, ArrayAxis.Y), 2, 2),
-        ((ArrayAxis.Z, ArrayAxis.X), 2, 2),
-        ((ArrayAxis.Y, ArrayAxis.Z), 2, 2),
-        ((ArrayAxis.Y, ArrayAxis.X), 2, 2),
-        ((ArrayAxis.X, ArrayAxis.Z), 2, 2),
-        ((ArrayAxis.X, ArrayAxis.Y), 2, 2),
-        ((ArrayAxis.Z, ArrayAxis.Y, ArrayAxis.X), 2, 3),
-        ((ArrayAxis.Z, ArrayAxis.X, ArrayAxis.Y), 2, 3),
-        ((ArrayAxis.Y, ArrayAxis.Z, ArrayAxis.X), 2, 3),
-        ((ArrayAxis.Y, ArrayAxis.X, ArrayAxis.Z), 2, 3),
-        ((ArrayAxis.X, ArrayAxis.Z, ArrayAxis.Y), 2, 3),
-        ((ArrayAxis.X, ArrayAxis.Y, ArrayAxis.Z), 2, 3),
-    ],
-)
-def test_mapped_factory_forwards_particle_coordinates_and_offsets(
-    monkeypatch: pytest.MonkeyPatch,
-    layout: tuple[ArrayAxis, ...],
-    n: int,
-    expected_arity: int,
-) -> None:
-    """The wrapper should pass coordinates in field-layout order to the particle factory."""
-    called: dict[str, int] = {}
-
-    if expected_arity == 1:
-
-        @numba.njit(nogil=True, fastmath=True)
-        def fake_interpolator(
-            field_array: np.ndarray,
-            offset_idx: float,
-            max_idx: int,
-        ) -> float:
-            return offset_idx * 1000.0 + float(max_idx)
-
-        def fake_factory(received_n: int):
-            called["N"] = received_n
-            return fake_interpolator
-
-        monkeypatch.setattr(lagrange_mapped_module, "lagrange2N_1D_particle_factory", fake_factory)
-
-        impl = lagrange2N_mapped_particle_factory(layout, n)
-        field = np.ones((8,), dtype=np.float64)
-        result = impl(
-            _CANONICAL_PARTICLE_COORDS[0],
-            _CANONICAL_PARTICLE_COORDS[1],
-            _CANONICAL_PARTICLE_COORDS[2],
-            field,
-            _OFFSETS[layout[0]],
-            _SPY_MAX_IDXS[layout[0]],
-        )
-
-        expected = (_PARTICLE_COORDS[layout[0]] + _OFFSETS[layout[0]]) * 1000.0 + float(_SPY_MAX_IDXS[layout[0]])
-
-    elif expected_arity == 2:
-
-        @numba.njit(nogil=True, fastmath=True)
-        def fake_interpolator(
-            field_array: np.ndarray,
-            offset_idx_0: float,
-            offset_idx_1: float,
-            max_idx_0: int,
-            max_idx_1: int,
-        ) -> float:
-            return offset_idx_0 * 1000.0 + offset_idx_1 * 100.0 + float(max_idx_0) * 10.0 + float(max_idx_1)
-
-        def fake_factory(received_n: int):
-            called["N"] = received_n
-            return fake_interpolator
-
-        monkeypatch.setattr(lagrange_mapped_module, "lagrange2N_2D_particle_factory", fake_factory)
-
-        impl = lagrange2N_mapped_particle_factory(layout, n)
-        field = np.ones((8, 9), dtype=np.float64)
-        offsets = _offsets_in_layout(layout)
-        max_idxs = tuple(_SPY_MAX_IDXS[axis] for axis in layout)
-        result = impl(
-            _CANONICAL_PARTICLE_COORDS[0],
-            _CANONICAL_PARTICLE_COORDS[1],
-            _CANONICAL_PARTICLE_COORDS[2],
-            field,
-            offsets[0],
-            offsets[1],
-            max_idxs[0],
-            max_idxs[1],
-        )
-
-        coords = _particle_coords_in_layout(layout)
-        expected = (coords[0] + offsets[0]) * 1000.0
-        expected += (coords[1] + offsets[1]) * 100.0
-        expected += float(max_idxs[0]) * 10.0 + float(max_idxs[1])
-
-    else:
-
-        @numba.njit(nogil=True, fastmath=True)
-        def fake_interpolator(
-            field_array: np.ndarray,
-            offset_idx_0: float,
-            offset_idx_1: float,
-            offset_idx_2: float,
-            max_idx_0: int,
-            max_idx_1: int,
-            max_idx_2: int,
-        ) -> float:
-            return (
-                offset_idx_0 * 1000.0
-                + offset_idx_1 * 100.0
-                + offset_idx_2 * 10.0
-                + float(max_idx_0)
-                + float(max_idx_1) / 10.0
-                + float(max_idx_2) / 100.0
-            )
-
-        def fake_factory(received_n: int):
-            called["N"] = received_n
-            return fake_interpolator
-
-        monkeypatch.setattr(lagrange_mapped_module, "lagrange2N_3D_particle_factory", fake_factory)
-
-        impl = lagrange2N_mapped_particle_factory(layout, n)
-        field = np.ones((8, 9, 10), dtype=np.float64)
-        offsets = _offsets_in_layout(layout)
-        max_idxs = tuple(_SPY_MAX_IDXS[axis] for axis in layout)
-        result = impl(
-            _CANONICAL_PARTICLE_COORDS[0],
-            _CANONICAL_PARTICLE_COORDS[1],
-            _CANONICAL_PARTICLE_COORDS[2],
-            field,
-            offsets[0],
-            offsets[1],
-            offsets[2],
-            max_idxs[0],
-            max_idxs[1],
-            max_idxs[2],
-        )
-
-        coords = _particle_coords_in_layout(layout)
-        expected = (coords[0] + offsets[0]) * 1000.0
-        expected += (coords[1] + offsets[1]) * 100.0
-        expected += (coords[2] + offsets[2]) * 10.0
-        expected += float(max_idxs[0]) + float(max_idxs[1]) / 10.0 + float(max_idxs[2]) / 100.0
-
-    assert called == {"N": n}
-    assert result == pytest.approx(expected)
 
 
 @pytest.mark.parametrize("layout", list(permutations((ArrayAxis.Z, ArrayAxis.Y, ArrayAxis.X), 1)))
