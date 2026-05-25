@@ -39,7 +39,7 @@ class _FrozenArrayMapping:
             raise ValueError("All arrays must have the same shape. Got shapes: " + ", ".join(str(s) for s in shapes))
         object.__setattr__(self, "_shape", shapes.pop())
         object.__setattr__(self, "_dtypes", types.MappingProxyType({name: arr.dtype for name, arr in arrays.items()}))
-        object.__setattr__(self, "_arrays", types.MappingProxyType(arrays))
+        object.__setattr__(self, "_arrays", types.MappingProxyType(dict(arrays)))
 
     def __setattr__(self, name, value):
         raise AttributeError(f"{self.__class__.__name__} is immutable")
