@@ -3,20 +3,14 @@
 import functools
 
 from ...spatial_arrays import BBox
-from .._kernels import BoundKernel, ParticleKernel, ScalarDeclaration
-from ..input_declarations import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
+from .._kernels import BoundKernel
 from ._domain_bounds import construct_domain_bounds_kernel
 from ._finite_indices import finite_indices_kernel
 
 __all__ = [
-    "STATUS_DECLARATION",
-    "XIDX_DECLARATION",
-    "YIDX_DECLARATION",
-    "ZIDX_DECLARATION",
-    "ParticleKernel",
-    "ScalarDeclaration",
     "construct_domain_bounds_kernel",
     "construct_validation_kernel",
+    "construct_validation_kernel_from_bbox",
     "finite_indices_kernel",
 ]
 
