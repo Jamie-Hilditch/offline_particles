@@ -8,6 +8,8 @@ There are nine different advection kernel combinations, depending on the dimensi
 We explicitly construct and numba jit compile each of these combinations to ensure optimal performance.
 """
 
+from collections.abc import Iterable
+
 import numba
 import numpy as np
 import numpy.typing as npt
@@ -844,8 +846,8 @@ def construct_advection_kernel(
     idx_tendency_binding: str,
     velocity_binding: str,
     scaling_binding: str,
-    velocity_dim_ordering: tuple[ArrayAxis, ...],
-    scaling_dim_ordering: tuple[ArrayAxis, ...],
+    velocity_dim_ordering: Iterable[ArrayAxis | str],
+    scaling_dim_ordering: Iterable[ArrayAxis | str],
     N: int = 1,
     metric: bool = True,
 ) -> BoundKernel:
@@ -859,9 +861,9 @@ def construct_advection_kernel(
         The binding for the velocity field.
     scaling_binding : str
         The binding for the scaling field.
-    velocity_dim_ordering : tuple[ArrayAxis, ...]
+    velocity_dim_ordering : Iterable[ArrayAxis | str]
         The ordering of dimensions in the velocity field.
-    scaling_dim_ordering : tuple[ArrayAxis, ...]
+    scaling_dim_ordering : Iterable[ArrayAxis | str]
         The ordering of dimensions in the scaling field.
     N : int, optional
         The half-width of the interpolation stencil. Defaults to 1 (linear interpolation).
@@ -880,6 +882,9 @@ def construct_advection_kernel(
         If the dimensionality of the velocity or spatial fields is not supported or the dim_ordering arguments are invalid.
         From :function:`advection_particle_kernel_factory`.
     """
+    # Convert dimension ordering from str to ArrayAxis if necessary
+    velocity_dim_ordering = tuple(ArrayAxis.parse(axis) for axis in velocity_dim_ordering)
+    scaling_dim_ordering = tuple(ArrayAxis.parse(axis) for axis in scaling_dim_ordering)
     kernel = advection_particle_kernel_factory(velocity_dim_ordering, scaling_dim_ordering, N, metric)
     return BoundKernel(
         kernel,
