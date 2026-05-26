@@ -30,7 +30,7 @@ from ._kernels import (
     ScalarsType,
 )
 from .status import Status, is_active, is_inactive
-from .validation import construct_validation_kernel
+from .validation import construct_validation_kernel_from_bbox
 
 __all__ = [
     "BoundKernel",
@@ -43,7 +43,7 @@ __all__ = [
     "ScalarDeclaration",
     "ScalarsType",
     "Status",
-    "construct_validation_kernel",
+    "construct_validation_kernel_from_bbox",
     "input_declarations",
     "is_active",
     "is_inactive",

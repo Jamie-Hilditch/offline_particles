@@ -16,11 +16,14 @@ from ...kernels.roms import (
 )
 from ...kernels.timestepping import construct_ab3_update_kernel
 from ...kernels.validation import construct_validation_kernel
+from ...spatial_arrays import BBox
 from ...timestepping import ABTimestepper
 
 __all__ = [
+    "BBox",
     "construct_compute_z_kernel",
     "construct_compute_zidx_kernel",
+    "construct_validation_kernel",
     "roms_ab3_timestepper",
 ]
 
@@ -210,14 +213,11 @@ def roms_ab3_timestepper(
     # post step kernel to update zidx after advection
     post_step_kernels = [construct_compute_zidx_kernel()]
 
-    # pre step validation kernel
-    pre_step_kernels = [construct_validation_kernel()]
-
     timestepper = ABTimestepper(
         index_padding=index_padding,
         order=3,
     )
-    timestepper.add_pre_step_kernels(*pre_step_kernels)
+
     timestepper.add_tendency_kernels(*tendency_kernels)
     timestepper.add_ab_update_kernels(*ab_kernels)
     timestepper.add_post_step_kernels(*post_step_kernels)

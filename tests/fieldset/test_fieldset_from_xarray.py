@@ -121,9 +121,12 @@ class TestFieldsetFromXarrayBasic:
             ds,
             "time",
             _DIMS,
-            zidx_bounds=(1, 2),
-            yidx_bounds=(0.5, 3.5),
-            xidx_bounds=(-0.5, 5.5),
+            zidx_min=1,
+            zidx_max=2,
+            yidx_min=0.5,
+            yidx_max=3.5,
+            xidx_min=-0.5,
+            xidx_max=5.5,
         )
         assert fs.zidx_bounds == (np.float64(1), np.float64(2))
         assert fs.yidx_bounds == (np.float64(0.5), np.float64(3.5))

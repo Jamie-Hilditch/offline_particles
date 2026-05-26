@@ -24,7 +24,6 @@ set(EXTENSION_MODULES
     kernels.buoyancy._buoyancy_force
     kernels.roms.vertical_coordinate.vertical_coordinate
     kernels.status._status
-    kernels.validation._validation
 )
 
 # Cython compilation arguments

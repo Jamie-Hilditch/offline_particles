@@ -19,7 +19,7 @@ from .events import (
     SimulationState,
 )
 from .fieldset import Fieldset
-from .kernels import BoundKernel
+from .kernels import BoundKernel, construct_validation_kernel_from_bbox
 from .launcher import Launcher, Tinfo
 from .output import AbstractOutputWriter, AbstractOutputWriterBuilder
 from .particles import Particles, ParticlesView
@@ -36,6 +36,7 @@ class ParticleSet:
     nparticles: int
     timestepper: Timestepper
     property_dtypes: dict[str, npt.DTypeLike] = dataclasses.field(default_factory=dict)
+    include_validation_kernel: bool = True
 
 
 class Simulation:
@@ -486,6 +487,9 @@ class Simulation:
 
     def step(self) -> None:
         """Advance the particle simulation by one timestep."""
+        # run validation kernels
+        for pset_name, particles in self._particles.items():
+            self._timesteppers[pset_name].run_validation(particles, self._launcher, self._clock)
         # run all pre step kernels
         for pset_name, particles in self._particles.items():
             self._timesteppers[pset_name].run_pre_step(particles, self._launcher, self._clock)
@@ -904,6 +908,13 @@ class SimulationBuilder:
         Simulation
             The constructed Simulation instance.
         """
+        # add validation kernels to timesteppers if requested
+        for pset in self._particle_sets:
+            if pset.include_validation_kernel:
+                # construct validation kernel - note this is cached
+                validation_kernel = construct_validation_kernel_from_bbox(self._fieldset.domain_bbox)
+                pset.timestepper.add_validation_kernels(validation_kernel)
+
         # build output writers, construct events and make mapping immutable
         output_writers = {}
         time_type = self._clock.time_array.dtype

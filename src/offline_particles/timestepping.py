@@ -397,12 +397,17 @@ class Timestepper(abc.ABC):
 
         # initialise empty lists for kernels
         self._initialisation_kernels = []
+        self._validation_kernels = []
         self._pre_step_kernels = []
         self._post_step_kernels = []
 
     def add_initialisation_kernels(self, *kernels: BoundKernel) -> None:
         """Add kernels to be launched during initialisation."""
         self._initialisation_kernels.extend(kernels)
+
+    def add_validation_kernels(self, *kernels: BoundKernel) -> None:
+        """Add kernels to be launched during validation."""
+        self._validation_kernels.extend(kernels)
 
     def add_pre_step_kernels(self, *kernels: BoundKernel) -> None:
         """Add kernels to be launched before each timestep."""
@@ -423,6 +428,11 @@ class Timestepper(abc.ABC):
         return self._initialisation_kernels
 
     @property
+    def validation_kernels(self) -> list[BoundKernel]:
+        """The validation kernels used by this timestepper."""
+        return self._validation_kernels
+
+    @property
     def pre_step_kernels(self) -> list[BoundKernel]:
         """The pre-step kernels used by this timestepper."""
         return self._pre_step_kernels
@@ -437,6 +447,7 @@ class Timestepper(abc.ABC):
         """Get the kernels used by this timestepper."""
         return itertools.chain(
             self._initialisation_kernels,
+            self._validation_kernels,
             self._pre_step_kernels,
             self._post_step_kernels,
         )
@@ -444,6 +455,11 @@ class Timestepper(abc.ABC):
     def run_initialisation(self, particles: Particles, launcher: Launcher, clock: Clock) -> None:
         """Initialize the particles by launching the initialisation kernels."""
         for kernel in self._initialisation_kernels:
+            launcher.launch_kernel(kernel, particles, clock.tinfo)
+
+    def run_validation(self, particles: Particles, launcher: Launcher, clock: Clock) -> None:
+        """Validate the particles by launching the validation kernels."""
+        for kernel in self._validation_kernels:
             launcher.launch_kernel(kernel, particles, clock.tinfo)
 
     def run_pre_step(self, particles: Particles, launcher: Launcher, clock: Clock) -> None:
