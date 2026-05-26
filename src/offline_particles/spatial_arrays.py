@@ -182,9 +182,7 @@ class ArrayLayout:
 
     def __str__(self):
         layout_string = "Layout("
-        layout_string += ", ".join(
-            f"{axis.value} -> {stagger.value}" for axis, stagger in zip(self.axes, self.staggers)
-        )
+        layout_string += ", ".join(f"{axis.value} - {stagger.value}" for axis, stagger in zip(self.axes, self.staggers))
         layout_string += ")"
         return layout_string
 
