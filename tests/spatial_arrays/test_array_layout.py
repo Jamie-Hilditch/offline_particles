@@ -68,6 +68,59 @@ class TestArrayLayoutOffsets:
             assert layout.offsets == (stagger.offset,)
 
 
+class TestArrayLayoutComparison:
+    def test_equal_layouts_compare_equal(self) -> None:
+        left = ArrayLayout(("Z", "Y", "X"), ("center", "left", "right"))
+        right = ArrayLayout((ArrayAxis.Z, ArrayAxis.Y, ArrayAxis.X), (Stagger.CENTER, Stagger.LEFT, Stagger.RIGHT))
+
+        assert left == right
+
+    def test_layouts_with_different_axes_do_not_compare_equal(self) -> None:
+        left = ArrayLayout(("Z", "Y", "X"), ("center", "center", "center"))
+        right = ArrayLayout(("X", "Y", "Z"), ("center", "center", "center"))
+
+        assert left != right
+
+    def test_layouts_with_different_staggers_do_not_compare_equal(self) -> None:
+        left = ArrayLayout(("Z", "Y", "X"), ("center", "center", "center"))
+        right = ArrayLayout(("Z", "Y", "X"), ("center", "left", "center"))
+
+        assert left != right
+
+    def test_comparison_against_unrelated_object_returns_notimplemented_semantics(self) -> None:
+        layout = ArrayLayout(("Z",), ("center",))
+
+        assert layout != object()
+
+
+class TestArrayLayoutHashing:
+    def test_equal_layouts_have_same_hash(self) -> None:
+        left = ArrayLayout(("Z", "Y", "X"), ("center", "left", "right"))
+        right = ArrayLayout((ArrayAxis.Z, ArrayAxis.Y, ArrayAxis.X), (Stagger.CENTER, Stagger.LEFT, Stagger.RIGHT))
+
+        assert hash(left) == hash(right)
+
+    def test_layout_can_be_used_as_dict_key(self) -> None:
+        layout = ArrayLayout(("Z", "Y", "X"), ("center", "center", "center"))
+        mapping = {layout: "value"}
+
+        assert mapping[ArrayLayout(("Z", "Y", "X"), ("center", "center", "center"))] == "value"
+
+
+class TestArrayLayoutRepresentation:
+    def test_repr_round_trips_with_eval(self) -> None:
+        layout = ArrayLayout(("Z", "Y", "X"), ("center", "left", "right"))
+
+        reconstructed = eval(repr(layout), {"ArrayLayout": ArrayLayout})
+
+        assert reconstructed == layout
+
+    def test_str_is_human_readable(self) -> None:
+        layout = ArrayLayout(("Z", "Y", "X"), ("center", "left", "right"))
+
+        assert str(layout) == "Layout(Z - center, Y - left, X - right)"
+
+
 class TestArrayLayoutImmutability:
     def test_cannot_set_attribute(self) -> None:
         layout = ArrayLayout(("Z", "Y", "X"), ("center", "center", "center"))
