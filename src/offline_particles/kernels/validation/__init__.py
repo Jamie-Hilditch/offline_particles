@@ -1,5 +1,7 @@
 """Validation kernels for offline particles."""
 
+import functools
+
 from ...spatial_arrays import BBox
 from .._kernels import BoundKernel, ParticleKernel, ScalarDeclaration
 from ..input_declarations import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
@@ -19,6 +21,7 @@ __all__ = [
 ]
 
 
+@functools.cache
 def construct_validation_kernel(
     zmin: float,
     zmax: float,
@@ -53,6 +56,7 @@ def construct_validation_kernel(
     return BoundKernel.chain(finite_indices_kernel, domain_bounds_kernel)
 
 
+@functools.cache
 def construct_validation_kernel_from_bbox(bbox: BBox) -> BoundKernel:
     """Construct a bound kernel that checks that particles have finite indices and remain in the domain.
 

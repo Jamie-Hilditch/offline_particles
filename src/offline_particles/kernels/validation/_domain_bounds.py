@@ -1,5 +1,7 @@
 """Kernel to check that particles remain in the domain."""
 
+import functools
+
 import numba
 import numpy as np
 import numpy.typing as npt
@@ -15,6 +17,7 @@ _ABOVE_SURFACE_STATUS = np.uint8(Status.ABOVE_SURFACE)
 _OUT_OF_DOMAIN_STATUS = np.uint8(Status.OUT_OF_DOMAIN)
 
 
+@functools.cache
 def construct_domain_bounds_kernel(
     zmin: float, zmax: float, ymin: float, ymax: float, xmin: float, xmax: float
 ) -> BoundKernel:

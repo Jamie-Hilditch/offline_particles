@@ -909,9 +909,10 @@ class SimulationBuilder:
             The constructed Simulation instance.
         """
         # add validation kernels to timesteppers if requested
-        validation_kernel = construct_validation_kernel_from_bbox(self._fieldset.domain_bbox)
         for pset in self._particle_sets:
             if pset.include_validation_kernel:
+                # construct validation kernel - note this is cached
+                validation_kernel = construct_validation_kernel_from_bbox(self._fieldset.domain_bbox)
                 pset.timestepper.add_validation_kernels(validation_kernel)
 
         # build output writers, construct events and make mapping immutable
