@@ -8,7 +8,7 @@ import numpy as np
 import xarray as xr
 
 from .fields import Field, SimulationSize, StaticField, TimeDependentField
-from .spatial_arrays import ArrayAxis, Stagger
+from .spatial_arrays import ArrayAxis, BBox, Stagger
 
 
 class Fieldset:
@@ -30,12 +30,18 @@ class Fieldset:
         Optional dictionary of fields to add to the fieldset.
     constants : Mapping[str, Any], optional
         Optional dictionary of constants to add to the fieldset.
-    zidx_bounds : tuple[float, float], optional
-        Optional bounds of the z index (default: (0, z_size - 1)).
-    yidx_bounds : tuple[float, float], optional
-        Optional bounds of the y index (default: (0, y_size - 1)).
-    xidx_bounds : tuple[float, float], optional
-        Optional bounds of the x index (default: (0, x_size - 1)).
+    zidx_min : float, optional
+        Optional domain bound, minimum value of the z index (default: 0).
+    yidx_min : float, optional
+        Optional domain bound, minimum value of the y index (default: 0).
+    xidx_min : float, optional
+        Optional domain bound, minimum value of the x index (default: 0).
+    zidx_max : float, optional
+        Optional domain bound, maximum value of the z index (default: z_size - 1).
+    yidx_max : float, optional
+        Optional domain bound, maximum value of the y index (default: y_size - 1).
+    xidx_max : float, optional
+        Optional domain bound, maximum value of the x index (default: x_size - 1).
     """
 
     def __init__(
@@ -47,24 +53,40 @@ class Fieldset:
         *,
         fields: Mapping[str, Field] | None = None,
         constants: Mapping[str, Any] | None = None,
-        zidx_bounds: tuple[float, float] | None = None,
-        yidx_bounds: tuple[float, float] | None = None,
-        xidx_bounds: tuple[float, float] | None = None,
+        zidx_min: float | None = None,
+        yidx_min: float | None = None,
+        xidx_min: float | None = None,
+        zidx_max: float | None = None,
+        yidx_max: float | None = None,
+        xidx_max: float | None = None,
     ) -> None:
         super().__init__()
         # sizes of centered dimensions
         self._simulation_size = SimulationSize(time=t_size, z=z_size, y=y_size, x=x_size)
 
         # set default index bounds if not provided
-        if zidx_bounds is None:
-            zidx_bounds = (0, self._simulation_size.z - 1)
-        if yidx_bounds is None:
-            yidx_bounds = (0, self._simulation_size.y - 1)
-        if xidx_bounds is None:
-            xidx_bounds = (0, self._simulation_size.x - 1)
-        self._zidx_bounds = (np.float64(zidx_bounds[0]), np.float64(zidx_bounds[1]))
-        self._yidx_bounds = (np.float64(yidx_bounds[0]), np.float64(yidx_bounds[1]))
-        self._xidx_bounds = (np.float64(xidx_bounds[0]), np.float64(xidx_bounds[1]))
+        if zidx_min is None:
+            zidx_min = 0
+        if yidx_min is None:
+            yidx_min = 0
+        if xidx_min is None:
+            xidx_min = 0
+        if zidx_max is None:
+            zidx_max = self._simulation_size.z - 1
+        if yidx_max is None:
+            yidx_max = self._simulation_size.y - 1
+        if xidx_max is None:
+            xidx_max = self._simulation_size.x - 1
+
+        # create bounding box for the domain based on index bounds
+        self._domain_bbox = BBox(
+            zmin=zidx_min,
+            zmax=zidx_max,
+            ymin=yidx_min,
+            ymax=yidx_max,
+            xmin=xidx_min,
+            xmax=xidx_max,
+        )
 
         self._fields: dict[str, Field] = {}
         self._constants: dict[str, np.generic] = {}
@@ -78,14 +100,6 @@ class Fieldset:
         if constants is not None:
             for name, value in constants.items():
                 self.add_constant(name, value)
-
-        # add index bounds as constants
-        self.add_constant("zidx_min", self._zidx_bounds[0])
-        self.add_constant("zidx_max", self._zidx_bounds[1])
-        self.add_constant("yidx_min", self._yidx_bounds[0])
-        self.add_constant("yidx_max", self._yidx_bounds[1])
-        self.add_constant("xidx_min", self._xidx_bounds[0])
-        self.add_constant("xidx_max", self._xidx_bounds[1])
 
     @property
     def simulation_size(self) -> SimulationSize:
@@ -113,49 +127,54 @@ class Fieldset:
         return self.simulation_size.x
 
     @property
+    def domain_bbox(self) -> BBox:
+        """Bounding box of the domain defined by the index bounds."""
+        return self._domain_bbox
+
+    @property
     def zidx_bounds(self) -> tuple[float, float]:
         """Bounds of the z index."""
-        return self._zidx_bounds
+        return self._domain_bbox.axis_bounds(ArrayAxis.Z)
 
     @property
     def yidx_bounds(self) -> tuple[float, float]:
         """Bounds of the y index."""
-        return self._yidx_bounds
+        return self._domain_bbox.axis_bounds(ArrayAxis.Y)
 
     @property
     def xidx_bounds(self) -> tuple[float, float]:
         """Bounds of the x index."""
-        return self._xidx_bounds
+        return self._domain_bbox.axis_bounds(ArrayAxis.X)
 
     @property
     def zidx_min(self) -> float:
         """Minimum z index."""
-        return self._zidx_bounds[0]
+        return self._domain_bbox.zmin
 
     @property
     def zidx_max(self) -> float:
         """Maximum z index."""
-        return self._zidx_bounds[1]
+        return self._domain_bbox.zmax
 
     @property
     def yidx_min(self) -> float:
         """Minimum y index."""
-        return self._yidx_bounds[0]
+        return self._domain_bbox.ymin
 
     @property
     def yidx_max(self) -> float:
         """Maximum y index."""
-        return self._yidx_bounds[1]
+        return self._domain_bbox.ymax
 
     @property
     def xidx_min(self) -> float:
         """Minimum x index."""
-        return self._xidx_bounds[0]
+        return self._domain_bbox.xmin
 
     @property
     def xidx_max(self) -> float:
         """Maximum x index."""
-        return self._xidx_bounds[1]
+        return self._domain_bbox.xmax
 
     @property
     def fields(self) -> Mapping[str, Field]:
@@ -299,9 +318,12 @@ class Fieldset:
         z_size: int | None = None,
         y_size: int | None = None,
         x_size: int | None = None,
-        zidx_bounds: tuple[float, float] | None = None,
-        yidx_bounds: tuple[float, float] | None = None,
-        xidx_bounds: tuple[float, float] | None = None,
+        zidx_min: float | None = None,
+        yidx_min: float | None = None,
+        xidx_min: float | None = None,
+        zidx_max: float | None = None,
+        yidx_max: float | None = None,
+        xidx_max: float | None = None,
     ) -> "Fieldset":
         """Create a Fieldset from an xarray Dataset.
 
@@ -321,12 +343,18 @@ class Fieldset:
             size of the centered y dimension, optional (required if centered y dimension is not included in dims)
         x_size : int | None, optional
             size of the centered x dimension, optional (required if centered x dimension is not included in dims)
-        zidx_bounds : tuple[float, float] | None, optional
-            optional bounds of the z index (default: (0, z_size - 1))
-        yidx_bounds : tuple[float, float] | None, optional
-            optional bounds of the y index (default: (0, y_size - 1))
-        xidx_bounds : tuple[float, float] | None, optional
-            optional bounds of the x index (default: (0, x_size - 1))
+        zidx_min : float | None, optional
+            optional minimum value of the z index (default: 0)
+        yidx_min : float | None, optional
+            optional minimum value of the y index (default: 0)
+        xidx_min : float | None, optional
+            optional minimum value of the x index (default: 0)
+        zidx_max : float | None, optional
+            optional maximum value of the z index (default: z_size - 1)
+        yidx_max : float | None, optional
+            optional maximum value of the y index (default: y_size - 1)
+        xidx_max : float | None, optional
+            optional maximum value of the x index (default: x_size - 1)
 
         Returns
         -------
@@ -408,9 +436,12 @@ class Fieldset:
             y_size=y_size,
             x_size=x_size,
             fields=fields,
-            zidx_bounds=zidx_bounds,
-            yidx_bounds=yidx_bounds,
-            xidx_bounds=xidx_bounds,
+            zidx_min=zidx_min,
+            yidx_min=yidx_min,
+            xidx_min=xidx_min,
+            zidx_max=zidx_max,
+            yidx_max=yidx_max,
+            xidx_max=xidx_max,
         )
 
 

@@ -31,7 +31,6 @@ def _install_constructor_spies(
         "ab_update_z": object(),
         "ab_update_w_rel": object(),
         "compute_zidx": object(),
-        "validation": object(),
         "ab_initialisation": object(),
         "ab_bump_status": object(),
     }
@@ -100,9 +99,6 @@ def _install_constructor_spies(
     monkeypatch.setattr(
         roms_models, "construct_compute_zidx_kernel", stub("compute_zidx", sentinels["compute_zidx"]), raising=True
     )
-    monkeypatch.setattr(
-        roms_models, "construct_validation_kernel", stub("validation", sentinels["validation"]), raising=True
-    )
 
     return calls, sentinels
 
@@ -122,7 +118,6 @@ def test_roms_ab3_timestepper_default_constructor_wires_expected_kernels(monkeyp
     assert calls["y_adv"]["kwargs"] == {"metric": True}
     assert calls["z_adv"]["args"] == ("_dz0", "w")
     assert calls["z_adv"]["kwargs"] == {"accumulate": True}
-    assert calls["validation"]["args"] == ()
     assert calls["compute_zidx"]["args"] == ()
     assert calls["ab_initialisation"]["args"] == (3,)
     assert calls["ab_bump_status"]["args"] == ()
@@ -132,7 +127,6 @@ def test_roms_ab3_timestepper_default_constructor_wires_expected_kernels(monkeyp
     assert "add_property" not in calls
 
     assert timestepper.initialisation_kernels == [sentinels["ab_initialisation"]]
-    assert timestepper.pre_step_kernels == [sentinels["validation"]]
     assert timestepper.post_step_kernels == [sentinels["compute_zidx"]]
     assert timestepper._tendency_kernels == [sentinels["x_adv"], sentinels["y_adv"], sentinels["z_adv"]]
     assert timestepper._ab_update_kernels == [
@@ -201,7 +195,6 @@ def test_roms_ab3_timestepper_with_buoyancy_and_damping_wires_optional_kernels(
     assert calls["ab_bump_status"]["args"] == ()
 
     assert timestepper.initialisation_kernels == [sentinels["ab_initialisation"]]
-    assert timestepper.pre_step_kernels == [sentinels["validation"]]
     assert timestepper.post_step_kernels == [sentinels["compute_zidx"]]
     assert timestepper._tendency_kernels == [
         sentinels["x_adv"],

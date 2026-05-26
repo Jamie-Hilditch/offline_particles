@@ -53,19 +53,10 @@ class TestFieldsetConstruction:
         assert fs.xidx_bounds == (0, 5)
 
     def test_custom_index_bounds(self) -> None:
-        fs = Fieldset(10, 4, 5, 6, zidx_bounds=(1, 2), yidx_bounds=(0.5, 3.5), xidx_bounds=(-0.5, 5.5))
+        fs = Fieldset(10, 4, 5, 6, zidx_min=1, zidx_max=2, yidx_min=0.5, yidx_max=3.5, xidx_min=-0.5, xidx_max=5.5)
         assert fs.zidx_bounds == (np.float64(1), np.float64(2))
         assert fs.yidx_bounds == (np.float64(0.5), np.float64(3.5))
         assert fs.xidx_bounds == (np.float64(-0.5), np.float64(5.5))
-
-    def test_index_bounds_added_as_constants(self) -> None:
-        fs = Fieldset(10, 4, 5, 6)
-        assert "zidx_min" in fs.constants
-        assert "zidx_max" in fs.constants
-        assert "yidx_min" in fs.constants
-        assert "yidx_max" in fs.constants
-        assert "xidx_min" in fs.constants
-        assert "xidx_max" in fs.constants
 
     def test_constants_kwarg(self) -> None:
         fs = Fieldset(10, 4, 5, 6, constants={"gravity": 9.81})
