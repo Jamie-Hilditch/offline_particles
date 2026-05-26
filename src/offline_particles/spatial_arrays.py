@@ -169,6 +169,25 @@ class ArrayLayout:
     def __delattr__(self, name):
         raise AttributeError("ArrayLayout is immutable")
 
+    def __hash__(self):
+        return hash((self.axes, self.staggers))
+
+    def __eq__(self, other):
+        if not isinstance(other, ArrayLayout):
+            return NotImplemented
+        return self.axes == other.axes and self.staggers == other.staggers
+
+    def __repr__(self):
+        axes_str = repr([axis.value for axis in self.axes])
+        staggers_str = repr([stagger.value for stagger in self.staggers])
+        return f"ArrayLayout(axes={axes_str}, staggers={staggers_str})"
+
+    def __str__(self):
+        layout_string = "Layout("
+        layout_string += ", ".join(f"{axis.value} - {stagger.value}" for axis, stagger in zip(self.axes, self.staggers))
+        layout_string += ")"
+        return layout_string
+
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class BBox:
