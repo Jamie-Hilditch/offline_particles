@@ -1,6 +1,7 @@
 """Offline particles simulations using ROMS output."""
 
 # import ROMS kernels
+from ...kernels.advection import construct_advection_kernel
 from ...kernels.base import construct_add_property_kernel
 from ...kernels.buoyancy import construct_buoyancy_force_accumulation_kernel
 from ...kernels.interpolation import construct_ZYX_interpolation_kernel
@@ -11,7 +12,6 @@ from ...kernels.relaxation import (
 from ...kernels.roms import (
     construct_compute_z_kernel,
     construct_compute_zidx_kernel,
-    construct_horizontal_idx_tendency_kernel_from_velocity_field,
 )
 from ...kernels.timestepping import construct_ab3_update_kernel
 from ...kernels.validation import construct_validation_kernel
@@ -34,8 +34,8 @@ def roms_ab3_timestepper(
     u: str = "u",
     v: str = "v",
     w: str = "w",
-    dx: str = "dx",
-    dy: str = "dy",
+    pm: str = "pm",
+    pn: str = "pn",
     h: str = "h",
     zeta: str = "zeta",
     C: str = "C",
@@ -68,10 +68,10 @@ def roms_ab3_timestepper(
         Binding for the v velocity field (default "v").
     w : str, optional
         Binding for the w velocity field (default "w"). Only used if `vertical_velocity` is True.
-    dx : str, optional
-        Binding for the x grid spacing field (default "dx").
-    dy : str, optional
-        Binding for the y grid spacing field (default "dy").
+    pm : str, optional
+        Binding for the pm (xi metric) field (default "pm").
+    pn : str, optional
+        Binding for the pn (eta metric) field (default "pn").
     h : str, optional
         Binding for the bathymetry field (default "h").
     zeta : str, optional
@@ -129,10 +129,9 @@ def roms_ab3_timestepper(
     tendency_kernels = []
 
     # horizontal advection
-    tendency_kernels.extend([
-        construct_horizontal_idx_tendency_kernel_from_velocity_field("_dxidx0", u, dx),
-        construct_horizontal_idx_tendency_kernel_from_velocity_field("_dyidx0", v, dy),
-    ])
+    x_advection_kernel = construct_advection_kernel("_dxidx0", u, pm, ("Z", "Y", "X"), ("Y", "X"), metric=True)
+    y_advection_kernel = construct_advection_kernel("_dyidx0", v, pn, ("Z", "Y", "X"), ("Y", "X"), metric=True)
+    tendency_kernels.extend([x_advection_kernel, y_advection_kernel])
 
     # vertical advection
     if vertical_velocity:
