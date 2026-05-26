@@ -119,6 +119,13 @@ def test_roms_ab3_timestepper_default_constructor_wires_expected_kernels(monkeyp
     assert calls["z_adv"]["args"] == ("_dz0", "w")
     assert calls["z_adv"]["kwargs"] == {"accumulate": True}
     assert calls["compute_zidx"]["args"] == ()
+    assert calls["compute_zidx"]["kwargs"] == {
+        "hc": "hc",
+        "NZ": "NZ",
+        "h": "h",
+        "zeta": "zeta",
+        "C": "C",
+    }
     assert calls["ab_initialisation"]["args"] == (3,)
     assert calls["ab_bump_status"]["args"] == ()
     assert "linear_damping" not in calls
@@ -134,6 +141,31 @@ def test_roms_ab3_timestepper_default_constructor_wires_expected_kernels(monkeyp
         sentinels["ab_update_y"],
         sentinels["ab_update_z"],
     ]
+
+
+def test_roms_ab3_timestepper_forwards_compute_zidx_kwargs(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls, sentinels = _install_constructor_spies(monkeypatch)
+
+    timestepper = roms_models.roms_ab3_timestepper(
+        vertical_velocity=False,
+        buoyant_particles=False,
+        hc="hc_scalar",
+        NZ="nz_scalar",
+        h="bathymetry",
+        zeta="surface",
+        C="stretching",
+    )
+
+    assert isinstance(timestepper, ABTimestepper)
+    assert calls["compute_zidx"]["args"] == ()
+    assert calls["compute_zidx"]["kwargs"] == {
+        "hc": "hc_scalar",
+        "NZ": "nz_scalar",
+        "h": "bathymetry",
+        "zeta": "surface",
+        "C": "stretching",
+    }
+    assert timestepper.post_step_kernels == [sentinels["compute_zidx"]]
 
 
 def test_roms_ab3_timestepper_with_buoyancy_and_damping_wires_optional_kernels(

@@ -211,7 +211,7 @@ def roms_ab3_timestepper(
         ab_kernels.append(construct_ab3_update_kernel("w_rel", "_dw_rel0", "_dw_rel1", "_dw_rel2"))
 
     # post step kernel to update zidx after advection
-    post_step_kernels = [construct_compute_zidx_kernel()]
+    post_step_kernels = [construct_compute_zidx_kernel(hc=hc, NZ=NZ, h=h, zeta=zeta, C=C)]
 
     timestepper = ABTimestepper(
         index_padding=index_padding,
