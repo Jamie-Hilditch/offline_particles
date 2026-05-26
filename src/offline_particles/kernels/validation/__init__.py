@@ -1,138 +1,76 @@
-import numpy as np
+"""Validation kernels for offline particles."""
 
+from ...spatial_arrays import BBox
 from .._kernels import BoundKernel, ParticleKernel, ScalarDeclaration
 from ..input_declarations import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
-from ._validation import domain_bounds, finite_indices
+from ._domain_bounds import construct_domain_bounds_kernel
+from ._finite_indices import finite_indices_kernel
 
 __all__ = [
+    "STATUS_DECLARATION",
+    "XIDX_DECLARATION",
+    "YIDX_DECLARATION",
+    "ZIDX_DECLARATION",
+    "ParticleKernel",
+    "ScalarDeclaration",
     "construct_domain_bounds_kernel",
-    "construct_finite_indices_kernel",
     "construct_validation_kernel",
-    "domain_bounds_kernel",
     "finite_indices_kernel",
-    "validation_kernel",
 ]
-
-finite_indices_kernel = ParticleKernel(
-    finite_indices,
-    particle_properties=[
-        STATUS_DECLARATION,
-        ZIDX_DECLARATION,
-        YIDX_DECLARATION,
-        XIDX_DECLARATION,
-    ],
-)
-domain_bounds_kernel = ParticleKernel(
-    domain_bounds,
-    particle_properties=[
-        STATUS_DECLARATION,
-        ZIDX_DECLARATION,
-        YIDX_DECLARATION,
-        XIDX_DECLARATION,
-    ],
-    scalars=[
-        ScalarDeclaration("zidx_min", np.float64),
-        ScalarDeclaration("zidx_max", np.float64),
-        ScalarDeclaration("yidx_min", np.float64),
-        ScalarDeclaration("yidx_max", np.float64),
-        ScalarDeclaration("xidx_min", np.float64),
-        ScalarDeclaration("xidx_max", np.float64),
-    ],
-)
-validation_kernel = ParticleKernel.chain(finite_indices_kernel, domain_bounds_kernel)
-
-
-# bound kernels
-def construct_finite_indices_kernel() -> BoundKernel:
-    """Construct the finite indices validation bound kernel.
-
-    Returns
-    -------
-    BoundKernel
-        BoundKernel implementing the finite indices validation.
-    """
-    return finite_indices_kernel.bind()
-
-
-def construct_domain_bounds_kernel(
-    zidx_min: str = "zidx_min",
-    zidx_max: str = "zidx_max",
-    yidx_min: str = "yidx_min",
-    yidx_max: str = "yidx_max",
-    xidx_min: str = "xidx_min",
-    xidx_max: str = "xidx_max",
-) -> BoundKernel:
-    """Construct the domain bounds validation bound kernel.
-
-    Parameters
-    ----------
-    zidx_min : str, optional
-        Binding for the minimum valid z-index scalar (default "zidx_min").
-    zidx_max : str, optional
-        Binding for the maximum valid z-index scalar (default "zidx_max").
-    yidx_min : str, optional
-        Binding for the minimum valid y-index scalar (default "yidx_min").
-    yidx_max : str, optional
-        Binding for the maximum valid y-index scalar (default "yidx_max").
-    xidx_min : str, optional
-        Binding for the minimum valid x-index scalar (default "xidx_min").
-    xidx_max : str, optional
-        Binding for the maximum valid x-index scalar (default "xidx_max").
-
-    Returns
-    -------
-    BoundKernel
-        BoundKernel implementing the domain bounds validation.
-    """
-    return domain_bounds_kernel.bind(
-        scalars={
-            "zidx_min": zidx_min,
-            "zidx_max": zidx_max,
-            "yidx_min": yidx_min,
-            "yidx_max": yidx_max,
-            "xidx_min": xidx_min,
-            "xidx_max": xidx_max,
-        }
-    )
 
 
 def construct_validation_kernel(
-    zidx_min: str = "zidx_min",
-    zidx_max: str = "zidx_max",
-    yidx_min: str = "yidx_min",
-    yidx_max: str = "yidx_max",
-    xidx_min: str = "xidx_min",
-    xidx_max: str = "xidx_max",
+    zmin: float,
+    zmax: float,
+    ymin: float,
+    ymax: float,
+    xmin: float,
+    xmax: float,
 ) -> BoundKernel:
-    """Construct the full validation bound kernel.
+    """Construct a bound kernel that checks that particles have finite indices and remain in the domain.
 
     Parameters
     ----------
-    zidx_min : str, optional
-        Binding for the minimum valid z-index scalar (default "zidx_min").
-    zidx_max : str, optional
-        Binding for the maximum valid z-index scalar (default "zidx_max").
-    yidx_min : str, optional
-        Binding for the minimum valid y-index scalar (default "yidx_min").
-    yidx_max : str, optional
-        Binding for the maximum valid y-index scalar (default "yidx_max").
-    xidx_min : str, optional
-        Binding for the minimum valid x-index scalar (default "xidx_min").
-    xidx_max : str, optional
-        Binding for the maximum valid x-index scalar (default "xidx_max").
+    zmin : float
+        Minimum z index of the domain.
+    zmax : float
+        Maximum z index of the domain.
+    ymin : float
+        Minimum y index of the domain.
+    ymax : float
+        Maximum y index of the domain.
+    xmin : float
+        Minimum x index of the domain.
+    xmax : float
+        Maximum x index of the domain.
 
     Returns
     -------
     BoundKernel
-        BoundKernel implementing particle validation.
+        A bound kernel that checks that particles have finite indices and remain in the domain.
     """
-    return validation_kernel.bind(
-        scalars={
-            "zidx_min": zidx_min,
-            "zidx_max": zidx_max,
-            "yidx_min": yidx_min,
-            "yidx_max": yidx_max,
-            "xidx_min": xidx_min,
-            "xidx_max": xidx_max,
-        }
+    domain_bounds_kernel = construct_domain_bounds_kernel(zmin, zmax, ymin, ymax, xmin, xmax)
+    return BoundKernel.chain(finite_indices_kernel, domain_bounds_kernel)
+
+
+def construct_validation_kernel_from_bbox(bbox: BBox) -> BoundKernel:
+    """Construct a bound kernel that checks that particles have finite indices and remain in the domain.
+
+    Parameters
+    ----------
+    bbox : BBox
+        The bounding box defining the domain.
+
+    Returns
+    -------
+    BoundKernel
+        A bound kernel that checks that particles have finite indices and remain in the domain.
+    """
+    return construct_validation_kernel(
+        zmin=bbox.zmin,
+        zmax=bbox.zmax,
+        ymin=bbox.ymin,
+        ymax=bbox.ymax,
+        xmin=bbox.xmin,
+        xmax=bbox.xmax,
     )
