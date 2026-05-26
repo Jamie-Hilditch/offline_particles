@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 import offline_particles.models.roms as roms_models
@@ -11,8 +13,11 @@ from offline_particles.timestepping import ABTimestepper
 
 def _install_constructor_spies(
     monkeypatch: pytest.MonkeyPatch,
-) -> tuple[dict[str, dict[str, object]], dict[str, object]]:
-    calls: dict[str, dict[str, object]] = {}
+    *,
+    patch_linear_damping: bool = True,
+    patch_quadratic_damping: bool = True,
+) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
+    calls: dict[str, dict[str, Any]] = {}
     sentinels = {
         "x_adv": object(),
         "y_adv": object(),
@@ -56,18 +61,20 @@ def _install_constructor_spies(
     monkeypatch.setattr(
         roms_models, "construct_ZYX_interpolation_kernel", stub("z_adv", sentinels["z_adv"]), raising=True
     )
-    monkeypatch.setattr(
-        roms_models,
-        "construct_linear_damping_kernel",
-        stub("linear_damping", sentinels["linear_damping"]),
-        raising=True,
-    )
-    monkeypatch.setattr(
-        roms_models,
-        "construct_quadratic_damping_kernel",
-        stub("quadratic_damping", sentinels["quadratic_damping"]),
-        raising=True,
-    )
+    if patch_linear_damping:
+        monkeypatch.setattr(
+            roms_models,
+            "construct_linear_damping_kernel",
+            stub("linear_damping", sentinels["linear_damping"]),
+            raising=True,
+        )
+    if patch_quadratic_damping:
+        monkeypatch.setattr(
+            roms_models,
+            "construct_quadratic_damping_kernel",
+            stub("quadratic_damping", sentinels["quadratic_damping"]),
+            raising=True,
+        )
     monkeypatch.setattr(
         roms_models,
         "construct_buoyancy_force_accumulation_kernel",
@@ -210,3 +217,147 @@ def test_roms_ab3_timestepper_with_buoyancy_and_damping_wires_optional_kernels(
         sentinels["ab_update_z"],
         sentinels["ab_update_w_rel"],
     ]
+
+
+def test_roms_ab3_timestepper_linear_scalar_damping_wires_scalar_coefficient(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls, sentinels = _install_constructor_spies(monkeypatch)
+
+    timestepper = roms_models.roms_ab3_timestepper(
+        vertical_velocity=False,
+        constant_linear_damping_coefficient=None,
+        property_linear_damping_coefficient=None,
+        scalar_linear_damping_coefficient="linear_drag",
+    )
+
+    assert isinstance(timestepper, ABTimestepper)
+    assert calls["linear_damping"]["args"] == ("w_rel", "_dw_rel0")
+    assert calls["linear_damping"]["kwargs"] == {
+        "constant_coefficient": None,
+        "property_coefficient": None,
+        "scalar_coefficient": "linear_drag",
+    }
+    assert calls["add_property"]["args"] == ("w_rel", "_dz0")
+    assert timestepper._tendency_kernels == [
+        sentinels["x_adv"],
+        sentinels["y_adv"],
+        sentinels["linear_damping"],
+        sentinels["add_property"],
+    ]
+
+
+def test_roms_ab3_timestepper_quadratic_scalar_damping_wires_scalar_coefficient(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls, sentinels = _install_constructor_spies(monkeypatch)
+
+    timestepper = roms_models.roms_ab3_timestepper(
+        vertical_velocity=False,
+        constant_quadratic_damping_coefficient=None,
+        property_quadratic_damping_coefficient=None,
+        scalar_quadratic_damping_coefficient="quadratic_drag",
+    )
+
+    assert isinstance(timestepper, ABTimestepper)
+    assert calls["quadratic_damping"]["args"] == ("w_rel", "_dw_rel0")
+    assert calls["quadratic_damping"]["kwargs"] == {
+        "constant_coefficient": None,
+        "property_coefficient": None,
+        "scalar_coefficient": "quadratic_drag",
+    }
+    assert calls["add_property"]["args"] == ("w_rel", "_dz0")
+    assert timestepper._tendency_kernels == [
+        sentinels["x_adv"],
+        sentinels["y_adv"],
+        sentinels["quadratic_damping"],
+        sentinels["add_property"],
+    ]
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "patch_linear_damping", "patch_quadratic_damping"),
+    [
+        (
+            {
+                "constant_linear_damping_coefficient": 0.5,
+                "property_linear_damping_coefficient": "linear_drag",
+            },
+            False,
+            True,
+        ),
+        (
+            {
+                "constant_linear_damping_coefficient": 0.5,
+                "scalar_linear_damping_coefficient": "linear_drag",
+            },
+            False,
+            True,
+        ),
+        (
+            {
+                "property_linear_damping_coefficient": "linear_drag",
+                "scalar_linear_damping_coefficient": "linear_drag_scalar",
+            },
+            False,
+            True,
+        ),
+    ],
+)
+def test_roms_ab3_timestepper_linear_damping_rejects_multiple_coefficient_selectors(
+    monkeypatch: pytest.MonkeyPatch,
+    kwargs: dict[str, Any],
+    patch_linear_damping: bool,
+    patch_quadratic_damping: bool,
+) -> None:
+    _install_constructor_spies(
+        monkeypatch,
+        patch_linear_damping=patch_linear_damping,
+        patch_quadratic_damping=patch_quadratic_damping,
+    )
+
+    with pytest.raises(ValueError, match="Exactly one coefficient"):
+        roms_models.roms_ab3_timestepper(**kwargs)  # type: ignore[call-arg]
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "patch_linear_damping", "patch_quadratic_damping"),
+    [
+        (
+            {
+                "constant_quadratic_damping_coefficient": 0.5,
+                "property_quadratic_damping_coefficient": "quadratic_drag",
+            },
+            True,
+            False,
+        ),
+        (
+            {
+                "constant_quadratic_damping_coefficient": 0.5,
+                "scalar_quadratic_damping_coefficient": "quadratic_drag",
+            },
+            True,
+            False,
+        ),
+        (
+            {
+                "property_quadratic_damping_coefficient": "quadratic_drag",
+                "scalar_quadratic_damping_coefficient": "quadratic_drag_scalar",
+            },
+            True,
+            False,
+        ),
+    ],
+)
+def test_roms_ab3_timestepper_quadratic_damping_rejects_multiple_coefficient_selectors(
+    monkeypatch: pytest.MonkeyPatch,
+    kwargs: dict[str, Any],
+    patch_linear_damping: bool,
+    patch_quadratic_damping: bool,
+) -> None:
+    _install_constructor_spies(
+        monkeypatch,
+        patch_linear_damping=patch_linear_damping,
+        patch_quadratic_damping=patch_quadratic_damping,
+    )
+
+    with pytest.raises(ValueError, match="Exactly one coefficient"):
+        roms_models.roms_ab3_timestepper(**kwargs)  # type: ignore[call-arg]
