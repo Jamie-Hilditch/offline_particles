@@ -111,7 +111,14 @@ class TestArrayLayoutRepresentation:
     def test_repr_round_trips_with_eval(self) -> None:
         layout = ArrayLayout(("Z", "Y", "X"), ("center", "left", "right"))
 
-        reconstructed = eval(repr(layout), {"ArrayLayout": ArrayLayout})
+        reconstructed = eval(repr(layout), {"ArrayLayout": ArrayLayout, "__builtins__": {}})
+
+        assert reconstructed == layout
+
+    def test_repr_round_trips_for_empty_layout(self) -> None:
+        layout = ArrayLayout((), ())
+
+        reconstructed = eval(repr(layout), {"ArrayLayout": ArrayLayout, "__builtins__": {}})
 
         assert reconstructed == layout
 

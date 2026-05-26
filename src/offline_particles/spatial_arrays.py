@@ -178,8 +178,8 @@ class ArrayLayout:
         return self.axes == other.axes and self.staggers == other.staggers
 
     def __repr__(self):
-        axes_str = "['" + "', '".join(axis.value for axis in self.axes) + "']"
-        staggers_str = "['" + "', '".join(stagger.value for stagger in self.staggers) + "']"
+        axes_str = repr([axis.value for axis in self.axes])
+        staggers_str = repr([stagger.value for stagger in self.staggers])
         return f"ArrayLayout(axes={axes_str}, staggers={staggers_str})"
 
     def __str__(self):
