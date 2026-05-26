@@ -43,8 +43,8 @@ def roms_ab3_timestepper(
     NZ: str = "NZ",
     g: str = "g",
     rho0: str = "rho0",
-    constant_linear_damping_coefficient: np.inexact | None = None,
-    constant_quadratic_damping_coefficient: np.inexact | None = None,
+    constant_linear_damping_coefficient: np.inexact | float | None = None,
+    constant_quadratic_damping_coefficient: np.inexact | float | None = None,
     property_linear_damping_coefficient: str | None = None,
     property_quadratic_damping_coefficient: str | None = None,
     scalar_linear_damping_coefficient: str | None = None,
@@ -87,9 +87,9 @@ def roms_ab3_timestepper(
         Binding for the gravitational acceleration scalar (default "g"). Only used if `buoyant_particles` is True.
     rho0 : str, optional
         Binding for the reference density scalar (default "rho0"). Only used if `buoyant_particles` is True.
-    constant_linear_damping_coefficient : np.inexact, optional
+    constant_linear_damping_coefficient : np.inexact | float, optional
         If not None include linear damping with a constant damping coefficient (default None).
-    constant_quadratic_damping_coefficient : np.inexact, optional
+    constant_quadratic_damping_coefficient : np.inexact | float, optional
         If not None include quadratic damping with a constant damping coefficient (default None).
     property_linear_damping_coefficient : str, optional
         If provided the binding for the particle property to use as the linear damping coefficient.
