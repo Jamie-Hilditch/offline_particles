@@ -420,7 +420,7 @@ class TimeDependentField(Field):
         data: da.Array | npt.NDArray,
         layout: ArrayLayout,
         spatial_array_factory: SpatialArrayFactory = NumpyArray,
-        output_dtype: npt.DTypeLike = np.float64,
+        output_dtype: npt.DTypeLike | None = None,
         *,
         attrs: dict[str, Any] | None = None,
     ):
@@ -436,6 +436,8 @@ class TimeDependentField(Field):
         self._data = data
         self._spatial_array_factory = spatial_array_factory
         self._data_dtype = data.dtype
+        if output_dtype is None:
+            output_dtype = self._data_dtype
         self._output_dtype = np.dtype(output_dtype)
 
         # temporary arrays for interpolation
