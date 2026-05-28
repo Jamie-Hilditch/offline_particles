@@ -7,9 +7,9 @@ from offline_particles.output import Output
 
 
 class TestOutputConstruction:
-    def test_default_dtype_is_float64(self) -> None:
+    def test_default_dtype_is_none(self) -> None:
         output = Output("xidx")
-        assert output.dtype == np.dtype(np.float64)
+        assert output.dtype is None
 
     def test_explicit_dtype(self) -> None:
         output = Output("xidx", dtype=np.float32)
