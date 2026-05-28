@@ -13,6 +13,7 @@ import numpy.typing as npt
 
 from ..events import Event, SimulationState
 from ..kernels import BoundKernel
+from ..particles import ParticlesView
 
 
 @dataclasses.dataclass(frozen=True, slots=True, init=False)
@@ -342,15 +343,15 @@ class AbstractOutputWriterBuilder(abc.ABC):
     @abc.abstractmethod
     def build(
         self,
-        nparticles: dict[str, int],
+        particles: dict[str, ParticlesView],
         time_type: npt.DTypeLike,
     ) -> AbstractOutputWriter:
         """Build the output writer.
 
         Parameters
         ----------
-        nparticles : dict[str, int]
-            A mapping of particle set names to number of particles.
+        particles : dict[str, ParticlesView]
+            A mapping of particle set names to particle instances.
         time_type : npt.DTypeLike
             The numpy dtype for the time variable.
         """

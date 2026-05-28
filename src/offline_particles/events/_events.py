@@ -20,7 +20,7 @@ class SimulationState:
     tidx: np.float64
     iteration: int
     wall_time: np.timedelta64
-    particles: dict[str, ParticlesView]
+    particles: Mapping[str, ParticlesView]
 
 
 type EventFunction = Callable[[SimulationState], None]
