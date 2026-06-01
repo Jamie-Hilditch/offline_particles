@@ -65,6 +65,35 @@ class TestKernelInputDeclarationValidateDtype:
             declaration.validate_dtype(np.int32)
 
 
+class TestKernelInputDeclarationSummaryAndDescription:
+    def test_summary_starts_with_name(self) -> None:
+        declaration = KernelInputDeclaration("complicated_name", (np.float32, np.int32))
+
+        assert declaration.summary.startswith("complicated_name")
+
+    def test_summary_includes_dtype_constraints(self) -> None:
+        declaration = KernelInputDeclaration("x", (np.float32, np.int32))
+
+        assert "float32" in declaration.summary
+        assert "int32" in declaration.summary
+
+    def test_description_includes_additional_description_if_provided(self) -> None:
+        declaration = KernelInputDeclaration("x", np.float32, description="This is x.")
+
+        assert "This is x." in declaration.description
+
+    def test_description_returns_summary_if_no_description_provided(self) -> None:
+        declaration = KernelInputDeclaration("x", np.float32)
+
+        assert declaration.description == declaration.summary
+
+    def test_compare_equal_ignores_description(self) -> None:
+        declaration1 = KernelInputDeclaration("x", np.float32, description="First description.")
+        declaration2 = KernelInputDeclaration("x", np.float32, description="Second description.")
+
+        assert declaration1 == declaration2
+
+
 class TestRequiredParticlePropertyDeclarations:
     @pytest.mark.parametrize(
         ("declaration", "expected_name", "expected_dtype"),
