@@ -21,7 +21,7 @@ from .events import (
 from .fieldset import Fieldset
 from .kernels import BoundKernel, construct_validation_kernel_from_bbox
 from .launcher import Launcher, Tinfo
-from .output import AbstractOutputWriter, AbstractOutputWriterBuilder
+from .output import AbstractOutputWriter, AbstractOutputWriterBuilder, Output
 from .particles import Particles, ParticlesView
 from .timestepping import Clock, D, T, Timestepper
 
@@ -46,7 +46,9 @@ class Simulation:
         self,
         clock: Clock,
         fieldset: Fieldset,
-        particle_sets: list[ParticleSet],
+        timesteppers: Mapping[str, Timestepper],
+        particles: Mapping[str, Particles],
+        particles_view: Mapping[str, ParticlesView],
         recurring_iteration_scheduler: RecurringIterationScheduler,
         recurring_time_scheduler: RecurringTimeScheduler,
         at_iteration_scheduler: AtIterationScheduler,
@@ -63,8 +65,12 @@ class Simulation:
             The Clock governing simulation time and iteration.
         fieldset : Fieldset
             The Fieldset providing velocity and other field data.
-        particle_sets : list[ParticleSet]
-            List of ParticleSet instances defining particle groups.
+        timesteppers : Mapping[str, Timestepper]
+            Mapping of timestepper instances keyed by particle set name.
+        particles : Mapping[str, Particles]
+            Mapping of particle instances keyed by particle set name.
+        particles_view : Mapping[str, ParticlesView]
+            Mapping of particle view instances keyed by particle set name.
         recurring_iteration_scheduler : RecurringIterationScheduler
             Scheduler that fires events every N iterations.
         recurring_time_scheduler : RecurringTimeScheduler
@@ -78,11 +84,6 @@ class Simulation:
         bbox_history_size : int, optional
             Number of bounding-box snapshots to retain for the launcher.
 
-        Raises
-        ------
-        ValueError
-            If particle set names are not unique.
-
         Notes
         -----
             Use :class:`SimulationBuilder` to construct a simulation rather
@@ -90,58 +91,23 @@ class Simulation:
         """
         self._clock = clock
         self._fieldset = fieldset
+        self._timesteppers = timesteppers
+        self._particles = particles
+        self._particles_view = particles_view
         self._recurring_iteration_scheduler = recurring_iteration_scheduler
         self._recurring_time_scheduler = recurring_time_scheduler
         self._at_iteration_scheduler = at_iteration_scheduler
         self._at_time_scheduler = at_time_scheduler
         self._output_writers = output_writers
 
-        # create launcher and register kernel data functions
+        # create launcher then register scalar data sources and set index padding
         self._launcher = Launcher(fieldset, history_size=bbox_history_size)
         self._launcher.register_scalar_data_sources_from_object(clock)
+        for timestepper in self._timesteppers.values():
+            self._launcher.register_scalar_data_sources_from_object(timestepper)
+            self._launcher.set_index_padding(timestepper.index_padding)
         for event in self.events:
             self._launcher.register_scalar_data_sources_from_object(event)
-
-        # check particle set names are unique
-        particle_set_names = [pset.name for pset in particle_sets]
-        if len(particle_set_names) != len(set(particle_set_names)):
-            raise ValueError("Particle set names must be unique.")
-
-        # store timesteppers by name
-        self._timesteppers = {pset.name: pset.timestepper for pset in particle_sets}
-        for timestepper in self._timesteppers.values():
-            self._launcher.set_index_padding(timestepper.index_padding)
-
-        # now build particles
-        self._particles = {}
-        self._particles_view = {}
-
-        # build particles
-        kernel_count = 0
-        for pset in particle_sets:
-            name = pset.name
-            nparticles = pset.nparticles
-            # gather kernels
-            kernels = list(pset.timestepper.kernels)
-            for event in self.events:
-                kernels.extend(event.kernels.get(name, ()))
-            kernel_count += len(kernels)
-
-            # then merge required particle properties from all kernels
-            self._particles[name] = Particles.build_from_kernels(nparticles, pset.property_dtypes, kernels)
-            self._particles_view[name] = ParticlesView(self._particles[name])
-
-        # print a warning if kernel count is larger that history size
-        if kernel_count > bbox_history_size:
-            warnings.warn(
-                f"Number of kernels ({kernel_count}) "
-                f"exceeds bbox history size ({bbox_history_size}). "
-                "Consider increasing the history size for better performance.",
-                RuntimeWarning,
-            )
-
-        # store the current wall time
-        self._wall_time_start = time.perf_counter_ns()
 
         # stopping conditions
         # Default: stop at the chronological end of the time array
@@ -149,6 +115,9 @@ class Simulation:
         self._time_stop = None
         self._wall_time_stop = None
         self.set_time_stop(self._clock.final_time)
+
+        # store the current wall time
+        self._wall_time_start = time.perf_counter_ns()
 
     # getters
 
@@ -686,14 +655,39 @@ class SimulationBuilder:
     ) -> None:
         """Class for building a Simulation.
 
-        Args:
-            clock: The clock to use in the simulation.
-            fieldset: The fieldset to use in the simulation.
-            particle_sets: The particle sets to include in the simulation.
+        Parameters
+        ----------
+        clock : Clock
+            The clock to use in the simulation.
+        fieldset : Fieldset
+            The fieldset to use in the simulation.
+        *particle_sets : ParticleSet
+            The particle sets to include in the simulation.
+
+        Raises
+        ------
+        ValueError
+            If particle set names are not unique.
         """
         self._clock = clock
         self._fieldset = fieldset
+
+        # check particle set names are unique then store
+        particle_set_names = [pset.name for pset in particle_sets]
+        if len(particle_set_names) != len(set(particle_set_names)):
+            raise ValueError("Particle set names must be unique.")
         self._particle_sets = list(particle_sets)
+
+        # timesteppers
+        self._timesteppers = {}
+        for pset in particle_sets:
+            timestepper = pset.timestepper
+            # add validation kernel if requested - note this is cached so only constructed once per unique bbox
+            if pset.include_validation_kernel:
+                validation_kernel = construct_validation_kernel_from_bbox(self._fieldset.domain_bbox)
+                timestepper.add_validation_kernels(validation_kernel)
+            # store timestepper
+            self._timesteppers[pset.name] = timestepper
 
         # events
         self._recurring_iteration_scheduler = RecurringIterationScheduler()
@@ -702,7 +696,24 @@ class SimulationBuilder:
         self._at_time_scheduler = AtTimeScheduler(forward_in_time=self._clock.forward_in_time)
 
         # output writers
-        self._output_writers: dict[str, tuple[AbstractOutputWriterBuilder, dict[str, ...]]] = {}
+        self._output_writer_builders: dict[str, AbstractOutputWriterBuilder] = {}
+        self._output_writer_scheduling_args: dict[str, dict[str, ...]] = {}
+
+    def collect_outputs(self) -> Mapping[str, list[Output]]:
+        """Collect a list of outputs registered to particle sets across all writers.
+
+        Returns
+        -------
+        Mapping[str, list[Output]]
+            A mapping from particle set name to a list of outputs registered across all writers.
+        """
+        outputs_by_particle_set: dict[str, list[Output]] = {pset.name: [] for pset in self._particle_sets}
+        for writer_builder in self._output_writer_builders.values():
+            for (pset_name, _), output in writer_builder.outputs:
+                outputs_by_particle_set[pset_name].append(output)
+            for (pset_name, _), output in writer_builder.static_outputs:
+                outputs_by_particle_set[pset_name].append(output)
+        return types.MappingProxyType(outputs_by_particle_set)
 
     @property
     def events(self) -> Iterable[Event]:
@@ -735,6 +746,7 @@ class SimulationBuilder:
             raise ValueError("n must be a positive integer.")
         if first is None:
             first = 0
+
         self._recurring_iteration_scheduler.register_event(first, n, event)
 
     def every_dt(self, dt: D, event: Event, *, first: T | None = None) -> None:
@@ -830,12 +842,15 @@ class SimulationBuilder:
         ValueError
             If neither or both of ``n`` and ``dt`` are specified.
         """
-        if (n is None) == (dt is None):
-            raise ValueError("Exactly one of n or dt must be specified.")
-        if n is not None:
-            self.every_n(n, event, first=first)  # type: ignore[arg-type]
-        else:
-            self.every_dt(dt, event, first=first)  # type: ignore[arg-type]
+        match n, dt:
+            case None, None:
+                raise ValueError("Exactly one of n or dt must be specified.")
+            case _, None:
+                self.every_n(n, event, first=first)  # type: ignore[arg-type]
+            case None, _:
+                self.every_dt(dt, event, first=first)  # type: ignore[arg-type]
+            case _:
+                raise ValueError("Exactly one of n or dt must be specified.")
 
     def add_event(self, event: Event, *, at_iteration: int | None = None, at_time: T | None = None) -> None:
         """Add a one-shot event to the simulation.
@@ -856,12 +871,15 @@ class SimulationBuilder:
         ValueError
             If neither or both of ``at_iteration`` and ``at_time`` are specified.
         """
-        if (at_iteration is None) == (at_time is None):
-            raise ValueError("Exactly one of at_iteration or at_time must be specified.")
-        if at_iteration is not None:
-            self.at_iteration(at_iteration, event)
-        else:
-            self.at_time(at_time, event)  # type: ignore[arg-type]
+        match at_iteration, at_time:
+            case None, None:
+                raise ValueError("Exactly one of at_iteration or at_time must be specified.")
+            case _, None:
+                self.at_iteration(at_iteration, event)  # type: ignore[arg-type]
+            case None, _:
+                self.at_time(at_time, event)  # type: ignore[arg-type]
+            case _:
+                raise ValueError("Exactly one of at_iteration or at_time must be specified.")
 
     def add_output_writer(
         self,
@@ -888,53 +906,109 @@ class SimulationBuilder:
         ------
         ValueError
             If an output writer with the same name already exists.
+            If neither or both of ``n`` and ``dt`` are specified.
         """
         name = builder.name
-        if name in self._output_writers:
+        if name in self._output_writer_builders:
             raise ValueError(f"Output writer '{name}' already exists.")
 
-        kwargs = {
-            "n": n,
-            "dt": dt,
-            "first": first,
-        }
-        self._output_writers[name] = (builder, kwargs)
+        match n, dt:
+            case None, None:
+                raise ValueError("Exactly one of n or dt must be specified.")
+            case _, None:
+                if first is None:
+                    first = 0
+                scheduling_args = {"n": n, "first": first}  # type: ignore
+            case None, _:
+                if first is None:
+                    first = self._clock.time
+                scheduling_args = {"dt": dt, "first": first}  # type: ignore
+            case _:
+                raise ValueError("Exactly one of n or dt must be specified.")
 
-    def build_simulation(self) -> Simulation:
+        self._output_writer_builders[name] = builder
+        self._output_writer_scheduling_args[name] = scheduling_args
+
+    def build_simulation(self, *, bbox_history_size: int = DEFAULT_BBOX_HISTORY_SIZE) -> Simulation:
         """Build and return the Simulation.
+
+        Parameters
+        ----------
+        bbox_history_size : int, optional
+            The number of bounding-box snapshots to retain for the launcher (default: ``DEFAULT_BBOX_HISTORY_SIZE``).
 
         Returns
         -------
         Simulation
             The constructed Simulation instance.
         """
-        # add validation kernels to timesteppers if requested
-        for pset in self._particle_sets:
-            if pset.include_validation_kernel:
-                # construct validation kernel - note this is cached
-                validation_kernel = construct_validation_kernel_from_bbox(self._fieldset.domain_bbox)
-                pset.timestepper.add_validation_kernels(validation_kernel)
+        # to build the particles we need to gather all the kernels
+        # first collect the outputs
+        outputs = self.collect_outputs()
 
-        # build output writers, construct events and make mapping immutable
-        output_writers = {}
+        # then initialise the particles dict
+        particles = {}
+        particles_view = {}
+
+        # keep track of total kernel count across all particle sets for warning about bbox history size
+        kernel_count = 0
+
+        # loop over particle sets
+        for pset in self._particle_sets:
+            name = pset.name
+            nparticles = pset.nparticles
+
+            # gather kernels from timesteppers
+            kernels = list(self._timesteppers[name].kernels)
+            # then gather kernels from events
+            for event in self.events:
+                kernels.extend(event.kernels.get(name, ()))
+            # finally from outputs
+            for output in outputs.get(name, ()):
+                kernels.extend(output.kernels)
+
+            kernel_count += len(kernels)
+
+            particles[name] = Particles.build_from_kernels(nparticles, pset.property_dtypes, kernels)
+            particles_view[name] = ParticlesView(particles[name])
+
+        # print a warning if kernel count is larger that history size
+        if kernel_count > bbox_history_size:
+            warnings.warn(
+                f"Number of kernels ({kernel_count}) "
+                f"exceeds bbox history size ({bbox_history_size}). "
+                "Consider increasing the history size for better performance.",
+                RuntimeWarning,
+            )
+
+        # next build the output writers and register their events
+        built_output_writers = {}
         time_type = self._clock.time_array.dtype
-        nparticles = {pset.name: pset.nparticles for pset in self._particle_sets}
-        for name, (builder, kwargs) in self._output_writers.items():
-            output_writers[name] = builder.build(nparticles, time_type)
-            for event in output_writers[name].create_output_events():
-                self.add_recurring_event(event, n=kwargs.get("n"), dt=kwargs.get("dt"), first=kwargs.get("first"))
+
+        for name, builder in self._output_writer_builders.items():
+            built_output_writers[name] = builder.build(particles_view, time_type)
+
+            # register recurring output events
+            scheduling_args = self._output_writer_scheduling_args.get(name, {})
+            for event in built_output_writers[name].create_output_events():
+                self.add_recurring_event(event, **scheduling_args)
+
             # register static output events once at iteration 0
-            for event in output_writers[name].create_static_output_events():
+            for event in built_output_writers[name].create_static_output_events():
                 self.at_iteration(0, event)
-        output_writers = types.MappingProxyType(output_writers)
+
+        output_writers = types.MappingProxyType(built_output_writers)
 
         return Simulation(
             clock=self._clock,
             fieldset=self._fieldset,
-            particle_sets=self._particle_sets,
+            timesteppers=types.MappingProxyType(self._timesteppers),
+            particles=types.MappingProxyType(particles),
+            particles_view=types.MappingProxyType(particles_view),
             recurring_iteration_scheduler=self._recurring_iteration_scheduler,
             recurring_time_scheduler=self._recurring_time_scheduler,
             at_iteration_scheduler=self._at_iteration_scheduler,
             at_time_scheduler=self._at_time_scheduler,
             output_writers=output_writers,
+            bbox_history_size=bbox_history_size,
         )

@@ -13,6 +13,7 @@ import numpy.typing as npt
 
 from ..events import Event, SimulationState
 from ..kernels import BoundKernel
+from ..particles import ParticlesView
 
 
 @dataclasses.dataclass(frozen=True, slots=True, init=False)
@@ -20,14 +21,14 @@ class Output:
     """Class defining a single output."""
 
     particle_property: str
-    dtype: np.dtype
+    dtype: np.dtype | None
     kernels: tuple[BoundKernel, ...]
     attrs: dict[str, Any]
 
     def __init__(
         self,
         particle_property: str,
-        dtype: npt.DTypeLike = np.float64,
+        dtype: npt.DTypeLike | None = None,
         kernels: Iterable[BoundKernel] = (),
         **attrs: Any,
     ) -> None:
@@ -37,8 +38,8 @@ class Output:
         ----------
         particle_property : str
             The particle property to output.
-        dtype : npt.DTypeLike, optional
-            The data type of the output.
+        dtype : npt.DTypeLike | None, optional
+            The data type of the output. If None, the output will use the same dtype as the particle property.
         kernels : Iterable[BoundKernel], optional
             The kernels required to compute the output.
         **attrs : Any
@@ -51,7 +52,7 @@ class Output:
         It is the responsibility of the output writer to convert the computed values to the appropriate dtype or error if the conversion is not possible.
         """
         object.__setattr__(self, "particle_property", particle_property)
-        object.__setattr__(self, "dtype", np.dtype(dtype))
+        object.__setattr__(self, "dtype", np.dtype(dtype) if dtype is not None else None)
         object.__setattr__(self, "kernels", tuple(kernels))
         object.__setattr__(self, "attrs", dict(attrs))
 
@@ -342,15 +343,15 @@ class AbstractOutputWriterBuilder(abc.ABC):
     @abc.abstractmethod
     def build(
         self,
-        nparticles: dict[str, int],
+        particles: dict[str, ParticlesView],
         time_type: npt.DTypeLike,
     ) -> AbstractOutputWriter:
         """Build the output writer.
 
         Parameters
         ----------
-        nparticles : dict[str, int]
-            A mapping of particle set names to number of particles.
+        particles : dict[str, ParticlesView]
+            A mapping of particle set names to particle instances.
         time_type : npt.DTypeLike
             The numpy dtype for the time variable.
         """

@@ -7,7 +7,7 @@ import zarr.storage
 
 from offline_particles.events import SimulationState
 from offline_particles.output import Output, ZarrOutputBuilder
-from offline_particles.particles import Particles, ParticlesView
+from tests.output._helpers import make_particles_view
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -30,24 +30,13 @@ def _make_state(nparticles: int = 5, property_values: dict | None = None) -> Sim
     SimulationState
         A SimulationState object with the specified number of particles and property values.
     """
-    kwargs: dict = {"xidx": np.dtype(np.float64), "yidx": np.dtype(np.float64)}
-    if property_values:
-        for name, values in property_values.items():
-            kwargs[name] = np.asarray(values).dtype
-
-    particles = Particles(nparticles, kwargs)
-
-    if property_values:
-        for name, values in property_values.items():
-            particles[name][:] = np.asarray(values, dtype=particles[name].dtype)
-
     return SimulationState(
         time=np.float64(0.0),
         dt=np.float64(1.0),
         tidx=np.float64(0.0),
         iteration=0,
         wall_time=np.timedelta64(0, "ns"),
-        particles={"particles": ParticlesView(particles)},
+        particles={"particles": make_particles_view(nparticles, property_values)},
     )
 
 
@@ -161,7 +150,7 @@ class TestZarrOutputWriterStaticOutputArrays:
         builder = _make_builder(store)
         builder.add_static_output("particles", "density", _make_output("xidx"))
 
-        builder.build({"particles": 5})
+        builder.build({"particles": make_particles_view(5)})
 
         # The static output array should be 1D with shape (nparticles,)
         group = zarr.open_group(store, mode="r")
@@ -176,7 +165,7 @@ class TestZarrOutputWriterStaticOutputArrays:
         builder = _make_builder(store)
         builder.add_output("particles", "x", _make_output("xidx"))
 
-        builder.build({"particles": 5})
+        builder.build({"particles": make_particles_view(5)})
 
         group = zarr.open_group(store, mode="r")
         assert "x" in group["particles"]
@@ -191,7 +180,7 @@ class TestZarrOutputWriterStaticOutputArrays:
         output = _make_output("xidx")
         builder.add_static_output("particles", "density", output)
 
-        writer = builder.build({"particles": 5})
+        writer = builder.build({"particles": make_particles_view(5)})
 
         assert ("particles", "density") in dict(writer.static_outputs)
         assert dict(writer.static_outputs)[("particles", "density")] is output
@@ -201,7 +190,7 @@ class TestZarrOutputWriterStaticOutputArrays:
         builder = _make_builder(store)
         builder.add_static_output("particles", "density", _make_output("xidx"))
 
-        writer = builder.build({"particles": 5})
+        writer = builder.build({"particles": make_particles_view(5)})
 
         assert ("particles", "density") not in dict(writer.outputs)
 
@@ -217,7 +206,7 @@ class TestZarrOutputWriterWriteStaticOutput:
         builder = _make_builder(store)
         builder.add_static_output("particles", "density", _make_output("xidx"))
 
-        writer = builder.build({"particles": 5})
+        writer = builder.build({"particles": make_particles_view(5)})
 
         values = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
         state = _make_state(5, {"xidx": values, "yidx": np.zeros(5)})
@@ -232,7 +221,7 @@ class TestZarrOutputWriterWriteStaticOutput:
     def test_write_static_output_missing_key_raises(self) -> None:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
-        writer = builder.build({"particles": 5})
+        writer = builder.build({"particles": make_particles_view(5)})
 
         state = _make_state(5, {"xidx": np.zeros(5), "yidx": np.zeros(5)})
 
@@ -245,7 +234,7 @@ class TestZarrOutputWriterWriteStaticOutput:
         builder.add_output("particles", "x", _make_output("xidx"))
         builder.add_static_output("particles", "density", _make_output("yidx"))
 
-        writer = builder.build({"particles": 3})
+        writer = builder.build({"particles": make_particles_view(3)})
         state = _make_state(3, {"xidx": np.ones(3), "yidx": np.array([10.0, 20.0, 30.0])})
 
         writer.write_static_output("particles", "density", state)
@@ -266,7 +255,7 @@ class TestCreateStaticOutputEvents:
     def test_create_static_output_events_empty_when_no_static_outputs(self) -> None:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
-        writer = builder.build({"particles": 5})
+        writer = builder.build({"particles": make_particles_view(5)})
         events = writer.create_static_output_events()
         assert events == []
 
@@ -276,7 +265,7 @@ class TestCreateStaticOutputEvents:
         builder.add_static_output("particles", "density", _make_output("xidx"))
         builder.add_static_output("particles", "release_time", _make_output("yidx"))
 
-        writer = builder.build({"particles": 5})
+        writer = builder.build({"particles": make_particles_view(5)})
         events = writer.create_static_output_events()
 
         assert len(events) == 2
@@ -286,7 +275,7 @@ class TestCreateStaticOutputEvents:
         builder = _make_builder(store)
         builder.add_static_output("particles", "density", _make_output("xidx"))
 
-        writer = builder.build({"particles": 5})
+        writer = builder.build({"particles": make_particles_view(5)})
         events = writer.create_static_output_events()
 
         assert len(events) == 1
@@ -297,7 +286,7 @@ class TestCreateStaticOutputEvents:
         builder = _make_builder(store)
         builder.add_static_output("particles", "density", _make_output("xidx"))
 
-        writer = builder.build({"particles": 5})
+        writer = builder.build({"particles": make_particles_view(5)})
         events = writer.create_static_output_events()
 
         values = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
@@ -317,7 +306,7 @@ class TestCreateStaticOutputEvents:
         builder.add_output("particles", "x", _make_output("xidx"))
         builder.add_static_output("particles", "density", _make_output("yidx"))
 
-        writer = builder.build({"particles": 5})
+        writer = builder.build({"particles": make_particles_view(5)})
         recurring_events = writer.create_output_events()
         static_events = writer.create_static_output_events()
 
@@ -334,7 +323,7 @@ class TestCreateStaticOutputEvents:
         builder = _make_builder(store)
         builder.add_static_output("particles", "density", _make_output("xidx"))
 
-        builder.build({"particles": 5})
+        builder.build({"particles": make_particles_view(5)})
 
         group = zarr.open_group(store, mode="r")
         density_arr = group["particles"]["density"]  # type: ignore[invalid-argument-type]

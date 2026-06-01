@@ -8,6 +8,7 @@ import zarr.storage
 from offline_particles.events import SimulationState
 from offline_particles.output import Output, ZarrOutputBuilder
 from offline_particles.particles import Particles, ParticlesView
+from tests.output._helpers import make_particles_view
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -117,7 +118,7 @@ class TestZarrOutputBuilderBuild:
     def test_build_creates_time_array(self) -> None:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
-        builder.build({"particles": 5})
+        builder.build({"particles": make_particles_view(5)})
 
         group = zarr.open_group(store, mode="r")
         assert "time" in group["particles"]
@@ -128,7 +129,7 @@ class TestZarrOutputBuilderBuild:
     def test_build_creates_groups_for_each_particle_set(self) -> None:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
-        builder.build({"ps1": 3, "ps2": 5})
+        builder.build({"ps1": make_particles_view(3), "ps2": make_particles_view(5)})
 
         group = zarr.open_group(store, mode="r")
         assert "time" in group["ps1"]
@@ -139,19 +140,19 @@ class TestZarrOutputBuilderBuild:
         builder = _make_builder(store)
         builder.add_output("unknown_ps", "x", Output("xidx"))
         with pytest.raises(KeyError, match="unknown_ps"):
-            builder.build({"particles": 5})
+            builder.build({"particles": make_particles_view(5)})
 
     def test_build_static_output_for_unknown_particle_set_raises(self) -> None:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
         builder.add_static_output("unknown_ps", "density", Output("xidx"))
         with pytest.raises(KeyError, match="unknown_ps"):
-            builder.build({"particles": 5})
+            builder.build({"particles": make_particles_view(5)})
 
     def test_time_array_dimension_name(self) -> None:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
-        builder.build({"particles": 5})
+        builder.build({"particles": make_particles_view(5)})
 
         group = zarr.open_group(store, mode="r")
         time_arr = group["particles"]["time"]  # type: ignore[invalid-argument-type]
@@ -163,7 +164,7 @@ class TestZarrOutputBuilderBuild:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
         builder.add_output("particles", "x", Output("xidx"))
-        builder.build({"particles": 5})
+        builder.build({"particles": make_particles_view(5)})
 
         group = zarr.open_group(store, mode="r")
         x_arr = group["particles"]["x"]  # type: ignore[invalid-argument-type]
@@ -194,7 +195,7 @@ class TestZarrOutputWriterWriteTime:
     def test_write_time_appends_to_time_array(self) -> None:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
-        writer = builder.build({"particles": 3})
+        writer = builder.build({"particles": make_particles_view(3)})
 
         state = _make_state(time=5.0)
         writer.write_time(state)
@@ -205,7 +206,7 @@ class TestZarrOutputWriterWriteTime:
     def test_write_time_appends_multiple_values(self) -> None:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
-        writer = builder.build({"particles": 3})
+        writer = builder.build({"particles": make_particles_view(3)})
 
         for t in [0.0, 1.0, 2.0]:
             state = _make_state(time=t)
@@ -219,7 +220,7 @@ class TestZarrOutputWriterWriteTime:
         builder = _make_builder(store)
         builder.add_output("ps1", "x", Output("xidx"))
         builder.add_output("ps2", "x", Output("xidx"))
-        writer = builder.build({"ps1": 3, "ps2": 2})
+        writer = builder.build({"ps1": make_particles_view(3), "ps2": make_particles_view(2)})
 
         state = _make_multi_set_state(time=7.0)
         writer.write_time(state)
@@ -239,7 +240,7 @@ class TestZarrOutputWriterWriteOutput:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
         builder.add_output("particles", "x", Output("xidx"))
-        writer = builder.build({"particles": 3})
+        writer = builder.build({"particles": make_particles_view(3)})
 
         values = np.array([1.0, 2.0, 3.0])
         state = _make_state(3, {"xidx": values})
@@ -255,7 +256,7 @@ class TestZarrOutputWriterWriteOutput:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
         builder.add_output("particles", "x", Output("xidx"))
-        writer = builder.build({"particles": 3})
+        writer = builder.build({"particles": make_particles_view(3)})
 
         for i in range(3):
             values = np.array([float(i)] * 3)
@@ -271,7 +272,7 @@ class TestZarrOutputWriterWriteOutput:
     def test_write_output_missing_key_raises(self) -> None:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
-        writer = builder.build({"particles": 3})
+        writer = builder.build({"particles": make_particles_view(3)})
 
         state = _make_state(3)
         with pytest.raises(KeyError, match="nonexistent"):
@@ -282,7 +283,7 @@ class TestZarrOutputWriterWriteOutput:
         builder = _make_builder(store)
         builder.add_output("ps1", "x", Output("xidx"))
         builder.add_output("ps2", "x", Output("xidx"))
-        writer = builder.build({"ps1": 3, "ps2": 2})
+        writer = builder.build({"ps1": make_particles_view(3), "ps2": make_particles_view(2)})
 
         state = _make_multi_set_state(
             values_ps1=[1.0, 2.0, 3.0],
@@ -305,7 +306,7 @@ class TestZarrOutputWriterFinaliseWriteRound:
     def test_finalise_increments_count(self) -> None:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
-        writer = builder.build({"particles": 3})
+        writer = builder.build({"particles": make_particles_view(3)})
 
         state = _make_state()
         writer.write_time(state)
@@ -318,7 +319,7 @@ class TestZarrOutputWriterFinaliseWriteRound:
     def test_finalise_raises_if_time_not_written(self) -> None:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
-        writer = builder.build({"particles": 3})
+        writer = builder.build({"particles": make_particles_view(3)})
 
         state = _make_state()
         with pytest.raises(RuntimeError, match="Time output"):
@@ -328,7 +329,7 @@ class TestZarrOutputWriterFinaliseWriteRound:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
         builder.add_output("particles", "x", Output("xidx"))
-        writer = builder.build({"particles": 3})
+        writer = builder.build({"particles": make_particles_view(3)})
 
         state = _make_state()
         writer.write_time(state)
@@ -346,7 +347,7 @@ class TestCreateOutputEvents:
     def test_create_output_events_includes_time_event(self) -> None:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
-        writer = builder.build({"particles": 3})
+        writer = builder.build({"particles": make_particles_view(3)})
 
         events = writer.create_output_events()
         event_names = [e.name for e in events]
@@ -355,7 +356,7 @@ class TestCreateOutputEvents:
     def test_create_output_events_includes_finalise_event(self) -> None:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
-        writer = builder.build({"particles": 3})
+        writer = builder.build({"particles": make_particles_view(3)})
 
         events = writer.create_output_events()
         event_names = [e.name for e in events]
@@ -365,7 +366,7 @@ class TestCreateOutputEvents:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
         builder.add_output("particles", "x", Output("xidx"))
-        writer = builder.build({"particles": 3})
+        writer = builder.build({"particles": make_particles_view(3)})
 
         events = writer.create_output_events()
         event_names = [e.name for e in events]
@@ -375,7 +376,7 @@ class TestCreateOutputEvents:
         """With no outputs, there should be at least time and finalise events."""
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
-        writer = builder.build({"particles": 3})
+        writer = builder.build({"particles": make_particles_view(3)})
 
         events = writer.create_output_events()
         assert len(events) >= 2
@@ -384,7 +385,7 @@ class TestCreateOutputEvents:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
         builder.add_output("particles", "x", Output("xidx"))
-        writer = builder.build({"particles": 3})
+        writer = builder.build({"particles": make_particles_view(3)})
 
         events = writer.create_output_events()
         values = np.array([10.0, 20.0, 30.0])
@@ -402,7 +403,7 @@ class TestCreateOutputEvents:
     def test_event_name_method(self) -> None:
         store = zarr.storage.MemoryStore()
         builder = _make_builder(store)
-        writer = builder.build({"particles": 3})
+        writer = builder.build({"particles": make_particles_view(3)})
 
         assert writer.event_name("particles", "x") == "test_writer:particles:x"
         assert writer.event_name("ps2", "density") == "test_writer:ps2:density"

@@ -12,6 +12,7 @@ import zarr
 import zarr.storage
 
 from ..events import SimulationState
+from ..particles import ParticlesView
 from ._output import AbstractOutputWriter, AbstractOutputWriterBuilder, Output, TwoKeyDict
 
 DEFAULT_CHUNKSIZE = 250_000
@@ -400,11 +401,11 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
 
         del self._static_outputs[key]
 
-    def build(self, nparticles: dict[str, int], time_type: npt.DTypeLike = np.float64) -> ZarrOutputWriter:
+    def build(self, particles: dict[str, ParticlesView], time_type: npt.DTypeLike = np.float64) -> ZarrOutputWriter:
         # validate particle_sets
         for particle_set in itertools.chain(self._outputs.outer_keys(), self._static_outputs.outer_keys()):
-            if particle_set not in nparticles:
-                raise KeyError(f"Number of particles for particle set '{particle_set}' not provided.")
+            if particle_set not in particles:
+                raise KeyError(f"Particles for particle set '{particle_set}' not provided.")
 
         # initialise time array for each particle set group
         time_arrays = {
@@ -418,7 +419,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
                 overwrite=self._overwrite,
                 **self._time_array_kwargs,
             )
-            for particle_set in nparticles
+            for particle_set in particles
         }
 
         # create output arrays
@@ -426,13 +427,13 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         for (particle_set, name), zarr_output_def in self._outputs.items():
             output = zarr_output_def.output
             kwargs = zarr_output_def.kwargs.copy()
-            num_particles = nparticles[particle_set]
+            property_array = particles[particle_set][output.particle_property]
 
             # create output array
             array_name = kwargs.pop("name", name)
             outputs[particle_set, name] = ZarrOutputArray(
                 output,
-                self._initialize_output_array(particle_set, array_name, output, num_particles, kwargs),
+                self._initialize_output_array(particle_set, array_name, output, property_array, kwargs),
             )
 
         # create static output arrays (1D, written once)
@@ -440,15 +441,13 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         for (particle_set, name), zarr_output_def in self._static_outputs.items():
             output = zarr_output_def.output
             kwargs = zarr_output_def.kwargs.copy()
-
-            # get nparticles for this particle set
-            num_particles = nparticles[particle_set]
+            property_array = particles[particle_set][output.particle_property]
 
             # create static output array
             array_name = kwargs.pop("name", name)
             static_outputs[particle_set, name] = ZarrOutputArray(
                 output,
-                self._initialize_static_output_array(particle_set, array_name, output, num_particles, kwargs),
+                self._initialize_static_output_array(particle_set, array_name, output, property_array, kwargs),
             )
 
         return ZarrOutputWriter(
@@ -460,7 +459,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         )
 
     def _initialize_output_array(
-        self, particle_set: str, name: str, output: Output, nparticles: int, array_kwargs: dict[str, Any]
+        self, particle_set: str, name: str, output: Output, property_array: npt.NDArray, array_kwargs: dict[str, Any]
     ) -> zarr.Array:
         """Initialize Zarr array for output.
 
@@ -472,8 +471,8 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             The name of the output variable.
         output : Output
             The output definition.
-        nparticles : int
-            The number of particles in the particle set.
+        property_array : npt.NDArray
+            The array containing the particle property values.
         array_kwargs : dict[str, Any]
             Additional keyword arguments passed to Zarr.create_array.
 
@@ -483,15 +482,19 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             The created Zarr array for the output.
         """
         # set shape and chunks
+        nparticles = property_array.size
         shape = (0, nparticles)
         chunks = (1, min(self._chunksize, nparticles))
+
+        # dtype
+        dtype = output.dtype if output.dtype is not None else property_array.dtype
 
         # create array
         array = zarr.create_array(
             self._store,
             name=f"{particle_set}/{name}",
             shape=shape,
-            dtype=output.dtype,
+            dtype=dtype,
             chunks=chunks,
             attributes=output.attrs,
             dimension_names=(self._time_name, particle_set),
@@ -501,7 +504,7 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         return array
 
     def _initialize_static_output_array(
-        self, particle_set: str, name: str, output: Output, nparticles: int, array_kwargs: dict[str, Any]
+        self, particle_set: str, name: str, output: Output, property_array: npt.NDArray, array_kwargs: dict[str, Any]
     ) -> zarr.Array:
         """Initialize Zarr array for a static (time-independent) output.
 
@@ -513,8 +516,8 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             The name of the output variable.
         output : Output
             The output definition.
-        nparticles : int
-            The number of particles in the particle set.
+        property_array : npt.NDArray
+            The array containing the particle property values.
         array_kwargs : dict[str, Any]
             Additional keyword arguments passed to Zarr.create_array.
 
@@ -524,15 +527,19 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
             The created Zarr array for the static output.
         """
         # set shape and chunks (1D: particles only)
+        nparticles = property_array.size
         shape = (nparticles,)
         chunks = (max(1, min(self._chunksize, nparticles)),)
+
+        # dtype
+        dtype = output.dtype if output.dtype is not None else property_array.dtype
 
         # create array
         array = zarr.create_array(
             self._store,
             name=f"{particle_set}/{name}",
             shape=shape,
-            dtype=output.dtype,
+            dtype=dtype,
             chunks=chunks,
             attributes=output.attrs,
             dimension_names=(particle_set,),
