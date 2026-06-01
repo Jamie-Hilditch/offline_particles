@@ -69,10 +69,6 @@ class KernelInputDeclaration:
             return self.summary
         return self.summary + "\n\t" + self._description
 
-    @property
-    def _doc_string_part(self) -> str:
-        return f"'{self.name}' ({self._constraint_str})"
-
     def validate_dtype(self, dtype: type[np.generic] | np.dtype) -> None:
         """Validate that the dtype satisfies the declared constraints.
 
@@ -163,13 +159,24 @@ class FieldDataDeclaration(KernelInputDeclaration):
     def summary(self) -> str:
         return f"{self.name} : {self._constraint_str} with {len(self._layout_validators)} layout validators"
 
-    @property
-    def _doc_string_part(self) -> str:
-        return f"'{self.name}' ({self._constraint_str}) with {len(self._layout_validators)} layout validators"
-
 
 class ParticleKernel:
-    """A kernel to be execute on particles."""
+    """A kernel to be execute on particles.
+
+    Parameters
+    ----------
+    fn : KernelFunction or Iterable[KernelFunction]
+        The kernel function(s) to execute. If multiple functions are provided, they will be executed in the order given.
+    particle_properties : Iterable[ParticlePropertyDeclaration], optional
+        Declarations of the particle properties required by this kernel. Default is an empty iterable.
+    scalars : Iterable[ScalarDeclaration], optional
+        Declarations of the scalars required by this kernel. Default is an empty iterable.
+    field_data : Iterable[FieldDataDeclaration], optional
+        Declarations of the field data required by this kernel. Default is an empty iterable.
+    name : str, optional
+        An optional name for the kernel. This is used in the summary and description of the kernel.
+        Default is None, which results in a generic summary and description without a name.
+    """
 
     def __init__(
         self,
@@ -177,7 +184,10 @@ class ParticleKernel:
         particle_properties: Iterable[ParticlePropertyDeclaration] = (),
         scalars: Iterable[ScalarDeclaration] = (),
         field_data: Iterable[FieldDataDeclaration] = (),
+        name: str | None = None,
     ):
+        self._name = name
+
         # store kernels as tuple of functions
         if callable(fn):
             funcs = (fn,)
@@ -206,8 +216,10 @@ class ParticleKernel:
         if len(self._field_data) != len(field_data):
             raise ValueError("Duplicate field data names in kernel declarations.")
 
-        # build docstring
-        self.__doc__ = self._build_doc_string()
+    @property
+    def name(self) -> str | None:
+        """The name of the kernel, or None if not specified."""
+        return self._name
 
     @property
     def functions(self) -> tuple[KernelFunction, ...]:
@@ -232,6 +244,24 @@ class ParticleKernel:
     @staticmethod
     def func_name(fn: KernelFunction) -> str:
         return getattr(fn, "__qualname__", getattr(fn, "__name__", repr(fn)))
+
+    @staticmethod
+    def func_doc(fn: KernelFunction) -> str:
+        return getattr(fn, "__doc__", "")
+
+    @staticmethod
+    def func_summary(fn: KernelFunction) -> str:
+        """Extract a summary from a function's docstring.
+
+        Returns
+        -------
+        str
+            The first line of the function's docstring as a summary, or return an empty string if no docstring.
+        """
+        doc = ParticleKernel.func_doc(fn)
+        if not doc:
+            return ""
+        return doc.strip().splitlines()[0]
 
     def __repr__(self) -> str:
         funcs = ", ".join(self.func_name(fn) for fn in self._funcs)
@@ -260,24 +290,41 @@ class ParticleKernel:
 
     @property
     def summary(self) -> str:
-        return "Particle Kernel: " + " → ".join(self.func_name(fn) for fn in self._funcs)
+        name_part = f"{self.name} : " if self.name else "Particle Kernel : "
+        return name_part + " → ".join(self.func_name(fn) for fn in self._funcs)
 
-    def _build_doc_string(self) -> str:
-        doc_lines = ["Particle Kernel"]
+    @property
+    def description(self) -> str:
+        """A detailed description of the kernel.
 
-        doc_lines.extend(_new_doc_section("Functions"))
-        doc_lines.extend(self.func_name(fn) for fn in self._funcs)
+        Returns
+        -------
+        str
+            A multi-line string describing the kernel's functions and required inputs.
+        """
+        description_lines = [f"Particle Kernel: {self.name}"] if self.name else ["Particle Kernel"]
 
-        doc_lines.extend(_new_doc_section("Particle Properties"))
-        doc_lines.extend(decl._doc_string_part for decl in self._particle_properties.values())
+        # functions
+        description_lines.extend(_new_description_section("Functions"))
+        for fn in self._funcs:
+            description_lines.append(self.func_name(fn))
+            func_summary = self.func_summary(fn)
+            if func_summary:
+                description_lines.append("\t" + func_summary)
 
-        doc_lines.extend(_new_doc_section("Scalars"))
-        doc_lines.extend(decl._doc_string_part for decl in self._scalars.values())
+        # particle properties
+        description_lines.extend(_new_description_section("Particle Properties"))
+        description_lines.extend(decl.description for decl in self._particle_properties.values())
 
-        doc_lines.extend(_new_doc_section("Field Data"))
-        doc_lines.extend(decl._doc_string_part for decl in self._field_data.values())
+        # scalars
+        description_lines.extend(_new_description_section("Scalars"))
+        description_lines.extend(decl.description for decl in self._scalars.values())
 
-        return "\n".join(doc_lines)
+        # field data
+        description_lines.extend(_new_description_section("Field Data"))
+        description_lines.extend(decl.description for decl in self._field_data.values())
+
+        return "\n".join(description_lines)
 
     def bind(
         self,
@@ -419,9 +466,6 @@ class BoundKernel:
         if field_data_bindings:
             raise ValueError(f"Unused field data bindings: {field_data_bindings}")
 
-        # build docstring
-        self.__doc__ = self._build_doc_string()
-
     @property
     def kernel(self) -> ParticleKernel:
         """The underlying ParticleKernel."""
@@ -547,23 +591,48 @@ class BoundKernel:
             new_field_data_bindings,
         )
 
-    def _build_doc_string(self) -> str:
-        kernel = self._kernel
-        doc_lines = [f"Kernel Binding for {kernel}"]
+    @property
+    def summary(self) -> str:
+        """A summary of the bound kernel.
 
-        doc_lines.extend(_new_doc_section("Particle Property Bindings"))
-        for bound_name, declaration in self.particle_property_declarations.items():
-            doc_lines.append(f"'{bound_name}' → {declaration._doc_string_part}")
+        Returns
+        -------
+        str
+            A one-line string summarizing the bound kernel.
+        """
+        return f"Binding for {self.kernel.summary}"
 
-        doc_lines.extend(_new_doc_section("Scalar Bindings"))
-        for bound_name, declaration in self.scalar_declarations.items():
-            doc_lines.append(f"'{bound_name}' → {declaration._doc_string_part}")
+    @property
+    def description(self) -> str:
+        """A detailed description of the bound kernel, including the underlying kernel's description and the bindings.
 
-        doc_lines.extend(_new_doc_section("Field Data Bindings"))
-        for bound_name, declaration in self.field_data_declarations.items():
-            doc_lines.append(f"'{bound_name}' → {declaration._doc_string_part}")
+        Returns
+        -------
+        str
+            A multi-line string describing the bound kernel.
+        """
+        description_lines = [f"Bound Kernel: {self.kernel.name}"] if self.kernel.name else ["Bound Kernel"]
 
-        return "\n".join(doc_lines)
+        # particle property bindings
+        description_lines.extend(_new_description_section("Particle Property Bindings"))
+        for declared_name, bound_name in self.particle_property_bindings.items():
+            description_lines.append(f"{declared_name} ← {bound_name}")
+
+        # scalar bindings
+        description_lines.extend(_new_description_section("Scalar Bindings"))
+        for declared_name, bound_name in self.scalar_bindings.items():
+            description_lines.append(f"{declared_name} ← {bound_name}")
+
+        # field data bindings
+        description_lines.extend(_new_description_section("Field Data Bindings"))
+        for declared_name, bound_name in self.field_data_bindings.items():
+            description_lines.append(f"{declared_name} ← {bound_name}")
+
+        # kernel description
+        description_lines.extend(_new_description_section("Particle Kernel Description"))
+        description_lines.append(self.kernel.description)
+
+        return "\n".join(description_lines)
 
     @classmethod
     def chain(cls, *Kernels: Self) -> Self:
@@ -673,5 +742,5 @@ def _merge_binding_dicts(*dicts: Mapping[str, str]) -> dict[str, str]:
     return merged
 
 
-def _new_doc_section(title: str) -> list[str]:
-    return ["", title, "--------------"]
+def _new_description_section(title: str) -> list[str]:
+    return ["", title, "-" * len(title)]
