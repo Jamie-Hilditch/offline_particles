@@ -906,6 +906,7 @@ class SimulationBuilder:
         ------
         ValueError
             If an output writer with the same name already exists.
+            If neither or both of ``n`` and ``dt`` are specified.
         """
         name = builder.name
         if name in self._output_writer_builders:
@@ -930,6 +931,11 @@ class SimulationBuilder:
 
     def build_simulation(self, *, bbox_history_size: int = DEFAULT_BBOX_HISTORY_SIZE) -> Simulation:
         """Build and return the Simulation.
+
+        Parameters
+        ----------
+        bbox_history_size : int, optional
+            The number of bounding-box snapshots to retain for the launcher (default: ``DEFAULT_BBOX_HISTORY_SIZE``).
 
         Returns
         -------
