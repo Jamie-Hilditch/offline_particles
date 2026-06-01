@@ -6,13 +6,27 @@ import numpy.typing as npt
 from ._kernels import ParticlePropertyDeclaration, ScalarDeclaration
 
 # particle properties
-STATUS_DECLARATION = ParticlePropertyDeclaration("status", np.uint8)
-ZIDX_DECLARATION = ParticlePropertyDeclaration("zidx", np.float64)
-YIDX_DECLARATION = ParticlePropertyDeclaration("yidx", np.float64)
-XIDX_DECLARATION = ParticlePropertyDeclaration("xidx", np.float64)
+STATUS_DECLARATION = ParticlePropertyDeclaration(
+    "status", np.uint8, description="The particle status. Possible values are defined by the `Status` enum."
+)
+ZIDX_DECLARATION = ParticlePropertyDeclaration(
+    "zidx",
+    np.float64,
+    description="The fractional index of the particle along the z-axis with respect to the centred grid.",
+)
+YIDX_DECLARATION = ParticlePropertyDeclaration(
+    "yidx",
+    np.float64,
+    description="The fractional index of the particle along the y-axis with respect to the centred grid.",
+)
+XIDX_DECLARATION = ParticlePropertyDeclaration(
+    "xidx",
+    np.float64,
+    description="The fractional index of the particle along the x-axis with respect to the centred grid.",
+)
 
 # scalars
-DT_DECLARATION = ScalarDeclaration("_dt", np.float64)
+DT_DECLARATION = ScalarDeclaration("_dt", np.float64, description="The current (non-dimensional) simulation time step.")
 
 
 def construct_time_declaration(time_dtype: npt.DTypeLike) -> ScalarDeclaration:
@@ -30,4 +44,4 @@ def construct_time_declaration(time_dtype: npt.DTypeLike) -> ScalarDeclaration:
     ScalarDeclaration
         A ScalarDeclaration for the simulation time.
     """
-    return ScalarDeclaration("_time", np.dtype(time_dtype).type)
+    return ScalarDeclaration("_time", np.dtype(time_dtype).type, description="The current simulation time.")
