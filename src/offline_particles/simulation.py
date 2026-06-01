@@ -100,7 +100,7 @@ class Simulation:
         self._at_time_scheduler = at_time_scheduler
         self._output_writers = output_writers
 
-        # create launcher the register scalar data sources and set index padding
+        # create launcher then register scalar data sources and set index padding
         self._launcher = Launcher(fieldset, history_size=bbox_history_size)
         self._launcher.register_scalar_data_sources_from_object(clock)
         for timestepper in self._timesteppers.values():
