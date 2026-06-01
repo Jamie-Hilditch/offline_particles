@@ -29,8 +29,11 @@ class KernelInputDeclaration:
 
     name: str
     dtype_constraints: tuple[type[np.generic], ...]
+    _description: str = dataclasses.field(compare=False)
 
-    def __init__(self, name: str, dtype_constraints: type[np.generic] | Iterable[type[np.generic]]) -> None:
+    def __init__(
+        self, name: str, dtype_constraints: type[np.generic] | Iterable[type[np.generic]], description: str = ""
+    ) -> None:
         match dtype_constraints:
             case type() as dtype:
                 dtypes = (dtype,)
@@ -44,10 +47,21 @@ class KernelInputDeclaration:
 
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "dtype_constraints", dtypes)
+        object.__setattr__(self, "_description", description)
 
     @property
     def _constraint_str(self) -> str:
-        return " | ".join(str(dtype) for dtype in self.dtype_constraints)
+        return " | ".join(getattr(dtype, "__name__", str(dtype)) for dtype in self.dtype_constraints)
+
+    @property
+    def summary(self) -> str:
+        return f"{self.name} : {self._constraint_str}"
+
+    @property
+    def description(self) -> str:
+        if not self._description:
+            return self.summary
+        return self.summary + "\n\t" + self._description
 
     @property
     def _doc_string_part(self) -> str:
