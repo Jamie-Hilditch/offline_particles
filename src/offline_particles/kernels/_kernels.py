@@ -49,6 +49,12 @@ class KernelInputDeclaration:
         object.__setattr__(self, "dtype_constraints", dtypes)
         object.__setattr__(self, "_description", description)
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(name={self.name!r}, dtype_constraints=[{self._constraint_str.replace(' | ', ', ')}], description={self._description!r})"
+
+    def __str__(self) -> str:
+        return self.summary
+
     @property
     def _constraint_str(self) -> str:
         return " | ".join(getattr(dtype, "__name__", str(dtype)) for dtype in self.dtype_constraints)
@@ -114,6 +120,14 @@ class FieldDataDeclaration(KernelInputDeclaration):
 
         KernelInputDeclaration.__init__(self, name, dtype_constraints, description=description)
         object.__setattr__(self, "_layout_validators", validators)
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}(name={self.name!r}, "
+            f"dtype_constraints=[{self._constraint_str.replace(' | ', ', ')}], "
+            f"layout validators={self._layout_validators!r}, "
+            f"description={self._description!r})"
+        )
 
     def validate_field(self, field: Field) -> None:
         """Validate that a field matches this declaration.
@@ -232,7 +246,7 @@ class ParticleKernel:
         )
 
     def __str__(self) -> str:
-        return "Particle Kernel: " + " → ".join(self.func_name(fn) for fn in self._funcs)
+        return self.summary
 
     def __call__(
         self,
@@ -243,6 +257,10 @@ class ParticleKernel:
         """Execute the kernel."""
         for fn in self._funcs:
             fn(particle_properties, scalars, field_data)
+
+    @property
+    def summary(self) -> str:
+        return "Particle Kernel: " + " → ".join(self.func_name(fn) for fn in self._funcs)
 
     def _build_doc_string(self) -> str:
         doc_lines = ["Particle Kernel"]
