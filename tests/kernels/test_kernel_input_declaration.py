@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from offline_particles.kernels._kernels import KernelInputDeclaration
+from offline_particles.kernels._kernels import FieldDataDeclaration, KernelInputDeclaration
 from offline_particles.kernels.input_declarations import (
     STATUS_DECLARATION,
     XIDX_DECLARATION,
@@ -92,6 +92,15 @@ class TestKernelInputDeclarationSummaryAndDescription:
         declaration2 = KernelInputDeclaration("x", np.float32, description="Second description.")
 
         assert declaration1 == declaration2
+
+    @pytest.mark.parametrize(("n"), [0, 1, 2])
+    def test_FieldDataDeclaration_summary_includes_number_of_layout_validators(self, n) -> None:
+        layout_validators = [lambda x: True] * n
+        declaration = FieldDataDeclaration(
+            "field", np.float32, layout_validators=layout_validators, description="A field."
+        )
+
+        assert f"{n} layout validators" in declaration.summary
 
 
 class TestRequiredParticlePropertyDeclarations:

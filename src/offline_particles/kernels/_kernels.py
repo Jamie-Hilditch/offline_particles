@@ -105,13 +105,14 @@ class FieldDataDeclaration(KernelInputDeclaration):
         name: str,
         dtype_constraints: type[np.generic] | Iterable[type[np.generic]],
         layout_validators: LayoutValidator | Iterable[LayoutValidator] = (),
+        description: str = "",
     ) -> None:
         if callable(layout_validators):
             validators = (layout_validators,)
         else:
             validators = tuple(layout_validators)
 
-        KernelInputDeclaration.__init__(self, name, dtype_constraints)
+        KernelInputDeclaration.__init__(self, name, dtype_constraints, description=description)
         object.__setattr__(self, "_layout_validators", validators)
 
     def validate_field(self, field: Field) -> None:
@@ -143,6 +144,10 @@ class FieldDataDeclaration(KernelInputDeclaration):
                 raise ValueError(
                     f"Input Field does not satisfy the layout constraints for kernel field data '{self.name}'"
                 ) from e
+
+    @property
+    def summary(self) -> str:
+        return f"{self.name} : {self._constraint_str} with {len(self._layout_validators)} layout validators"
 
     @property
     def _doc_string_part(self) -> str:
