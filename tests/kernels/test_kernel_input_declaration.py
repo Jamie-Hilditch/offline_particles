@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from offline_particles.kernels._kernels import KernelInputDeclaration
+from offline_particles.kernels._kernels import FieldDataDeclaration, KernelInputDeclaration
 from offline_particles.kernels.input_declarations import (
     STATUS_DECLARATION,
     XIDX_DECLARATION,
@@ -63,6 +63,44 @@ class TestKernelInputDeclarationValidateDtype:
 
         with pytest.raises(TypeError, match="dtype constraints"):
             declaration.validate_dtype(np.int32)
+
+
+class TestKernelInputDeclarationSummaryAndDescription:
+    def test_summary_starts_with_name(self) -> None:
+        declaration = KernelInputDeclaration("complicated_name", (np.float32, np.int32))
+
+        assert declaration.summary.startswith("complicated_name")
+
+    def test_summary_includes_dtype_constraints(self) -> None:
+        declaration = KernelInputDeclaration("x", (np.float32, np.int32))
+
+        assert "float32" in declaration.summary
+        assert "int32" in declaration.summary
+
+    def test_description_includes_additional_description_if_provided(self) -> None:
+        declaration = KernelInputDeclaration("x", np.float32, description="This is x.")
+
+        assert "This is x." in declaration.description
+
+    def test_description_returns_summary_if_no_description_provided(self) -> None:
+        declaration = KernelInputDeclaration("x", np.float32)
+
+        assert declaration.description == declaration.summary
+
+    def test_compare_equal_ignores_description(self) -> None:
+        declaration1 = KernelInputDeclaration("x", np.float32, description="First description.")
+        declaration2 = KernelInputDeclaration("x", np.float32, description="Second description.")
+
+        assert declaration1 == declaration2
+
+    @pytest.mark.parametrize(("n"), [0, 1, 2])
+    def test_FieldDataDeclaration_summary_includes_number_of_layout_validators(self, n) -> None:
+        layout_validators = [lambda x: True] * n
+        declaration = FieldDataDeclaration(
+            "field", np.float32, layout_validators=layout_validators, description="A field."
+        )
+
+        assert f"{n} layout validators" in declaration.summary
 
 
 class TestRequiredParticlePropertyDeclarations:

@@ -26,6 +26,16 @@ class FieldData:
     def __repr__(self) -> str:
         return f"FieldData(array(shape={self.array.shape}, dtype={self.array.dtype}), offsets={self.offsets})"
 
+    def unpack(self) -> tuple[npt.NDArray, *tuple[float, ...]]:
+        """Unpack the FieldData into its components.
+
+        Returns
+        -------
+        tuple[npt.NDArray, float, ...]
+            A tuple containing the field data array followed by the offsets for each dimension.
+        """
+        return self.array, *self.offsets
+
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class SimulationSize:

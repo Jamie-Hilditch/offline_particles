@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import functools
 import types
 from collections.abc import Callable, Iterable, Mapping
 from typing import Self
@@ -29,8 +30,11 @@ class KernelInputDeclaration:
 
     name: str
     dtype_constraints: tuple[type[np.generic], ...]
+    _description: str = dataclasses.field(compare=False)
 
-    def __init__(self, name: str, dtype_constraints: type[np.generic] | Iterable[type[np.generic]]) -> None:
+    def __init__(
+        self, name: str, dtype_constraints: type[np.generic] | Iterable[type[np.generic]], description: str = ""
+    ) -> None:
         match dtype_constraints:
             case type() as dtype:
                 dtypes = (dtype,)
@@ -44,14 +48,27 @@ class KernelInputDeclaration:
 
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "dtype_constraints", dtypes)
+        object.__setattr__(self, "_description", description)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(name={self.name!r}, dtype_constraints=[{self._constraint_str.replace(' | ', ', ')}], description={self._description!r})"
+
+    def __str__(self) -> str:
+        return self.summary
 
     @property
     def _constraint_str(self) -> str:
-        return " | ".join(str(dtype) for dtype in self.dtype_constraints)
+        return " | ".join(getattr(dtype, "__name__", str(dtype)) for dtype in self.dtype_constraints)
 
     @property
-    def _doc_string_part(self) -> str:
-        return f"'{self.name}' ({self._constraint_str})"
+    def summary(self) -> str:
+        return f"{self.name} : {self._constraint_str}"
+
+    @property
+    def description(self) -> str:
+        if not self._description:
+            return self.summary
+        return self.summary + "\n\t" + self._description
 
     def validate_dtype(self, dtype: type[np.generic] | np.dtype) -> None:
         """Validate that the dtype satisfies the declared constraints.
@@ -91,14 +108,23 @@ class FieldDataDeclaration(KernelInputDeclaration):
         name: str,
         dtype_constraints: type[np.generic] | Iterable[type[np.generic]],
         layout_validators: LayoutValidator | Iterable[LayoutValidator] = (),
+        description: str = "",
     ) -> None:
         if callable(layout_validators):
             validators = (layout_validators,)
         else:
             validators = tuple(layout_validators)
 
-        KernelInputDeclaration.__init__(self, name, dtype_constraints)
+        KernelInputDeclaration.__init__(self, name, dtype_constraints, description=description)
         object.__setattr__(self, "_layout_validators", validators)
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}(name={self.name!r}, "
+            f"dtype_constraints=[{self._constraint_str.replace(' | ', ', ')}], "
+            f"layout validators={self._layout_validators!r}, "
+            f"description={self._description!r})"
+        )
 
     def validate_field(self, field: Field) -> None:
         """Validate that a field matches this declaration.
@@ -131,12 +157,27 @@ class FieldDataDeclaration(KernelInputDeclaration):
                 ) from e
 
     @property
-    def _doc_string_part(self) -> str:
-        return f"'{self.name}' ({self._constraint_str}) with {len(self._layout_validators)} layout validators"
+    def summary(self) -> str:
+        return f"{self.name} : {self._constraint_str} with {len(self._layout_validators)} layout validators"
 
 
 class ParticleKernel:
-    """A kernel to be execute on particles."""
+    """A kernel to be execute on particles.
+
+    Parameters
+    ----------
+    fn : KernelFunction or Iterable[KernelFunction]
+        The kernel function(s) to execute. If multiple functions are provided, they will be executed in the order given.
+    particle_properties : Iterable[ParticlePropertyDeclaration], optional
+        Declarations of the particle properties required by this kernel. Default is an empty iterable.
+    scalars : Iterable[ScalarDeclaration], optional
+        Declarations of the scalars required by this kernel. Default is an empty iterable.
+    field_data : Iterable[FieldDataDeclaration], optional
+        Declarations of the field data required by this kernel. Default is an empty iterable.
+    name : str, optional
+        An optional name for the kernel. This is used in the summary and description of the kernel.
+        Default is None, which results in a generic summary and description without a name.
+    """
 
     def __init__(
         self,
@@ -144,7 +185,10 @@ class ParticleKernel:
         particle_properties: Iterable[ParticlePropertyDeclaration] = (),
         scalars: Iterable[ScalarDeclaration] = (),
         field_data: Iterable[FieldDataDeclaration] = (),
+        name: str | None = None,
     ):
+        self._name = name
+
         # store kernels as tuple of functions
         if callable(fn):
             funcs = (fn,)
@@ -173,8 +217,10 @@ class ParticleKernel:
         if len(self._field_data) != len(field_data):
             raise ValueError("Duplicate field data names in kernel declarations.")
 
-        # build docstring
-        self.__doc__ = self._build_doc_string()
+    @property
+    def name(self) -> str | None:
+        """The name of the kernel, or None if not specified."""
+        return self._name
 
     @property
     def functions(self) -> tuple[KernelFunction, ...]:
@@ -200,6 +246,24 @@ class ParticleKernel:
     def func_name(fn: KernelFunction) -> str:
         return getattr(fn, "__qualname__", getattr(fn, "__name__", repr(fn)))
 
+    @staticmethod
+    def func_doc(fn: KernelFunction) -> str:
+        return getattr(fn, "__doc__", "")
+
+    @staticmethod
+    def func_summary(fn: KernelFunction) -> str:
+        """Extract a summary from a function's docstring.
+
+        Returns
+        -------
+        str
+            The first line of the function's docstring as a summary, or return an empty string if no docstring.
+        """
+        doc = ParticleKernel.func_doc(fn)
+        if not doc:
+            return ""
+        return doc.strip().splitlines()[0]
+
     def __repr__(self) -> str:
         funcs = ", ".join(self.func_name(fn) for fn in self._funcs)
 
@@ -213,7 +277,7 @@ class ParticleKernel:
         )
 
     def __str__(self) -> str:
-        return "Particle Kernel: " + " → ".join(self.func_name(fn) for fn in self._funcs)
+        return self.summary
 
     def __call__(
         self,
@@ -225,22 +289,43 @@ class ParticleKernel:
         for fn in self._funcs:
             fn(particle_properties, scalars, field_data)
 
-    def _build_doc_string(self) -> str:
-        doc_lines = ["Particle Kernel"]
+    @property
+    def summary(self) -> str:
+        name_part = f"{self.name} : " if self.name else "Particle Kernel : "
+        return name_part + " → ".join(self.func_name(fn) for fn in self._funcs)
 
-        doc_lines.extend(_new_doc_section("Functions"))
-        doc_lines.extend(self.func_name(fn) for fn in self._funcs)
+    @property
+    def description(self) -> str:
+        """A detailed description of the kernel.
 
-        doc_lines.extend(_new_doc_section("Particle Properties"))
-        doc_lines.extend(decl._doc_string_part for decl in self._particle_properties.values())
+        Returns
+        -------
+        str
+            A multi-line string describing the kernel's functions and required inputs.
+        """
+        description_lines = [f"Particle Kernel: {self.name}"] if self.name else ["Particle Kernel"]
 
-        doc_lines.extend(_new_doc_section("Scalars"))
-        doc_lines.extend(decl._doc_string_part for decl in self._scalars.values())
+        # functions
+        description_lines.extend(_new_description_section("Functions"))
+        for fn in self._funcs:
+            description_lines.append(self.func_name(fn))
+            func_summary = self.func_summary(fn)
+            if func_summary:
+                description_lines.append("\t" + func_summary)
 
-        doc_lines.extend(_new_doc_section("Field Data"))
-        doc_lines.extend(decl._doc_string_part for decl in self._field_data.values())
+        # particle properties
+        description_lines.extend(_new_description_section("Particle Properties"))
+        description_lines.extend(decl.description for decl in self._particle_properties.values())
 
-        return "\n".join(doc_lines)
+        # scalars
+        description_lines.extend(_new_description_section("Scalars"))
+        description_lines.extend(decl.description for decl in self._scalars.values())
+
+        # field data
+        description_lines.extend(_new_description_section("Field Data"))
+        description_lines.extend(decl.description for decl in self._field_data.values())
+
+        return "\n".join(description_lines)
 
     def bind(
         self,
@@ -382,9 +467,6 @@ class BoundKernel:
         if field_data_bindings:
             raise ValueError(f"Unused field data bindings: {field_data_bindings}")
 
-        # build docstring
-        self.__doc__ = self._build_doc_string()
-
     @property
     def kernel(self) -> ParticleKernel:
         """The underlying ParticleKernel."""
@@ -510,23 +592,48 @@ class BoundKernel:
             new_field_data_bindings,
         )
 
-    def _build_doc_string(self) -> str:
-        kernel = self._kernel
-        doc_lines = [f"Kernel Binding for {kernel}"]
+    @property
+    def summary(self) -> str:
+        """A summary of the bound kernel.
 
-        doc_lines.extend(_new_doc_section("Particle Property Bindings"))
-        for bound_name, declaration in self.particle_property_declarations.items():
-            doc_lines.append(f"'{bound_name}' → {declaration._doc_string_part}")
+        Returns
+        -------
+        str
+            A one-line string summarizing the bound kernel.
+        """
+        return f"Binding for {self.kernel.summary}"
 
-        doc_lines.extend(_new_doc_section("Scalar Bindings"))
-        for bound_name, declaration in self.scalar_declarations.items():
-            doc_lines.append(f"'{bound_name}' → {declaration._doc_string_part}")
+    @property
+    def description(self) -> str:
+        """A detailed description of the bound kernel, including the underlying kernel's description and the bindings.
 
-        doc_lines.extend(_new_doc_section("Field Data Bindings"))
-        for bound_name, declaration in self.field_data_declarations.items():
-            doc_lines.append(f"'{bound_name}' → {declaration._doc_string_part}")
+        Returns
+        -------
+        str
+            A multi-line string describing the bound kernel.
+        """
+        description_lines = [f"Bound Kernel: {self.kernel.name}"] if self.kernel.name else ["Bound Kernel"]
 
-        return "\n".join(doc_lines)
+        # particle property bindings
+        description_lines.extend(_new_description_section("Particle Property Bindings"))
+        for declared_name, bound_name in self.particle_property_bindings.items():
+            description_lines.append(f"{declared_name} ← {bound_name}")
+
+        # scalar bindings
+        description_lines.extend(_new_description_section("Scalar Bindings"))
+        for declared_name, bound_name in self.scalar_bindings.items():
+            description_lines.append(f"{declared_name} ← {bound_name}")
+
+        # field data bindings
+        description_lines.extend(_new_description_section("Field Data Bindings"))
+        for declared_name, bound_name in self.field_data_bindings.items():
+            description_lines.append(f"{declared_name} ← {bound_name}")
+
+        # kernel description
+        description_lines.extend(_new_description_section("Particle Kernel Description"))
+        description_lines.append(self.kernel.description)
+
+        return "\n".join(description_lines)
 
     @classmethod
     def chain(cls, *Kernels: Self) -> Self:
@@ -573,6 +680,153 @@ class BoundKernel:
             A new BoundKernel that combines the underlying kernels and their bindings.
         """
         return self.__class__.chain(self, *others)
+
+
+# decorators
+
+
+def kernel_function_impl(
+    particle_property_keys: Iterable[str] = (),
+    scalar_keys: Iterable[str] = (),
+    field_data_keys: Iterable[str] = (),
+) -> Callable[[Callable], KernelFunction]:
+    """Convert a kernel function implementation into a kernel function.
+
+    This decorator returns a ``KernelFunction`` that unpacks the kernel input dictionaries into individual arrays and scalars
+    and then passes them to the decorated function. This particularly useful for implementing kernel functions with numba.
+
+    Parameters
+    ----------
+    particle_property_keys : Iterable[str], optional
+        The names of the particle properties required by this kernel function.
+    scalar_keys : Iterable[str], optional
+        The names of the scalars required by this kernel function.
+    field_data_keys : Iterable[str], optional
+        The names of the field data required by this kernel function.
+
+    Returns
+    -------
+    Callable[[Callable], KernelFunction]
+        A decorator that converts a kernel function implementation into a kernel function.
+
+    Notes
+    -----
+    The decorated function should have a signature that accepts the unpacked particle properties, scalars, and field data
+    in the order specified by the keys. The field data is itself unpacked into its components (array and offsets) and passed as separate arguments.
+    For example, if a field data key corresponds to a FieldData with 3D offsets, the decorated function will receive 4 arguments
+    for that field data: the array and the 3 offsets.
+    """
+
+    def decorator(fn: Callable) -> KernelFunction:
+        @functools.wraps(fn)
+        def kernel_function(
+            particle_properties: ParticlePropertiesType,
+            scalars: ScalarsType,
+            field_data: FieldDataType,
+        ) -> None:
+            particle_property_args = (particle_properties[name] for name in particle_property_keys)
+            scalar_args = (scalars[name] for name in scalar_keys)
+            field_data_args = (arg for name in field_data_keys for arg in field_data[name].unpack())
+            return fn(*particle_property_args, *scalar_args, *field_data_args)
+
+        return kernel_function
+
+    return decorator
+
+
+def particle_kernel(
+    particle_property_declarations: Iterable[ParticlePropertyDeclaration] = (),
+    scalar_declarations: Iterable[ScalarDeclaration] = (),
+    field_data_declarations: Iterable[FieldDataDeclaration] = (),
+    name: str | None = None,
+) -> Callable[[KernelFunction], ParticleKernel]:
+    """Convert a kernel function into a ParticleKernel.
+
+    This decorator is a more convenient alternative to calling the ``ParticleKernel`` constructor directly.
+    It simply passes the decorated function, the provided declarations and optional name to the ``ParticleKernel`` constructor.
+
+    Parameters
+    ----------
+    particle_property_declarations : Iterable[ParticlePropertyDeclaration], optional
+        Declarations of the particle properties required by this kernel. Default is an empty iterable.
+    scalar_declarations : Iterable[ScalarDeclaration], optional
+        Declarations of the scalars required by this kernel. Default is an empty iterable.
+    field_data_declarations : Iterable[FieldDataDeclaration], optional
+        Declarations of the field data required by this kernel. Default is an empty iterable.
+    name : str | None, optional
+        The name of the particle kernel. Default is None.
+
+    Returns
+    -------
+    Callable[[KernelFunction], ParticleKernel]
+        A decorator that converts a kernel function into a ParticleKernel.
+    """
+
+    def decorator(fn: KernelFunction) -> ParticleKernel:
+        return ParticleKernel(
+            fn,
+            particle_properties=particle_property_declarations,
+            scalars=scalar_declarations,
+            field_data=field_data_declarations,
+            name=name,
+        )
+
+    return decorator
+
+
+def particle_kernel_impl(
+    particle_property_declarations: Iterable[ParticlePropertyDeclaration] = (),
+    scalar_declarations: Iterable[ScalarDeclaration] = (),
+    field_data_declarations: Iterable[FieldDataDeclaration] = (),
+    name: str | None = None,
+) -> Callable[[Callable], ParticleKernel]:
+    """Convert a kernel function implementation into a ParticleKernel.
+
+    This decorator combines the functionality of ``kernel_function_impl`` and ``particle_kernel``.
+    It marks the decorated function as a kernel function implementation and also creates a ``ParticleKernel`` from it
+    with the provided declarations and optional name.
+
+    Parameters
+    ----------
+    particle_property_declarations : Iterable[ParticlePropertyDeclaration], optional
+        Declarations of the particle properties required by this kernel. Default is an empty iterable.
+    scalar_declarations : Iterable[ScalarDeclaration], optional
+        Declarations of the scalars required by this kernel. Default is an empty iterable.
+    field_data_declarations : Iterable[FieldDataDeclaration], optional
+        Declarations of the field data required by this kernel. Default is an empty iterable.
+    name : str | None, optional
+        The name of the particle kernel. Default is None.
+
+    Returns
+    -------
+    Callable[[Callable], ParticleKernel]
+        A decorator that converts a kernel function implementation into a ParticleKernel.
+    """
+    # convert declarations to tuples to allow multiple iterations
+    particle_property_declarations = tuple(particle_property_declarations)
+    scalar_declarations = tuple(scalar_declarations)
+    field_data_declarations = tuple(field_data_declarations)
+
+    # extract keys for kernel function implementation
+    particle_property_keys = tuple(decl.name for decl in particle_property_declarations)
+    scalar_keys = tuple(decl.name for decl in scalar_declarations)
+    field_data_keys = tuple(decl.name for decl in field_data_declarations)
+
+    def decorator(fn: Callable) -> ParticleKernel:
+        kernel_fn = kernel_function_impl(
+            particle_property_keys=particle_property_keys,
+            scalar_keys=scalar_keys,
+            field_data_keys=field_data_keys,
+        )(fn)
+        return ParticleKernel(
+            kernel_fn,
+            particle_properties=particle_property_declarations,
+            scalars=scalar_declarations,
+            field_data=field_data_declarations,
+            name=name,
+        )
+
+    return decorator
 
 
 # helper functions
@@ -636,5 +890,5 @@ def _merge_binding_dicts(*dicts: Mapping[str, str]) -> dict[str, str]:
     return merged
 
 
-def _new_doc_section(title: str) -> list[str]:
-    return ["", title, "--------------"]
+def _new_description_section(title: str) -> list[str]:
+    return ["", title, "-" * len(title)]
