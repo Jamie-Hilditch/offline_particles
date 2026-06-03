@@ -358,58 +358,45 @@ def construct_3D_interpolation_kernel(
 ############################
 
 #: Partial function application of :func:`construct_1D_interpolation_kernel` with axis=ArrayAxis.Z.
-construct_Z_interpolation_kernel = functools.partial(construct_1D_interpolation_kernel, axis=ArrayAxis.Z)
+construct_Z_interpolation_kernel = functools.partial(construct_1D_interpolation_kernel, ArrayAxis.Z)
 #: Partial function application of :func:`construct_1D_interpolation_kernel` with axis=ArrayAxis.Y.
-construct_Y_interpolation_kernel = functools.partial(construct_1D_interpolation_kernel, axis=ArrayAxis.Y)
+construct_Y_interpolation_kernel = functools.partial(construct_1D_interpolation_kernel, ArrayAxis.Y)
 #: Partial function application of :func:`construct_1D_interpolation_kernel` with axis=ArrayAxis.X.
-construct_X_interpolation_kernel = functools.partial(construct_1D_interpolation_kernel, axis=ArrayAxis.X)
-
+construct_X_interpolation_kernel = functools.partial(construct_1D_interpolation_kernel, ArrayAxis.X)
 #: Partial function application of :func:`construct_2D_interpolation_kernel` with axes=(ArrayAxis.X, ArrayAxis.Y).
-construct_XY_interpolation_kernel = functools.partial(
-    construct_2D_interpolation_kernel, axes=(ArrayAxis.X, ArrayAxis.Y)
-)
+construct_XY_interpolation_kernel = functools.partial(construct_2D_interpolation_kernel, (ArrayAxis.X, ArrayAxis.Y))
 #: Partial function application of :func:`construct_2D_interpolation_kernel` with axes=(ArrayAxis.X, ArrayAxis.Z).
-construct_XZ_interpolation_kernel = functools.partial(
-    construct_2D_interpolation_kernel, axes=(ArrayAxis.X, ArrayAxis.Z)
-)
+construct_XZ_interpolation_kernel = functools.partial(construct_2D_interpolation_kernel, (ArrayAxis.X, ArrayAxis.Z))
 #: Partial function application of :func:`construct_2D_interpolation_kernel` with axes=(ArrayAxis.Y, ArrayAxis.X).
-construct_YX_interpolation_kernel = functools.partial(
-    construct_2D_interpolation_kernel, axes=(ArrayAxis.Y, ArrayAxis.X)
-)
+construct_YX_interpolation_kernel = functools.partial(construct_2D_interpolation_kernel, (ArrayAxis.Y, ArrayAxis.X))
 #: Partial function application of :func:`construct_2D_interpolation_kernel` with axes=(ArrayAxis.Y, ArrayAxis.Z).
-construct_YZ_interpolation_kernel = functools.partial(
-    construct_2D_interpolation_kernel, axes=(ArrayAxis.Y, ArrayAxis.Z)
-)
+construct_YZ_interpolation_kernel = functools.partial(construct_2D_interpolation_kernel, (ArrayAxis.Y, ArrayAxis.Z))
 #: Partial function application of :func:`construct_2D_interpolation_kernel` with axes=(ArrayAxis.Z, ArrayAxis.X).
-construct_ZX_interpolation_kernel = functools.partial(
-    construct_2D_interpolation_kernel, axes=(ArrayAxis.Z, ArrayAxis.X)
-)
+construct_ZX_interpolation_kernel = functools.partial(construct_2D_interpolation_kernel, (ArrayAxis.Z, ArrayAxis.X))
 #: Partial function application of :func:`construct_2D_interpolation_kernel` with axes=(ArrayAxis.Z, ArrayAxis.Y).
-construct_ZY_interpolation_kernel = functools.partial(
-    construct_2D_interpolation_kernel, axes=(ArrayAxis.Z, ArrayAxis.Y)
-)
+construct_ZY_interpolation_kernel = functools.partial(construct_2D_interpolation_kernel, (ArrayAxis.Z, ArrayAxis.Y))
 
 #: Partial function application of :func:`construct_3D_interpolation_kernel` with axes=(ArrayAxis.X, ArrayAxis.Y, ArrayAxis.Z).
 construct_XYZ_interpolation_kernel = functools.partial(
-    construct_3D_interpolation_kernel, axes=(ArrayAxis.X, ArrayAxis.Y, ArrayAxis.Z)
+    construct_3D_interpolation_kernel, (ArrayAxis.X, ArrayAxis.Y, ArrayAxis.Z)
 )
 #: Partial function application of :func:`construct_3D_interpolation_kernel` with axes=(ArrayAxis.X, ArrayAxis.Z, ArrayAxis.Y).
 construct_XZY_interpolation_kernel = functools.partial(
-    construct_3D_interpolation_kernel, axes=(ArrayAxis.X, ArrayAxis.Z, ArrayAxis.Y)
+    construct_3D_interpolation_kernel, (ArrayAxis.X, ArrayAxis.Z, ArrayAxis.Y)
 )
 #: Partial function application of :func:`construct_3D_interpolation_kernel` with axes=(ArrayAxis.Y, ArrayAxis.X, ArrayAxis.Z).
 construct_YXZ_interpolation_kernel = functools.partial(
-    construct_3D_interpolation_kernel, axes=(ArrayAxis.Y, ArrayAxis.X, ArrayAxis.Z)
+    construct_3D_interpolation_kernel, (ArrayAxis.Y, ArrayAxis.X, ArrayAxis.Z)
 )
 #: Partial function application of :func:`construct_3D_interpolation_kernel` with axes=(ArrayAxis.Y, ArrayAxis.Z, ArrayAxis.X).
 construct_YZX_interpolation_kernel = functools.partial(
-    construct_3D_interpolation_kernel, axes=(ArrayAxis.Y, ArrayAxis.Z, ArrayAxis.X)
+    construct_3D_interpolation_kernel, (ArrayAxis.Y, ArrayAxis.Z, ArrayAxis.X)
 )
 #: Partial function application of :func:`construct_3D_interpolation_kernel` with axes=(ArrayAxis.Z, ArrayAxis.X, ArrayAxis.Y).
 construct_ZXY_interpolation_kernel = functools.partial(
-    construct_3D_interpolation_kernel, axes=(ArrayAxis.Z, ArrayAxis.X, ArrayAxis.Y)
+    construct_3D_interpolation_kernel, (ArrayAxis.Z, ArrayAxis.X, ArrayAxis.Y)
 )
 #: Partial function application of :func:`construct_3D_interpolation_kernel` with axes=(ArrayAxis.Z, ArrayAxis.Y, ArrayAxis.X).
 construct_ZYX_interpolation_kernel = functools.partial(
-    construct_3D_interpolation_kernel, axes=(ArrayAxis.Z, ArrayAxis.Y, ArrayAxis.X)
+    construct_3D_interpolation_kernel, (ArrayAxis.Z, ArrayAxis.Y, ArrayAxis.X)
 )
