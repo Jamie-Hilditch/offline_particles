@@ -28,9 +28,7 @@ from ._kernels import (
     ParticlePropertyDeclaration,
     ScalarDeclaration,
     ScalarsType,
-    kernel_function_impl,
-    particle_kernel,
-    particle_kernel_impl,
+    kernel_function,
 )
 from .status import Status, is_active, is_inactive
 from .validation import construct_validation_kernel_from_bbox
@@ -50,10 +48,8 @@ __all__ = [
     "input_declarations",
     "is_active",
     "is_inactive",
-    "kernel_function_impl",
+    "kernel_function",
     "layout_validators",
-    "particle_kernel",
-    "particle_kernel_impl",
     "roms",
     "status",
     "timed_activation",
