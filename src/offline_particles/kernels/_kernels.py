@@ -685,7 +685,7 @@ class BoundKernel:
 # decorators
 
 
-def kernel_function_impl(
+def kernel_function(
     particle_property_keys: Iterable[str] = (),
     scalar_keys: Iterable[str] = (),
     field_data_keys: Iterable[str] = (),
@@ -719,7 +719,7 @@ def kernel_function_impl(
 
     def decorator(fn: Callable) -> KernelFunction:
         @functools.wraps(fn)
-        def kernel_function(
+        def _kernel_function(
             particle_properties: ParticlePropertiesType,
             scalars: ScalarsType,
             field_data: FieldDataType,
@@ -729,102 +729,7 @@ def kernel_function_impl(
             field_data_args = (arg for name in field_data_keys for arg in field_data[name].unpack())
             return fn(*particle_property_args, *scalar_args, *field_data_args)
 
-        return kernel_function
-
-    return decorator
-
-
-def particle_kernel(
-    particle_property_declarations: Iterable[ParticlePropertyDeclaration] = (),
-    scalar_declarations: Iterable[ScalarDeclaration] = (),
-    field_data_declarations: Iterable[FieldDataDeclaration] = (),
-    name: str | None = None,
-) -> Callable[[KernelFunction], ParticleKernel]:
-    """Convert a kernel function into a ParticleKernel.
-
-    This decorator is a more convenient alternative to calling the ``ParticleKernel`` constructor directly.
-    It simply passes the decorated function, the provided declarations and optional name to the ``ParticleKernel`` constructor.
-
-    Parameters
-    ----------
-    particle_property_declarations : Iterable[ParticlePropertyDeclaration], optional
-        Declarations of the particle properties required by this kernel. Default is an empty iterable.
-    scalar_declarations : Iterable[ScalarDeclaration], optional
-        Declarations of the scalars required by this kernel. Default is an empty iterable.
-    field_data_declarations : Iterable[FieldDataDeclaration], optional
-        Declarations of the field data required by this kernel. Default is an empty iterable.
-    name : str | None, optional
-        The name of the particle kernel. Default is None.
-
-    Returns
-    -------
-    Callable[[KernelFunction], ParticleKernel]
-        A decorator that converts a kernel function into a ParticleKernel.
-    """
-
-    def decorator(fn: KernelFunction) -> ParticleKernel:
-        return ParticleKernel(
-            fn,
-            particle_properties=particle_property_declarations,
-            scalars=scalar_declarations,
-            field_data=field_data_declarations,
-            name=name,
-        )
-
-    return decorator
-
-
-def particle_kernel_impl(
-    particle_property_declarations: Iterable[ParticlePropertyDeclaration] = (),
-    scalar_declarations: Iterable[ScalarDeclaration] = (),
-    field_data_declarations: Iterable[FieldDataDeclaration] = (),
-    name: str | None = None,
-) -> Callable[[Callable], ParticleKernel]:
-    """Convert a kernel function implementation into a ParticleKernel.
-
-    This decorator combines the functionality of ``kernel_function_impl`` and ``particle_kernel``.
-    It marks the decorated function as a kernel function implementation and also creates a ``ParticleKernel`` from it
-    with the provided declarations and optional name.
-
-    Parameters
-    ----------
-    particle_property_declarations : Iterable[ParticlePropertyDeclaration], optional
-        Declarations of the particle properties required by this kernel. Default is an empty iterable.
-    scalar_declarations : Iterable[ScalarDeclaration], optional
-        Declarations of the scalars required by this kernel. Default is an empty iterable.
-    field_data_declarations : Iterable[FieldDataDeclaration], optional
-        Declarations of the field data required by this kernel. Default is an empty iterable.
-    name : str | None, optional
-        The name of the particle kernel. Default is None.
-
-    Returns
-    -------
-    Callable[[Callable], ParticleKernel]
-        A decorator that converts a kernel function implementation into a ParticleKernel.
-    """
-    # convert declarations to tuples to allow multiple iterations
-    particle_property_declarations = tuple(particle_property_declarations)
-    scalar_declarations = tuple(scalar_declarations)
-    field_data_declarations = tuple(field_data_declarations)
-
-    # extract keys for kernel function implementation
-    particle_property_keys = tuple(decl.name for decl in particle_property_declarations)
-    scalar_keys = tuple(decl.name for decl in scalar_declarations)
-    field_data_keys = tuple(decl.name for decl in field_data_declarations)
-
-    def decorator(fn: Callable) -> ParticleKernel:
-        kernel_fn = kernel_function_impl(
-            particle_property_keys=particle_property_keys,
-            scalar_keys=scalar_keys,
-            field_data_keys=field_data_keys,
-        )(fn)
-        return ParticleKernel(
-            kernel_fn,
-            particle_properties=particle_property_declarations,
-            scalars=scalar_declarations,
-            field_data=field_data_declarations,
-            name=name,
-        )
+        return _kernel_function
 
     return decorator
 

@@ -15,9 +15,7 @@ from offline_particles.kernels import (
     ParticlePropertyDeclaration,
     ScalarDeclaration,
     ScalarsType,
-    kernel_function_impl,
-    particle_kernel,
-    particle_kernel_impl,
+    kernel_function,
 )
 
 
@@ -241,14 +239,14 @@ def particle_index_tendency_kernel(
     )
 
 
-def test_kernel_function_impl_call_equivalent_to_manual(
+def test_kernel_function_call_equivalent_to_manual(
     particle_property_args,
     scalar_args,
     field_data_args,
     particle_index_tendency_kernel_function,
     particle_index_tendency_kernel_function_implementation,
 ) -> None:
-    """Test that the kernel function implementation created by the decorator is equivalent to a manually defined function."""
+    """Test that the kernel function created by the decorator is equivalent to a manually defined function."""
     # get the keys to pass to the decorator
     particle_property_keys = tuple(particle_property_args.keys())
     scalar_keys = tuple(scalar_args.keys())
@@ -262,7 +260,7 @@ def test_kernel_function_impl_call_equivalent_to_manual(
     particle_index_tendency_kernel_function_implementation.reset_mock()
 
     # get the kernel function implementation created by the decorator
-    decorated_kernel_function = kernel_function_impl(
+    decorated_kernel_function = kernel_function(
         particle_property_keys,
         scalar_keys,
         field_data_keys,
@@ -277,119 +275,7 @@ def test_kernel_function_impl_call_equivalent_to_manual(
 
 def test_kernel_function_impl_preserves_name_and_docstring() -> None:
     """Test that the kernel function implementation created by the decorator preserves the name and docstring of the original function."""
-    decorated_kernel_function = kernel_function_impl([], [], [])(
-        _particle_index_tendency_kernel_function_implementation
-    )
+    decorated_kernel_function = kernel_function([], [], [])(_particle_index_tendency_kernel_function_implementation)
 
     assert decorated_kernel_function.__name__ == _particle_index_tendency_kernel_function_implementation.__name__  # type: ignore[attr-defined]
     assert decorated_kernel_function.__doc__ == _particle_index_tendency_kernel_function_implementation.__doc__
-
-
-def test_particle_kernel_same_as_manual(
-    particle_index_tendency_kernel,
-    particle_index_tendency_kernel_function,
-    index_particle_property_declaration,
-    index_tendency_particle_property_declaration,
-    timestep_scalar_declaration,
-    velocity_field_data_declaration,
-    metric_field_data_declaration,
-) -> None:
-    """Test that the ParticleKernel created by the decorator returns the same results as a manually defined function."""
-    decorator_kernel = particle_kernel(
-        [index_particle_property_declaration, index_tendency_particle_property_declaration],
-        [timestep_scalar_declaration],
-        [velocity_field_data_declaration, metric_field_data_declaration],
-        name="particle_index_tendency_kernel",
-    )(particle_index_tendency_kernel_function)
-
-    # both kernels use the same underlying function so we should get a complete match down to the description
-    assert decorator_kernel.functions == particle_index_tendency_kernel.functions
-    assert decorator_kernel.particle_properties == particle_index_tendency_kernel.particle_properties
-    assert decorator_kernel.scalars == particle_index_tendency_kernel.scalars
-    assert decorator_kernel.field_data == particle_index_tendency_kernel.field_data
-    assert decorator_kernel.description == particle_index_tendency_kernel.description
-
-
-def test_particle_kernel_impl_equivalent_to_manual(
-    particle_index_tendency_kernel,
-    particle_index_tendency_kernel_function_implementation,
-    index_particle_property_declaration,
-    index_tendency_particle_property_declaration,
-    timestep_scalar_declaration,
-    velocity_field_data_declaration,
-    metric_field_data_declaration,
-) -> None:
-    """Test that the ParticleKernel implementation created by the decorator returns the same results as a manually defined function."""
-    decorator_kernel = particle_kernel_impl(
-        [index_particle_property_declaration, index_tendency_particle_property_declaration],
-        [timestep_scalar_declaration],
-        [velocity_field_data_declaration, metric_field_data_declaration],
-        name="particle_index_tendency_kernel",
-    )(particle_index_tendency_kernel_function_implementation)
-
-    # here the underlying functions are not the same object so only check the declarations match
-    assert decorator_kernel.particle_properties == particle_index_tendency_kernel.particle_properties
-    assert decorator_kernel.scalars == particle_index_tendency_kernel.scalars
-    assert decorator_kernel.field_data == particle_index_tendency_kernel.field_data
-
-
-def test_particle_kernel_impl_call_with_same_arguments_as_manual(
-    particle_index_tendency_kernel,
-    particle_index_tendency_kernel_function_implementation,
-    index_particle_property_declaration,
-    index_tendency_particle_property_declaration,
-    timestep_scalar_declaration,
-    velocity_field_data_declaration,
-    metric_field_data_declaration,
-    particle_property_args,
-    scalar_args,
-    field_data_args,
-) -> None:
-    """Test that the decorator and manual ParticleKernel implementations call the underlying function with the same arguments."""
-    decorator_kernel = particle_kernel_impl(
-        [index_particle_property_declaration, index_tendency_particle_property_declaration],
-        [timestep_scalar_declaration],
-        [velocity_field_data_declaration, metric_field_data_declaration],
-        name="particle_index_tendency_kernel",
-    )(particle_index_tendency_kernel_function_implementation)
-
-    # call the decorated kernel implementation with the mock arguments
-    decorator_kernel(particle_property_args, scalar_args, field_data_args)
-
-    # check that the underlying function was called
-    particle_index_tendency_kernel_function_implementation.assert_called_once()
-
-    # reset the mock call history to isolate the calls for the original function
-    particle_index_tendency_kernel_function_implementation.reset_mock()
-
-    # call the original kernel function with the mock arguments
-    particle_index_tendency_kernel(particle_property_args, scalar_args, field_data_args)
-
-    # check that the underlying function was called with the same arguments
-    particle_index_tendency_kernel_function_implementation.assert_called_once()
-
-
-def test_particle_kernel_impl_accepts_generator_declarations(
-    particle_index_tendency_kernel_function_implementation,
-    index_particle_property_declaration,
-    index_tendency_particle_property_declaration,
-    timestep_scalar_declaration,
-    velocity_field_data_declaration,
-    metric_field_data_declaration,
-):
-    """Test that the particle_kernel_impl decorator can accept generator expressions, i.e. a single-pass iterator, for declarations."""
-    decorator_kernel = particle_kernel_impl(
-        (d for d in [index_particle_property_declaration, index_tendency_particle_property_declaration]),
-        (d for d in [timestep_scalar_declaration]),
-        (d for d in [velocity_field_data_declaration, metric_field_data_declaration]),
-    )(particle_index_tendency_kernel_function_implementation)
-
-    assert list(decorator_kernel.particle_properties.values()) == [
-        index_particle_property_declaration,
-        index_tendency_particle_property_declaration,
-    ]
-    assert list(decorator_kernel.scalars.values()) == [timestep_scalar_declaration]
-    assert list(decorator_kernel.field_data.values()) == [
-        velocity_field_data_declaration,
-        metric_field_data_declaration,
-    ]
