@@ -18,12 +18,12 @@ __all__ = [
     "construct_compute_zidx_kernel",
 ]
 
-z_declaration = ParticlePropertyDeclaration("z", np.float64)
-hc_declaration = ScalarDeclaration("hc", np.float64)
-NZ_declaration = ScalarDeclaration("NZ", np.int32)
-h_declaration = FieldDataDeclaration("h", np.float64, [validate_YX_ordering])
-zeta_declaration = FieldDataDeclaration("zeta", np.float64, [validate_YX_ordering])
-C_declaration = FieldDataDeclaration("C", np.float64, [validate_Z_ordering])
+z_declaration = ParticlePropertyDeclaration("z", np.floating)
+hc_declaration = ScalarDeclaration("hc", np.floating)
+NZ_declaration = ScalarDeclaration("NZ", np.integer)
+h_declaration = FieldDataDeclaration("h", np.floating, [validate_YX_ordering])
+zeta_declaration = FieldDataDeclaration("zeta", np.floating, [validate_YX_ordering])
+C_declaration = FieldDataDeclaration("C", np.floating, [validate_Z_ordering])
 
 
 def construct_compute_z_kernel(
