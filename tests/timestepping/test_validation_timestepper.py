@@ -3,20 +3,12 @@
 import numpy as np
 
 from offline_particles.fieldset import Fieldset
-from offline_particles.kernels import BoundKernel, ParticleKernel
+from offline_particles.kernels import BoundKernel
 from offline_particles.kernels.status import Status
 from offline_particles.launcher import Launcher
 from offline_particles.particles import Particles
 from offline_particles.simulation import ParticleSet, SimulationBuilder
 from offline_particles.timestepping import Timestepper
-
-
-def _noop(pp, sc, fd) -> None:
-    pass
-
-
-def _make_noop_kernel() -> BoundKernel:
-    return BoundKernel(ParticleKernel(_noop))
 
 
 class _RecordingLauncher(Launcher):
@@ -69,29 +61,29 @@ def _make_builder(
 
 
 class TestTimestepperValidationKernelStorage:
-    def test_add_validation_kernels_appends_in_order(self) -> None:
+    def test_add_validation_kernels_appends_in_order(self, make_bound_noop_kernel) -> None:
         timestepper = _NoOpTimestepper()
-        kernel_0 = _make_noop_kernel()
-        kernel_1 = _make_noop_kernel()
+        kernel_0 = make_bound_noop_kernel()
+        kernel_1 = make_bound_noop_kernel()
 
         timestepper.add_validation_kernels(kernel_0, kernel_1)
 
         assert timestepper.validation_kernels == [kernel_0, kernel_1]
 
-    def test_kernels_iterator_places_validation_before_pre_step(self) -> None:
+    def test_kernels_iterator_places_validation_before_pre_step(self, make_bound_noop_kernel) -> None:
         timestepper = _NoOpTimestepper()
-        validation_kernel = _make_noop_kernel()
-        pre_step_kernel = _make_noop_kernel()
+        validation_kernel = make_bound_noop_kernel()
+        pre_step_kernel = make_bound_noop_kernel()
 
         timestepper.add_validation_kernels(validation_kernel)
         timestepper.add_pre_step_kernels(pre_step_kernel)
 
         assert list(timestepper.kernels) == [validation_kernel, pre_step_kernel]
 
-    def test_run_validation_launches_each_validation_kernel(self, make_clock) -> None:
+    def test_run_validation_launches_each_validation_kernel(self, make_clock, make_bound_noop_kernel) -> None:
         timestepper = _NoOpTimestepper()
-        kernel_0 = _make_noop_kernel()
-        kernel_1 = _make_noop_kernel()
+        kernel_0 = make_bound_noop_kernel()
+        kernel_1 = make_bound_noop_kernel()
         timestepper.add_validation_kernels(kernel_0, kernel_1)
 
         launcher = _RecordingLauncher()

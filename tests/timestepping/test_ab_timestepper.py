@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 
 from offline_particles.fieldset import Fieldset
-from offline_particles.kernels import BoundKernel, ParticleKernel
 from offline_particles.kernels.status import Status
 from offline_particles.launcher import Launcher
 from offline_particles.particles import Particles
@@ -30,13 +29,6 @@ def _make_particles() -> Particles:
         dtype=np.uint8,
     )
     return particles
-
-
-def _make_noop_kernel() -> BoundKernel:
-    def _noop(pp, sc, fd) -> None:
-        pass
-
-    return BoundKernel(ParticleKernel(_noop))
 
 
 class _RecordingLauncher:
@@ -89,11 +81,11 @@ class TestABTimestepperPrognosticKernelConstruction:
 
 
 class TestABTimestepperExecution:
-    def test_run_step_launches_tendency_then_update_then_status_bump(self, make_clock) -> None:
+    def test_run_step_launches_tendency_then_update_then_status_bump(self, make_clock, make_bound_noop_kernel) -> None:
         timestepper = ABTimestepper(order=2)
-        tendency_0 = _make_noop_kernel()
-        tendency_1 = _make_noop_kernel()
-        ab_update = _make_noop_kernel()
+        tendency_0 = make_bound_noop_kernel()
+        tendency_1 = make_bound_noop_kernel()
+        ab_update = make_bound_noop_kernel()
 
         timestepper.add_tendency_kernels(tendency_0, tendency_1)
         timestepper.add_ab_update_kernels(ab_update)
