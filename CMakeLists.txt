@@ -20,7 +20,6 @@ find_package(OpenMP REQUIRED)
 
 # Declare extension modules
 set(EXTENSION_MODULES
-    kernels._core.inputs.field_data
     kernels.status._status
 )
 
