@@ -23,6 +23,7 @@ build-backend = "scikit_build_core.build"
 dev = [
   "cython-lint>=0.18.1",
   "furo>=2025.12.19",
+  "hypothesis>=6.140.4",
   "myst-parser>=5.0.0",
   "pre-commit>=4.5.1",
   "pydata-sphinx-theme>=0.17.0",
