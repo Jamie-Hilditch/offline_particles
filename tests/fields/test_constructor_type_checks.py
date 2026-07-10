@@ -177,3 +177,17 @@ class TestZeroSpatialDimValidation:
         data = np.ones((3,), dtype=np.float64)
         with pytest.raises(ValueError, match="at least 2 dimensions"):
             TimeDependentField.from_numpy(data, (), ())
+
+
+class TestMinimumTimestepsValidation:
+    """TimeDependentField requires at least 2 timesteps to interpolate between."""
+
+    def test_rejects_single_timestep_from_numpy(self) -> None:
+        data = np.ones((1, 3), dtype=np.float64)
+        with pytest.raises(ValueError, match="at least 2 time steps"):
+            TimeDependentField.from_numpy(data, ("X",), ("center",))
+
+    def test_rejects_single_timestep_from_dask(self) -> None:
+        data = da.ones((1, 3), dtype=np.float64, chunks=(1, 3))
+        with pytest.raises(ValueError, match="at least 2 time steps"):
+            TimeDependentField.from_dask(data, ("X",), ("center",))
