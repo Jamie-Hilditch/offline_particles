@@ -45,8 +45,8 @@ def _construct_relaxation_public_kernel(
 ) -> BoundKernel:
     if form == "linear":
         return construct_linear_relaxation_kernel(
+            "my_tendency",
             "my_prop",
-            "my_dprop",
             constant_coefficient=constant_coefficient,
             property_coefficient=property_coefficient,
             scalar_coefficient=scalar_coefficient,
@@ -59,8 +59,8 @@ def _construct_relaxation_public_kernel(
 
     if form == "quadratic":
         return construct_quadratic_relaxation_kernel(
+            "my_tendency",
             "my_prop",
-            "my_dprop",
             constant_coefficient=constant_coefficient,
             property_coefficient=property_coefficient,
             scalar_coefficient=scalar_coefficient,
@@ -83,8 +83,8 @@ def _construct_damping_public_kernel(
 ) -> BoundKernel:
     if form == "linear":
         return construct_linear_damping_kernel(
+            "my_tendency",
             "my_prop",
-            "my_dprop",
             constant_coefficient=constant_coefficient,
             property_coefficient=property_coefficient,
             scalar_coefficient=scalar_coefficient,
@@ -92,8 +92,8 @@ def _construct_damping_public_kernel(
 
     if form == "quadratic":
         return construct_quadratic_damping_kernel(
+            "my_tendency",
             "my_prop",
-            "my_dprop",
             constant_coefficient=constant_coefficient,
             property_coefficient=property_coefficient,
             scalar_coefficient=scalar_coefficient,
@@ -110,7 +110,7 @@ def _construct_relaxation_kernel(
     field_layout_axes: tuple[str, ...] | None = None,
 ):
     constructor = construct_linear_relaxation_kernel if form == "linear" else construct_quadratic_relaxation_kernel
-    kwargs: dict[str, object] = {"prop": "my_prop", "dprop": "my_dprop", "dtype": np.float64}
+    kwargs: dict[str, object] = {"tendency": "my_tendency", "prop": "my_prop", "dtype": np.float64}
 
     if coefficient_kind == "constant":
         kwargs["constant_coefficient"] = _CONST_COEFF
@@ -149,7 +149,7 @@ def _expected_increment(form: str, coefficient: float, target: float, prop: floa
 def _build_kernel_inputs(coefficient_kind: str, target_kind: str, field_layout_axes: tuple[str, ...] | None):
     status = np.array([0, INACTIVE_FLAG], dtype=np.uint8)
     prop = np.array([2.0, -5.0], dtype=np.float64)
-    dprop = np.array([0.4, -0.8], dtype=np.float64)
+    tendency = np.array([0.4, -0.8], dtype=np.float64)
     relaxation_coefficient_property = np.array([0.25, 99.0], dtype=np.float64)
     target_property = np.array([1.5, 999.0], dtype=np.float64)
     xidx = np.array([1.5, 1.5], dtype=np.float64)
@@ -159,7 +159,7 @@ def _build_kernel_inputs(coefficient_kind: str, target_kind: str, field_layout_a
     particle_properties = {
         "status": status,
         "my_prop": prop,
-        "my_dprop": dprop,
+        "my_tendency": tendency,
         "my_relaxation_coefficient": relaxation_coefficient_property,
         "my_target": target_property,
         "xidx": xidx,
@@ -216,7 +216,7 @@ def test_relaxation_kernels_cover_all_nonfield_combinations(
         coefficient_kind, target_kind, None
     )
 
-    expected_active = particle_properties["my_dprop"][0] + _expected_increment(
+    expected_active = particle_properties["my_tendency"][0] + _expected_increment(
         form=form,
         coefficient=coefficient,
         target=target,
@@ -234,8 +234,8 @@ def test_relaxation_kernels_cover_all_nonfield_combinations(
 
     bound_kernel.kernel(kernel_particle_properties, kernel_scalars, kernel_field_data)
 
-    assert particle_properties["my_dprop"][0] == pytest.approx(expected_active)
-    assert particle_properties["my_dprop"][1] == pytest.approx(-0.8)
+    assert particle_properties["my_tendency"][0] == pytest.approx(expected_active)
+    assert particle_properties["my_tendency"][1] == pytest.approx(-0.8)
 
 
 @pytest.mark.parametrize("form", _FORMS)
@@ -256,7 +256,7 @@ def test_relaxation_kernels_cover_all_field_target_combinations(
         coefficient_kind, "field", field_layout_axes
     )
 
-    expected_active = particle_properties["my_dprop"][0] + _expected_increment(
+    expected_active = particle_properties["my_tendency"][0] + _expected_increment(
         form=form,
         coefficient=coefficient,
         target=target,
@@ -274,8 +274,8 @@ def test_relaxation_kernels_cover_all_field_target_combinations(
 
     bound_kernel.kernel(kernel_particle_properties, kernel_scalars, kernel_field_data)
 
-    assert particle_properties["my_dprop"][0] == pytest.approx(expected_active)
-    assert particle_properties["my_dprop"][1] == pytest.approx(-0.8)
+    assert particle_properties["my_tendency"][0] == pytest.approx(expected_active)
+    assert particle_properties["my_tendency"][1] == pytest.approx(-0.8)
 
 
 @pytest.mark.parametrize("form", _FORMS)

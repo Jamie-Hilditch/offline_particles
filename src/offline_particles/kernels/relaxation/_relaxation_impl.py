@@ -7,6 +7,7 @@ import numba
 import numpy as np
 import numpy.typing as npt
 
+from .._kernels import KernelFunction, kernel_function
 from ..interpolation import (
     lagrange2N_1D_particle_factory,
     lagrange2N_2D_particle_factory,
@@ -15,39 +16,39 @@ from ..interpolation import (
 from ..status import INACTIVE_FLAG
 
 __all__ = [
-    "_linear_relaxation_constant_coefficient_1D_field_target",
-    "_linear_relaxation_constant_coefficient_2D_field_target",
-    "_linear_relaxation_constant_coefficient_3D_field_target",
+    "_linear_relaxation_constant_coefficient_1D_field_target_impl",
+    "_linear_relaxation_constant_coefficient_2D_field_target_impl",
+    "_linear_relaxation_constant_coefficient_3D_field_target_impl",
     "_linear_relaxation_constant_coefficient_constant_target",
     "_linear_relaxation_constant_coefficient_property_target",
     "_linear_relaxation_constant_coefficient_scalar_target",
-    "_linear_relaxation_property_coefficient_1D_field_target",
-    "_linear_relaxation_property_coefficient_2D_field_target",
-    "_linear_relaxation_property_coefficient_3D_field_target",
+    "_linear_relaxation_property_coefficient_1D_field_target_impl",
+    "_linear_relaxation_property_coefficient_2D_field_target_impl",
+    "_linear_relaxation_property_coefficient_3D_field_target_impl",
     "_linear_relaxation_property_coefficient_constant_target",
     "_linear_relaxation_property_coefficient_property_target",
     "_linear_relaxation_property_coefficient_scalar_target",
-    "_linear_relaxation_scalar_coefficient_1D_field_target",
-    "_linear_relaxation_scalar_coefficient_2D_field_target",
-    "_linear_relaxation_scalar_coefficient_3D_field_target",
+    "_linear_relaxation_scalar_coefficient_1D_field_target_impl",
+    "_linear_relaxation_scalar_coefficient_2D_field_target_impl",
+    "_linear_relaxation_scalar_coefficient_3D_field_target_impl",
     "_linear_relaxation_scalar_coefficient_constant_target",
     "_linear_relaxation_scalar_coefficient_property_target",
     "_linear_relaxation_scalar_coefficient_scalar_target",
-    "_quadratic_relaxation_constant_coefficient_1D_field_target",
-    "_quadratic_relaxation_constant_coefficient_2D_field_target",
-    "_quadratic_relaxation_constant_coefficient_3D_field_target",
+    "_quadratic_relaxation_constant_coefficient_1D_field_target_impl",
+    "_quadratic_relaxation_constant_coefficient_2D_field_target_impl",
+    "_quadratic_relaxation_constant_coefficient_3D_field_target_impl",
     "_quadratic_relaxation_constant_coefficient_constant_target",
     "_quadratic_relaxation_constant_coefficient_property_target",
     "_quadratic_relaxation_constant_coefficient_scalar_target",
-    "_quadratic_relaxation_property_coefficient_1D_field_target",
-    "_quadratic_relaxation_property_coefficient_2D_field_target",
-    "_quadratic_relaxation_property_coefficient_3D_field_target",
+    "_quadratic_relaxation_property_coefficient_1D_field_target_impl",
+    "_quadratic_relaxation_property_coefficient_2D_field_target_impl",
+    "_quadratic_relaxation_property_coefficient_3D_field_target_impl",
     "_quadratic_relaxation_property_coefficient_constant_target",
     "_quadratic_relaxation_property_coefficient_property_target",
     "_quadratic_relaxation_property_coefficient_scalar_target",
-    "_quadratic_relaxation_scalar_coefficient_1D_field_target",
-    "_quadratic_relaxation_scalar_coefficient_2D_field_target",
-    "_quadratic_relaxation_scalar_coefficient_3D_field_target",
+    "_quadratic_relaxation_scalar_coefficient_1D_field_target_impl",
+    "_quadratic_relaxation_scalar_coefficient_2D_field_target_impl",
+    "_quadratic_relaxation_scalar_coefficient_3D_field_target_impl",
     "_quadratic_relaxation_scalar_coefficient_constant_target",
     "_quadratic_relaxation_scalar_coefficient_property_target",
     "_quadratic_relaxation_scalar_coefficient_scalar_target",
@@ -58,8 +59,8 @@ __all__ = [
 def _linear_relaxation_constant_coefficient_constant_target(
     relaxation_coefficient: np.inexact,
     target: np.inexact,
-) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact]], None]:
-    """Construct a function to apply linear relaxation with constant coefficient and target.
+) -> KernelFunction:
+    """Construct a kernel function to apply linear relaxation with constant coefficient and target.
 
     Parameters
     ----------
@@ -70,34 +71,35 @@ def _linear_relaxation_constant_coefficient_constant_target(
 
     Returns
     -------
-    Callable
-        A numba jitted function that applies linear relaxation with constant coefficient and target.
+    KernelFunction
+        A kernel function that applies linear relaxation with constant coefficient and target.
 
     Notes
     -----
     This factory function is cached to avoid recompilation for the same relaxation coefficient and target values.
     """
 
+    @kernel_function(particle_property_keys=["status", "tendency", "prop"])
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def linear_relaxation(
         status: npt.NDArray[np.uint8],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
     ) -> None:
         for i in numba.prange(status.size):  # ty: ignore[not-iterable]
             if status[i] & INACTIVE_FLAG:
                 continue
 
-            dprop[i] -= relaxation_coefficient * (prop[i] - target)
+            tendency[i] -= relaxation_coefficient * (prop[i] - target)
 
-    return impl
+    return linear_relaxation
 
 
 @cache
 def _linear_relaxation_constant_coefficient_property_target(
     relaxation_coefficient: np.inexact,
-) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], npt.NDArray[np.inexact]], None]:
-    """Construct a function to apply linear relaxation with constant coefficient and property target.
+) -> KernelFunction:
+    """Construct a kernel function to apply linear relaxation with constant coefficient and property target.
 
     Parameters
     ----------
@@ -106,35 +108,36 @@ def _linear_relaxation_constant_coefficient_property_target(
 
     Returns
     -------
-    Callable
-        A numba jitted function that applies linear relaxation with constant coefficient and property target.
+    KernelFunction
+        A kernel function that applies linear relaxation with constant coefficient and property target.
 
     Notes
     -----
     This factory function is cached to avoid recompilation for the same relaxation coefficient.
     """
 
+    @kernel_function(particle_property_keys=["status", "tendency", "prop", "target"])
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def linear_relaxation(
         status: npt.NDArray[np.uint8],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
         target: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
     ) -> None:
         for i in numba.prange(status.size):  # ty: ignore[not-iterable]
             if status[i] & INACTIVE_FLAG:
                 continue
 
-            dprop[i] -= relaxation_coefficient * (prop[i] - target[i])
+            tendency[i] -= relaxation_coefficient * (prop[i] - target[i])
 
-    return impl
+    return linear_relaxation
 
 
 @cache
 def _linear_relaxation_constant_coefficient_scalar_target(
     relaxation_coefficient: np.inexact,
-) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], np.generic], None]:
-    """Construct a function to apply linear relaxation with constant coefficient and scalar target.
+) -> KernelFunction:
+    """Construct a kernel function to apply linear relaxation with constant coefficient and scalar target.
 
     Parameters
     ----------
@@ -143,32 +146,33 @@ def _linear_relaxation_constant_coefficient_scalar_target(
 
     Returns
     -------
-    Callable
-        A numba jitted function that applies linear relaxation with constant coefficient and scalar target.
+    KernelFunction
+        A kernel function that applies linear relaxation with constant coefficient and scalar target.
 
     Notes
     -----
     This factory function is cached to avoid recompilation for the same relaxation coefficient and target values.
     """
 
+    @kernel_function(particle_property_keys=["status", "tendency", "prop"], scalar_keys=["target"])
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def linear_relaxation(
         status: npt.NDArray[np.uint8],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         target: np.generic,
     ) -> None:
         for i in numba.prange(status.size):  # ty: ignore[not-iterable]
             if status[i] & INACTIVE_FLAG:
                 continue
 
-            dprop[i] -= relaxation_coefficient * (prop[i] - target)
+            tendency[i] -= relaxation_coefficient * (prop[i] - target)
 
-    return impl
+    return linear_relaxation
 
 
 @cache
-def _linear_relaxation_constant_coefficient_1D_field_target(
+def _linear_relaxation_constant_coefficient_1D_field_target_impl(
     relaxation_coefficient: np.inexact,
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -204,11 +208,11 @@ def _linear_relaxation_constant_coefficient_1D_field_target(
     interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def linear_relaxation(
         status: npt.NDArray[np.uint8],
         idx: npt.NDArray[np.float64],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         target_array: npt.NDArray[np.inexact],
         offset: float,
     ) -> None:
@@ -227,13 +231,13 @@ def _linear_relaxation_constant_coefficient_1D_field_target(
             offset_idx = idx[i] + offset
             target = interpolator(target_array, offset_idx, max_idx)
 
-            dprop[i] -= relaxation_coefficient * (prop[i] - target)
+            tendency[i] -= relaxation_coefficient * (prop[i] - target)
 
-    return impl
+    return linear_relaxation
 
 
 @cache
-def _linear_relaxation_constant_coefficient_2D_field_target(
+def _linear_relaxation_constant_coefficient_2D_field_target_impl(
     relaxation_coefficient: np.inexact,
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -271,12 +275,12 @@ def _linear_relaxation_constant_coefficient_2D_field_target(
     interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def linear_relaxation(
         status: npt.NDArray[np.uint8],
         idx0: npt.NDArray[np.float64],
         idx1: npt.NDArray[np.float64],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         target_array: npt.NDArray[np.inexact],
         offset0: float,
         offset1: float,
@@ -298,13 +302,13 @@ def _linear_relaxation_constant_coefficient_2D_field_target(
             offset_idx_1 = idx1[i] + offset1
             target = interpolator(target_array, offset_idx_0, offset_idx_1, max_idx_0, max_idx_1)
 
-            dprop[i] -= relaxation_coefficient * (prop[i] - target)
+            tendency[i] -= relaxation_coefficient * (prop[i] - target)
 
-    return impl
+    return linear_relaxation
 
 
 @cache
-def _linear_relaxation_constant_coefficient_3D_field_target(
+def _linear_relaxation_constant_coefficient_3D_field_target_impl(
     relaxation_coefficient: np.inexact,
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -344,13 +348,13 @@ def _linear_relaxation_constant_coefficient_3D_field_target(
     interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def linear_relaxation(
         status: npt.NDArray[np.uint8],
         idx0: npt.NDArray[np.float64],
         idx1: npt.NDArray[np.float64],
         idx2: npt.NDArray[np.float64],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         target_array: npt.NDArray[np.inexact],
         offset0: float,
         offset1: float,
@@ -377,24 +381,16 @@ def _linear_relaxation_constant_coefficient_3D_field_target(
                 target_array, offset_idx_0, offset_idx_1, offset_idx_2, max_idx_0, max_idx_1, max_idx_2
             )
 
-            dprop[i] -= relaxation_coefficient * (prop[i] - target)
+            tendency[i] -= relaxation_coefficient * (prop[i] - target)
 
-    return impl
+    return linear_relaxation
 
 
 @cache
 def _linear_relaxation_property_coefficient_constant_target(
     target: np.inexact,
-) -> Callable[
-    [
-        npt.NDArray[np.uint8],
-        npt.NDArray[np.inexact],
-        npt.NDArray[np.inexact],
-        npt.NDArray[np.inexact],
-    ],
-    None,
-]:
-    """Construct a function to apply linear relaxation with property coefficient and constant target.
+) -> KernelFunction:
+    """Construct a kernel function to apply linear relaxation with property coefficient and constant target.
 
     Parameters
     ----------
@@ -403,112 +399,102 @@ def _linear_relaxation_property_coefficient_constant_target(
 
     Returns
     -------
-    Callable
-        A numba jitted function that applies linear relaxation with property coefficient and constant target.
+    KernelFunction
+        A kernel function that applies linear relaxation with property coefficient and constant target.
 
     Notes
     -----
     This factory function is cached to avoid recompilation for the same target value.
     """
 
+    @kernel_function(particle_property_keys=["status", "tendency", "prop", "relaxation_coefficient"])
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def linear_relaxation(
         status: npt.NDArray[np.uint8],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
         relaxation_coefficient: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
     ) -> None:
         for i in numba.prange(status.size):  # ty: ignore[not-iterable]
             if status[i] & INACTIVE_FLAG:
                 continue
 
-            dprop[i] -= relaxation_coefficient[i] * (prop[i] - target)
+            tendency[i] -= relaxation_coefficient[i] * (prop[i] - target)
 
-    return impl
+    return linear_relaxation
 
 
 @cache
-def _linear_relaxation_property_coefficient_property_target() -> Callable[
-    [
-        npt.NDArray[np.uint8],
-        npt.NDArray[np.inexact],
-        npt.NDArray[np.inexact],
-        npt.NDArray[np.inexact],
-        npt.NDArray[np.inexact],
-    ],
-    None,
-]:
-    """Construct a function to apply linear relaxation with property coefficient and property target.
+def _linear_relaxation_property_coefficient_property_target() -> KernelFunction:
+    """Construct a kernel function to apply linear relaxation with property coefficient and property target.
 
     Returns
     -------
-    Callable
-        A numba jitted function that applies linear relaxation with property coefficient and property target.
+    KernelFunction
+        A kernel function that applies linear relaxation with property coefficient and property target.
 
     Notes
     -----
     This factory function is cached to avoid recompilation.
     """
 
+    @kernel_function(
+        particle_property_keys=["status", "tendency", "prop", "relaxation_coefficient", "target"],
+    )
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def linear_relaxation(
         status: npt.NDArray[np.uint8],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
         relaxation_coefficient: npt.NDArray[np.inexact],
         target: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
     ) -> None:
         for i in numba.prange(status.size):  # ty: ignore[not-iterable]
             if status[i] & INACTIVE_FLAG:
                 continue
 
-            dprop[i] -= relaxation_coefficient[i] * (prop[i] - target[i])
+            tendency[i] -= relaxation_coefficient[i] * (prop[i] - target[i])
 
-    return impl
+    return linear_relaxation
 
 
 @cache
-def _linear_relaxation_property_coefficient_scalar_target() -> Callable[
-    [
-        npt.NDArray[np.uint8],
-        npt.NDArray[np.inexact],
-        npt.NDArray[np.inexact],
-        npt.NDArray[np.inexact],
-        np.generic,
-    ],
-    None,
-]:
-    """Construct a function to apply linear relaxation with property coefficient and scalar target.
+def _linear_relaxation_property_coefficient_scalar_target() -> KernelFunction:
+    """Construct a kernel function to apply linear relaxation with property coefficient and scalar target.
 
     Returns
     -------
-    Callable
-        A numba jitted function that applies linear relaxation with property coefficient and scalar target.
+    KernelFunction
+        A kernel function that applies linear relaxation with property coefficient and scalar target.
 
     Notes
     -----
     This factory function is cached to avoid recompilation.
     """
 
+    @kernel_function(
+        particle_property_keys=["status", "tendency", "prop", "relaxation_coefficient"],
+        scalar_keys=["target"],
+    )
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def linear_relaxation(
         status: npt.NDArray[np.uint8],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
         relaxation_coefficient: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         target: np.generic,
     ) -> None:
         for i in numba.prange(status.size):  # ty: ignore[not-iterable]
             if status[i] & INACTIVE_FLAG:
                 continue
 
-            dprop[i] -= relaxation_coefficient[i] * (prop[i] - target)
+            tendency[i] -= relaxation_coefficient[i] * (prop[i] - target)
 
-    return impl
+    return linear_relaxation
 
 
 @cache
-def _linear_relaxation_property_coefficient_1D_field_target(
+def _linear_relaxation_property_coefficient_1D_field_target_impl(
     interpolation_half_width: int = 1,
 ) -> Callable[
     [
@@ -542,12 +528,12 @@ def _linear_relaxation_property_coefficient_1D_field_target(
     interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def linear_relaxation(
         status: npt.NDArray[np.uint8],
         idx: npt.NDArray[np.float64],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
         relaxation_coefficient: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         target_array: npt.NDArray[np.inexact],
         offset: float,
     ) -> None:
@@ -566,13 +552,13 @@ def _linear_relaxation_property_coefficient_1D_field_target(
             offset_idx = idx[i] + offset
             target = interpolator(target_array, offset_idx, max_idx)
 
-            dprop[i] -= relaxation_coefficient[i] * (prop[i] - target)
+            tendency[i] -= relaxation_coefficient[i] * (prop[i] - target)
 
-    return impl
+    return linear_relaxation
 
 
 @cache
-def _linear_relaxation_property_coefficient_2D_field_target(
+def _linear_relaxation_property_coefficient_2D_field_target_impl(
     interpolation_half_width: int = 1,
 ) -> Callable[
     [
@@ -608,13 +594,13 @@ def _linear_relaxation_property_coefficient_2D_field_target(
     interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def linear_relaxation(
         status: npt.NDArray[np.uint8],
         idx0: npt.NDArray[np.float64],
         idx1: npt.NDArray[np.float64],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
         relaxation_coefficient: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         target_array: npt.NDArray[np.inexact],
         offset0: float,
         offset1: float,
@@ -636,13 +622,13 @@ def _linear_relaxation_property_coefficient_2D_field_target(
             offset_idx_1 = idx1[i] + offset1
             target = interpolator(target_array, offset_idx_0, offset_idx_1, max_idx_0, max_idx_1)
 
-            dprop[i] -= relaxation_coefficient[i] * (prop[i] - target)
+            tendency[i] -= relaxation_coefficient[i] * (prop[i] - target)
 
-    return impl
+    return linear_relaxation
 
 
 @cache
-def _linear_relaxation_property_coefficient_3D_field_target(
+def _linear_relaxation_property_coefficient_3D_field_target_impl(
     interpolation_half_width: int = 1,
 ) -> Callable[
     [
@@ -680,14 +666,14 @@ def _linear_relaxation_property_coefficient_3D_field_target(
     interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def linear_relaxation(
         status: npt.NDArray[np.uint8],
         idx0: npt.NDArray[np.float64],
         idx1: npt.NDArray[np.float64],
         idx2: npt.NDArray[np.float64],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
         relaxation_coefficient: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         target_array: npt.NDArray[np.inexact],
         offset0: float,
         offset1: float,
@@ -714,16 +700,16 @@ def _linear_relaxation_property_coefficient_3D_field_target(
                 target_array, offset_idx_0, offset_idx_1, offset_idx_2, max_idx_0, max_idx_1, max_idx_2
             )
 
-            dprop[i] -= relaxation_coefficient[i] * (prop[i] - target)
+            tendency[i] -= relaxation_coefficient[i] * (prop[i] - target)
 
-    return impl
+    return linear_relaxation
 
 
 @cache
 def _linear_relaxation_scalar_coefficient_constant_target(
     target: np.inexact,
-) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], np.generic], None]:
-    """Construct a function to apply linear relaxation with scalar coefficient and constant target.
+) -> KernelFunction:
+    """Construct a kernel function to apply linear relaxation with scalar coefficient and constant target.
 
     Parameters
     ----------
@@ -732,98 +718,89 @@ def _linear_relaxation_scalar_coefficient_constant_target(
 
     Returns
     -------
-    Callable
-        A numba jitted function that applies linear relaxation with scalar coefficient and constant target.
+    KernelFunction
+        A kernel function that applies linear relaxation with scalar coefficient and constant target.
 
     Notes
     -----
     This factory function is cached to avoid recompilation for the same target value.
     """
 
+    @kernel_function(particle_property_keys=["status", "tendency", "prop"], scalar_keys=["relaxation_coefficient"])
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def linear_relaxation(
         status: npt.NDArray[np.uint8],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         relaxation_coefficient: np.generic,
     ) -> None:
         for i in numba.prange(status.size):  # ty: ignore[not-iterable]
             if status[i] & INACTIVE_FLAG:
                 continue
 
-            dprop[i] -= relaxation_coefficient * (prop[i] - target)
+            tendency[i] -= relaxation_coefficient * (prop[i] - target)
 
-    return impl
+    return linear_relaxation
 
 
 @cache
-def _linear_relaxation_scalar_coefficient_property_target() -> Callable[
-    [
-        npt.NDArray[np.uint8],
-        npt.NDArray[np.inexact],
-        npt.NDArray[np.inexact],
-        npt.NDArray[np.inexact],
-        np.generic,
-    ],
-    None,
-]:
-    """Construct a function to apply linear relaxation with scalar coefficient and property target.
+def _linear_relaxation_scalar_coefficient_property_target() -> KernelFunction:
+    """Construct a kernel function to apply linear relaxation with scalar coefficient and property target.
 
     Returns
     -------
-    Callable
-        A numba jitted function that applies linear relaxation with scalar coefficient and property target.
+    KernelFunction
+        A kernel function that applies linear relaxation with scalar coefficient and property target.
 
     Notes
     -----
     This factory function is cached to avoid recompilation.
     """
 
+    @kernel_function(
+        particle_property_keys=["status", "tendency", "prop", "target"],
+        scalar_keys=["relaxation_coefficient"],
+    )
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def linear_relaxation(
         status: npt.NDArray[np.uint8],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
         target: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         relaxation_coefficient: np.generic,
     ) -> None:
         for i in numba.prange(status.size):  # ty: ignore[not-iterable]
             if status[i] & INACTIVE_FLAG:
                 continue
 
-            dprop[i] -= relaxation_coefficient * (prop[i] - target[i])
+            tendency[i] -= relaxation_coefficient * (prop[i] - target[i])
 
-    return impl
+    return linear_relaxation
 
 
 @cache
-def _linear_relaxation_scalar_coefficient_scalar_target() -> Callable[
-    [
-        npt.NDArray[np.uint8],
-        npt.NDArray[np.inexact],
-        npt.NDArray[np.inexact],
-        np.generic,
-        np.generic,
-    ],
-    None,
-]:
-    """Construct a function to apply linear relaxation with scalar coefficient and scalar target.
+def _linear_relaxation_scalar_coefficient_scalar_target() -> KernelFunction:
+    """Construct a kernel function to apply linear relaxation with scalar coefficient and scalar target.
 
     Returns
     -------
-    Callable
-        A numba jitted function that applies linear relaxation with scalar coefficient and scalar target.
+    KernelFunction
+        A kernel function that applies linear relaxation with scalar coefficient and scalar target.
 
     Notes
     -----
     This factory function is cached to avoid recompilation.
     """
 
+    @kernel_function(
+        particle_property_keys=["status", "tendency", "prop"],
+        scalar_keys=["relaxation_coefficient", "target"],
+    )
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def linear_relaxation(
         status: npt.NDArray[np.uint8],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         relaxation_coefficient: np.generic,
         target: np.generic,
     ) -> None:
@@ -831,13 +808,13 @@ def _linear_relaxation_scalar_coefficient_scalar_target() -> Callable[
             if status[i] & INACTIVE_FLAG:
                 continue
 
-            dprop[i] -= relaxation_coefficient * (prop[i] - target)
+            tendency[i] -= relaxation_coefficient * (prop[i] - target)
 
-    return impl
+    return linear_relaxation
 
 
 @cache
-def _linear_relaxation_scalar_coefficient_1D_field_target(
+def _linear_relaxation_scalar_coefficient_1D_field_target_impl(
     interpolation_half_width: int = 1,
 ) -> Callable[
     [
@@ -871,11 +848,11 @@ def _linear_relaxation_scalar_coefficient_1D_field_target(
     interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def linear_relaxation(
         status: npt.NDArray[np.uint8],
         idx: npt.NDArray[np.float64],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         relaxation_coefficient: np.generic,
         target_array: npt.NDArray[np.inexact],
         offset: float,
@@ -895,13 +872,13 @@ def _linear_relaxation_scalar_coefficient_1D_field_target(
             offset_idx = idx[i] + offset
             target = interpolator(target_array, offset_idx, max_idx)
 
-            dprop[i] -= relaxation_coefficient * (prop[i] - target)
+            tendency[i] -= relaxation_coefficient * (prop[i] - target)
 
-    return impl
+    return linear_relaxation
 
 
 @cache
-def _linear_relaxation_scalar_coefficient_2D_field_target(
+def _linear_relaxation_scalar_coefficient_2D_field_target_impl(
     interpolation_half_width: int = 1,
 ) -> Callable[
     [
@@ -937,12 +914,12 @@ def _linear_relaxation_scalar_coefficient_2D_field_target(
     interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def linear_relaxation(
         status: npt.NDArray[np.uint8],
         idx0: npt.NDArray[np.float64],
         idx1: npt.NDArray[np.float64],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         relaxation_coefficient: np.generic,
         target_array: npt.NDArray[np.inexact],
         offset0: float,
@@ -965,13 +942,13 @@ def _linear_relaxation_scalar_coefficient_2D_field_target(
             offset_idx_1 = idx1[i] + offset1
             target = interpolator(target_array, offset_idx_0, offset_idx_1, max_idx_0, max_idx_1)
 
-            dprop[i] -= relaxation_coefficient * (prop[i] - target)
+            tendency[i] -= relaxation_coefficient * (prop[i] - target)
 
-    return impl
+    return linear_relaxation
 
 
 @cache
-def _linear_relaxation_scalar_coefficient_3D_field_target(
+def _linear_relaxation_scalar_coefficient_3D_field_target_impl(
     interpolation_half_width: int = 1,
 ) -> Callable[
     [
@@ -1005,13 +982,13 @@ def _linear_relaxation_scalar_coefficient_3D_field_target(
     interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def linear_relaxation(
         status: npt.NDArray[np.uint8],
         idx0: npt.NDArray[np.float64],
         idx1: npt.NDArray[np.float64],
         idx2: npt.NDArray[np.float64],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         relaxation_coefficient: np.generic,
         target_array: npt.NDArray[np.inexact],
         offset0: float,
@@ -1039,9 +1016,9 @@ def _linear_relaxation_scalar_coefficient_3D_field_target(
                 target_array, offset_idx_0, offset_idx_1, offset_idx_2, max_idx_0, max_idx_1, max_idx_2
             )
 
-            dprop[i] -= relaxation_coefficient * (prop[i] - target)
+            tendency[i] -= relaxation_coefficient * (prop[i] - target)
 
-    return impl
+    return linear_relaxation
 
 
 ########################
@@ -1053,8 +1030,8 @@ def _linear_relaxation_scalar_coefficient_3D_field_target(
 def _quadratic_relaxation_constant_coefficient_constant_target(
     relaxation_coefficient: np.inexact,
     target: np.inexact,
-) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact]], None]:
-    """Construct a function to apply quadratic relaxation with constant coefficient and target.
+) -> KernelFunction:
+    """Construct a kernel function to apply quadratic relaxation with constant coefficient and target.
 
     Parameters
     ----------
@@ -1065,35 +1042,36 @@ def _quadratic_relaxation_constant_coefficient_constant_target(
 
     Returns
     -------
-    Callable
-        A numba jitted function that applies quadratic relaxation with constant coefficient and target.
+    KernelFunction
+        A kernel function that applies quadratic relaxation with constant coefficient and target.
 
     Notes
     -----
     This factory function is cached to avoid recompilation for the same relaxation coefficient and target value.
     """
 
+    @kernel_function(particle_property_keys=["status", "tendency", "prop"])
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def quadratic_relaxation(
         status: npt.NDArray[np.uint8],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
     ) -> None:
         for i in numba.prange(status.size):  # ty: ignore[not-iterable]
             if status[i] & INACTIVE_FLAG:
                 continue
 
             diff = prop[i] - target
-            dprop[i] -= relaxation_coefficient * diff * np.abs(diff)
+            tendency[i] -= relaxation_coefficient * diff * np.abs(diff)
 
-    return impl
+    return quadratic_relaxation
 
 
 @cache
 def _quadratic_relaxation_constant_coefficient_property_target(
     relaxation_coefficient: np.inexact,
-) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], npt.NDArray[np.inexact]], None]:
-    """Construct a function to apply quadratic relaxation with constant coefficient and property target.
+) -> KernelFunction:
+    """Construct a kernel function to apply quadratic relaxation with constant coefficient and property target.
 
     Parameters
     ----------
@@ -1102,36 +1080,37 @@ def _quadratic_relaxation_constant_coefficient_property_target(
 
     Returns
     -------
-    Callable
-        A numba jitted function that applies quadratic relaxation with constant coefficient and property target.
+    KernelFunction
+        A kernel function that applies quadratic relaxation with constant coefficient and property target.
 
     Notes
     -----
     This factory function is cached to avoid recompilation for the same relaxation coefficient.
     """
 
+    @kernel_function(particle_property_keys=["status", "tendency", "prop", "target"])
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def quadratic_relaxation(
         status: npt.NDArray[np.uint8],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
         target: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
     ) -> None:
         for i in numba.prange(status.size):  # ty: ignore[not-iterable]
             if status[i] & INACTIVE_FLAG:
                 continue
 
             diff = prop[i] - target[i]
-            dprop[i] -= relaxation_coefficient * diff * np.abs(diff)
+            tendency[i] -= relaxation_coefficient * diff * np.abs(diff)
 
-    return impl
+    return quadratic_relaxation
 
 
 @cache
 def _quadratic_relaxation_constant_coefficient_scalar_target(
     relaxation_coefficient: np.inexact,
-) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], np.generic], None]:
-    """Construct a function to apply quadratic relaxation with constant coefficient and scalar target.
+) -> KernelFunction:
+    """Construct a kernel function to apply quadratic relaxation with constant coefficient and scalar target.
 
     Parameters
     ----------
@@ -1140,19 +1119,20 @@ def _quadratic_relaxation_constant_coefficient_scalar_target(
 
     Returns
     -------
-    Callable
-        A numba jitted function that applies quadratic relaxation with constant coefficient and scalar target.
+    KernelFunction
+        A kernel function that applies quadratic relaxation with constant coefficient and scalar target.
 
     Notes
     -----
     This factory function is cached to avoid recompilation for the same relaxation coefficient.
     """
 
+    @kernel_function(particle_property_keys=["status", "tendency", "prop"], scalar_keys=["target"])
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def quadratic_relaxation(
         status: npt.NDArray[np.uint8],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         target: np.generic,
     ) -> None:
         for i in numba.prange(status.size):  # ty: ignore[not-iterable]
@@ -1160,13 +1140,13 @@ def _quadratic_relaxation_constant_coefficient_scalar_target(
                 continue
 
             diff = prop[i] - target
-            dprop[i] -= relaxation_coefficient * diff * np.abs(diff)
+            tendency[i] -= relaxation_coefficient * diff * np.abs(diff)
 
-    return impl
+    return quadratic_relaxation
 
 
 @cache
-def _quadratic_relaxation_constant_coefficient_1D_field_target(
+def _quadratic_relaxation_constant_coefficient_1D_field_target_impl(
     relaxation_coefficient: np.inexact,
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -1202,11 +1182,11 @@ def _quadratic_relaxation_constant_coefficient_1D_field_target(
     interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def quadratic_relaxation(
         status: npt.NDArray[np.uint8],
         idx: npt.NDArray[np.float64],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         target_array: npt.NDArray[np.inexact],
         offset: float,
     ) -> None:
@@ -1226,13 +1206,13 @@ def _quadratic_relaxation_constant_coefficient_1D_field_target(
             target = interpolator(target_array, offset_idx, max_idx)
 
             diff = prop[i] - target
-            dprop[i] -= relaxation_coefficient * diff * np.abs(diff)
+            tendency[i] -= relaxation_coefficient * diff * np.abs(diff)
 
-    return impl
+    return quadratic_relaxation
 
 
 @cache
-def _quadratic_relaxation_constant_coefficient_2D_field_target(
+def _quadratic_relaxation_constant_coefficient_2D_field_target_impl(
     relaxation_coefficient: np.inexact,
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -1270,12 +1250,12 @@ def _quadratic_relaxation_constant_coefficient_2D_field_target(
     interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def quadratic_relaxation(
         status: npt.NDArray[np.uint8],
         idx0: npt.NDArray[np.float64],
         idx1: npt.NDArray[np.float64],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         target_array: npt.NDArray[np.inexact],
         offset0: float,
         offset1: float,
@@ -1298,13 +1278,13 @@ def _quadratic_relaxation_constant_coefficient_2D_field_target(
             target = interpolator(target_array, offset_idx_0, offset_idx_1, max_idx_0, max_idx_1)
 
             diff = prop[i] - target
-            dprop[i] -= relaxation_coefficient * diff * np.abs(diff)
+            tendency[i] -= relaxation_coefficient * diff * np.abs(diff)
 
-    return impl
+    return quadratic_relaxation
 
 
 @cache
-def _quadratic_relaxation_constant_coefficient_3D_field_target(
+def _quadratic_relaxation_constant_coefficient_3D_field_target_impl(
     relaxation_coefficient: np.inexact,
     interpolation_half_width: int = 1,
 ) -> Callable[
@@ -1344,13 +1324,13 @@ def _quadratic_relaxation_constant_coefficient_3D_field_target(
     interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def quadratic_relaxation(
         status: npt.NDArray[np.uint8],
         idx0: npt.NDArray[np.float64],
         idx1: npt.NDArray[np.float64],
         idx2: npt.NDArray[np.float64],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         target_array: npt.NDArray[np.inexact],
         offset0: float,
         offset1: float,
@@ -1378,24 +1358,16 @@ def _quadratic_relaxation_constant_coefficient_3D_field_target(
             )
 
             diff = prop[i] - target
-            dprop[i] -= relaxation_coefficient * diff * np.abs(diff)
+            tendency[i] -= relaxation_coefficient * diff * np.abs(diff)
 
-    return impl
+    return quadratic_relaxation
 
 
 @cache
 def _quadratic_relaxation_property_coefficient_constant_target(
     target: np.inexact,
-) -> Callable[
-    [
-        npt.NDArray[np.uint8],
-        npt.NDArray[np.inexact],
-        npt.NDArray[np.inexact],
-        npt.NDArray[np.inexact],
-    ],
-    None,
-]:
-    """Construct a function to apply quadratic relaxation with property coefficient and constant target.
+) -> KernelFunction:
+    """Construct a kernel function to apply quadratic relaxation with property coefficient and constant target.
 
     Parameters
     ----------
@@ -1404,101 +1376,91 @@ def _quadratic_relaxation_property_coefficient_constant_target(
 
     Returns
     -------
-    Callable
-        A numba jitted function that applies quadratic relaxation with property coefficient and constant target.
+    KernelFunction
+        A kernel function that applies quadratic relaxation with property coefficient and constant target.
 
     Notes
     -----
     This factory function is cached to avoid recompilation for the same target value.
     """
 
+    @kernel_function(particle_property_keys=["status", "tendency", "prop", "relaxation_coefficient"])
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def quadratic_relaxation(
         status: npt.NDArray[np.uint8],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
         relaxation_coefficient: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
     ) -> None:
         for i in numba.prange(status.size):  # ty: ignore[not-iterable]
             if status[i] & INACTIVE_FLAG:
                 continue
 
             diff = prop[i] - target
-            dprop[i] -= relaxation_coefficient[i] * diff * np.abs(diff)
+            tendency[i] -= relaxation_coefficient[i] * diff * np.abs(diff)
 
-    return impl
+    return quadratic_relaxation
 
 
 @cache
-def _quadratic_relaxation_property_coefficient_property_target() -> Callable[
-    [
-        npt.NDArray[np.uint8],
-        npt.NDArray[np.inexact],
-        npt.NDArray[np.inexact],
-        npt.NDArray[np.inexact],
-        npt.NDArray[np.inexact],
-    ],
-    None,
-]:
-    """Construct a function to apply quadratic relaxation with property coefficient and property target.
+def _quadratic_relaxation_property_coefficient_property_target() -> KernelFunction:
+    """Construct a kernel function to apply quadratic relaxation with property coefficient and property target.
 
     Returns
     -------
-    Callable
-        A numba jitted function that applies quadratic relaxation with property coefficient and property target.
+    KernelFunction
+        A kernel function that applies quadratic relaxation with property coefficient and property target.
 
     Notes
     -----
     This factory function is cached to avoid recompilation.
     """
 
+    @kernel_function(
+        particle_property_keys=["status", "tendency", "prop", "relaxation_coefficient", "target"],
+    )
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def quadratic_relaxation(
         status: npt.NDArray[np.uint8],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
         relaxation_coefficient: npt.NDArray[np.inexact],
         target: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
     ) -> None:
         for i in numba.prange(status.size):  # ty: ignore[not-iterable]
             if status[i] & INACTIVE_FLAG:
                 continue
 
             diff = prop[i] - target[i]
-            dprop[i] -= relaxation_coefficient[i] * diff * np.abs(diff)
+            tendency[i] -= relaxation_coefficient[i] * diff * np.abs(diff)
 
-    return impl
+    return quadratic_relaxation
 
 
 @cache
-def _quadratic_relaxation_property_coefficient_scalar_target() -> Callable[
-    [
-        npt.NDArray[np.uint8],
-        npt.NDArray[np.inexact],
-        npt.NDArray[np.inexact],
-        npt.NDArray[np.inexact],
-        np.generic,
-    ],
-    None,
-]:
-    """Construct a function to apply quadratic relaxation with property coefficient and scalar target.
+def _quadratic_relaxation_property_coefficient_scalar_target() -> KernelFunction:
+    """Construct a kernel function to apply quadratic relaxation with property coefficient and scalar target.
 
     Returns
     -------
-    Callable
-        A numba jitted function that applies quadratic relaxation with property coefficient and scalar target.
+    KernelFunction
+        A kernel function that applies quadratic relaxation with property coefficient and scalar target.
 
     Notes
     -----
     This factory function is cached to avoid recompilation.
     """
 
+    @kernel_function(
+        particle_property_keys=["status", "tendency", "prop", "relaxation_coefficient"],
+        scalar_keys=["target"],
+    )
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def quadratic_relaxation(
         status: npt.NDArray[np.uint8],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
         relaxation_coefficient: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         target: np.generic,
     ) -> None:
         for i in numba.prange(status.size):  # ty: ignore[not-iterable]
@@ -1506,13 +1468,13 @@ def _quadratic_relaxation_property_coefficient_scalar_target() -> Callable[
                 continue
 
             diff = prop[i] - target
-            dprop[i] -= relaxation_coefficient[i] * diff * np.abs(diff)
+            tendency[i] -= relaxation_coefficient[i] * diff * np.abs(diff)
 
-    return impl
+    return quadratic_relaxation
 
 
 @cache
-def _quadratic_relaxation_property_coefficient_1D_field_target(
+def _quadratic_relaxation_property_coefficient_1D_field_target_impl(
     interpolation_half_width: int = 1,
 ) -> Callable[
     [
@@ -1546,12 +1508,12 @@ def _quadratic_relaxation_property_coefficient_1D_field_target(
     interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def quadratic_relaxation(
         status: npt.NDArray[np.uint8],
         idx: npt.NDArray[np.float64],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
         relaxation_coefficient: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         target_array: npt.NDArray[np.inexact],
         offset: float,
     ) -> None:
@@ -1571,13 +1533,13 @@ def _quadratic_relaxation_property_coefficient_1D_field_target(
             target = interpolator(target_array, offset_idx, max_idx)
 
             diff = prop[i] - target
-            dprop[i] -= relaxation_coefficient[i] * diff * np.abs(diff)
+            tendency[i] -= relaxation_coefficient[i] * diff * np.abs(diff)
 
-    return impl
+    return quadratic_relaxation
 
 
 @cache
-def _quadratic_relaxation_property_coefficient_2D_field_target(
+def _quadratic_relaxation_property_coefficient_2D_field_target_impl(
     interpolation_half_width: int = 1,
 ) -> Callable[
     [
@@ -1613,13 +1575,13 @@ def _quadratic_relaxation_property_coefficient_2D_field_target(
     interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def quadratic_relaxation(
         status: npt.NDArray[np.uint8],
         idx0: npt.NDArray[np.float64],
         idx1: npt.NDArray[np.float64],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
         relaxation_coefficient: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         target_array: npt.NDArray[np.inexact],
         offset0: float,
         offset1: float,
@@ -1642,13 +1604,13 @@ def _quadratic_relaxation_property_coefficient_2D_field_target(
             target = interpolator(target_array, offset_idx_0, offset_idx_1, max_idx_0, max_idx_1)
 
             diff = prop[i] - target
-            dprop[i] -= relaxation_coefficient[i] * diff * np.abs(diff)
+            tendency[i] -= relaxation_coefficient[i] * diff * np.abs(diff)
 
-    return impl
+    return quadratic_relaxation
 
 
 @cache
-def _quadratic_relaxation_property_coefficient_3D_field_target(
+def _quadratic_relaxation_property_coefficient_3D_field_target_impl(
     interpolation_half_width: int = 1,
 ) -> Callable[
     [
@@ -1686,14 +1648,14 @@ def _quadratic_relaxation_property_coefficient_3D_field_target(
     interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def quadratic_relaxation(
         status: npt.NDArray[np.uint8],
         idx0: npt.NDArray[np.float64],
         idx1: npt.NDArray[np.float64],
         idx2: npt.NDArray[np.float64],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
         relaxation_coefficient: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         target_array: npt.NDArray[np.inexact],
         offset0: float,
         offset1: float,
@@ -1721,16 +1683,16 @@ def _quadratic_relaxation_property_coefficient_3D_field_target(
             )
 
             diff = prop[i] - target
-            dprop[i] -= relaxation_coefficient[i] * diff * np.abs(diff)
+            tendency[i] -= relaxation_coefficient[i] * diff * np.abs(diff)
 
-    return impl
+    return quadratic_relaxation
 
 
 @cache
 def _quadratic_relaxation_scalar_coefficient_constant_target(
     target: np.inexact,
-) -> Callable[[npt.NDArray[np.uint8], npt.NDArray[np.inexact], npt.NDArray[np.inexact], np.generic], None]:
-    """Construct a function to apply quadratic relaxation with scalar coefficient and constant target.
+) -> KernelFunction:
+    """Construct a kernel function to apply quadratic relaxation with scalar coefficient and constant target.
 
     Parameters
     ----------
@@ -1739,19 +1701,20 @@ def _quadratic_relaxation_scalar_coefficient_constant_target(
 
     Returns
     -------
-    Callable
-        A numba jitted function that applies quadratic relaxation with scalar coefficient and constant target.
+    KernelFunction
+        A kernel function that applies quadratic relaxation with scalar coefficient and constant target.
 
     Notes
     -----
     This factory function is cached to avoid recompilation for the same target value.
     """
 
+    @kernel_function(particle_property_keys=["status", "tendency", "prop"], scalar_keys=["relaxation_coefficient"])
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def quadratic_relaxation(
         status: npt.NDArray[np.uint8],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         relaxation_coefficient: np.generic,
     ) -> None:
         for i in numba.prange(status.size):  # ty: ignore[not-iterable]
@@ -1759,40 +1722,35 @@ def _quadratic_relaxation_scalar_coefficient_constant_target(
                 continue
 
             diff = prop[i] - target
-            dprop[i] -= relaxation_coefficient * diff * np.abs(diff)
+            tendency[i] -= relaxation_coefficient * diff * np.abs(diff)
 
-    return impl
+    return quadratic_relaxation
 
 
 @cache
-def _quadratic_relaxation_scalar_coefficient_property_target() -> Callable[
-    [
-        npt.NDArray[np.uint8],
-        npt.NDArray[np.inexact],
-        npt.NDArray[np.inexact],
-        npt.NDArray[np.inexact],
-        np.generic,
-    ],
-    None,
-]:
-    """Construct a function to apply quadratic relaxation with scalar coefficient and property target.
+def _quadratic_relaxation_scalar_coefficient_property_target() -> KernelFunction:
+    """Construct a kernel function to apply quadratic relaxation with scalar coefficient and property target.
 
     Returns
     -------
-    Callable
-        A numba jitted function that applies quadratic relaxation with scalar coefficient and property target.
+    KernelFunction
+        A kernel function that applies quadratic relaxation with scalar coefficient and property target.
 
     Notes
     -----
     This factory function is cached to avoid recompilation.
     """
 
+    @kernel_function(
+        particle_property_keys=["status", "tendency", "prop", "target"],
+        scalar_keys=["relaxation_coefficient"],
+    )
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def quadratic_relaxation(
         status: npt.NDArray[np.uint8],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
         target: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         relaxation_coefficient: np.generic,
     ) -> None:
         for i in numba.prange(status.size):  # ty: ignore[not-iterable]
@@ -1800,39 +1758,34 @@ def _quadratic_relaxation_scalar_coefficient_property_target() -> Callable[
                 continue
 
             diff = prop[i] - target[i]
-            dprop[i] -= relaxation_coefficient * diff * np.abs(diff)
+            tendency[i] -= relaxation_coefficient * diff * np.abs(diff)
 
-    return impl
+    return quadratic_relaxation
 
 
 @cache
-def _quadratic_relaxation_scalar_coefficient_scalar_target() -> Callable[
-    [
-        npt.NDArray[np.uint8],
-        npt.NDArray[np.inexact],
-        npt.NDArray[np.inexact],
-        np.generic,
-        np.generic,
-    ],
-    None,
-]:
-    """Construct a function to apply quadratic relaxation with scalar coefficient and scalar target.
+def _quadratic_relaxation_scalar_coefficient_scalar_target() -> KernelFunction:
+    """Construct a kernel function to apply quadratic relaxation with scalar coefficient and scalar target.
 
     Returns
     -------
-    Callable
-        A numba jitted function that applies quadratic relaxation with scalar coefficient and scalar target.
+    KernelFunction
+        A kernel function that applies quadratic relaxation with scalar coefficient and scalar target.
 
     Notes
     -----
     This factory function is cached to avoid recompilation for the same target value.
     """
 
+    @kernel_function(
+        particle_property_keys=["status", "tendency", "prop"],
+        scalar_keys=["relaxation_coefficient", "target"],
+    )
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def quadratic_relaxation(
         status: npt.NDArray[np.uint8],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         relaxation_coefficient: np.generic,
         target: np.generic,
     ) -> None:
@@ -1841,13 +1794,13 @@ def _quadratic_relaxation_scalar_coefficient_scalar_target() -> Callable[
                 continue
 
             diff = prop[i] - target
-            dprop[i] -= relaxation_coefficient * diff * np.abs(diff)
+            tendency[i] -= relaxation_coefficient * diff * np.abs(diff)
 
-    return impl
+    return quadratic_relaxation
 
 
 @cache
-def _quadratic_relaxation_scalar_coefficient_1D_field_target(
+def _quadratic_relaxation_scalar_coefficient_1D_field_target_impl(
     interpolation_half_width: int = 1,
 ) -> Callable[
     [
@@ -1881,11 +1834,11 @@ def _quadratic_relaxation_scalar_coefficient_1D_field_target(
     interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def quadratic_relaxation(
         status: npt.NDArray[np.uint8],
         idx: npt.NDArray[np.float64],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         relaxation_coefficient: np.generic,
         target_array: npt.NDArray[np.inexact],
         offset: float,
@@ -1906,13 +1859,13 @@ def _quadratic_relaxation_scalar_coefficient_1D_field_target(
             target = interpolator(target_array, offset_idx, max_idx)
 
             diff = prop[i] - target
-            dprop[i] -= relaxation_coefficient * diff * np.abs(diff)
+            tendency[i] -= relaxation_coefficient * diff * np.abs(diff)
 
-    return impl
+    return quadratic_relaxation
 
 
 @cache
-def _quadratic_relaxation_scalar_coefficient_2D_field_target(
+def _quadratic_relaxation_scalar_coefficient_2D_field_target_impl(
     interpolation_half_width: int = 1,
 ) -> Callable[
     [
@@ -1948,12 +1901,12 @@ def _quadratic_relaxation_scalar_coefficient_2D_field_target(
     interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def quadratic_relaxation(
         status: npt.NDArray[np.uint8],
         idx0: npt.NDArray[np.float64],
         idx1: npt.NDArray[np.float64],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         relaxation_coefficient: np.generic,
         target_array: npt.NDArray[np.inexact],
         offset0: float,
@@ -1977,13 +1930,13 @@ def _quadratic_relaxation_scalar_coefficient_2D_field_target(
             target = interpolator(target_array, offset_idx_0, offset_idx_1, max_idx_0, max_idx_1)
 
             diff = prop[i] - target
-            dprop[i] -= relaxation_coefficient * diff * np.abs(diff)
+            tendency[i] -= relaxation_coefficient * diff * np.abs(diff)
 
-    return impl
+    return quadratic_relaxation
 
 
 @cache
-def _quadratic_relaxation_scalar_coefficient_3D_field_target(
+def _quadratic_relaxation_scalar_coefficient_3D_field_target_impl(
     interpolation_half_width: int = 1,
 ) -> Callable[
     [
@@ -2021,13 +1974,13 @@ def _quadratic_relaxation_scalar_coefficient_3D_field_target(
     interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
-    def impl(
+    def quadratic_relaxation(
         status: npt.NDArray[np.uint8],
         idx0: npt.NDArray[np.float64],
         idx1: npt.NDArray[np.float64],
         idx2: npt.NDArray[np.float64],
+        tendency: npt.NDArray[np.inexact],
         prop: npt.NDArray[np.inexact],
-        dprop: npt.NDArray[np.inexact],
         relaxation_coefficient: np.generic,
         target_array: npt.NDArray[np.inexact],
         offset0: float,
@@ -2056,6 +2009,6 @@ def _quadratic_relaxation_scalar_coefficient_3D_field_target(
             )
 
             diff = prop[i] - target
-            dprop[i] -= relaxation_coefficient * diff * np.abs(diff)
+            tendency[i] -= relaxation_coefficient * diff * np.abs(diff)
 
-    return impl
+    return quadratic_relaxation

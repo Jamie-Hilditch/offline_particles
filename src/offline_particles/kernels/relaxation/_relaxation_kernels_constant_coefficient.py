@@ -1,6 +1,5 @@
 """Kernels implementing relaxation forcing with a constant relaxation coefficient."""
 
-from collections.abc import Callable
 from typing import Literal
 
 import numpy as np
@@ -10,26 +9,23 @@ from ...spatial_arrays import ArrayAxis, ArrayLayout
 from .._kernels import (
     BoundKernel,
     FieldDataDeclaration,
-    FieldDataType,
-    KernelFunction,
     ParticleKernel,
-    ParticlePropertiesType,
     ParticlePropertyDeclaration,
     ScalarDeclaration,
-    ScalarsType,
+    kernel_function,
 )
 from ..input_declarations import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
 from ..layout_validators import ordering_validator_factory
 from ._relaxation_impl import (
-    _linear_relaxation_constant_coefficient_1D_field_target,
-    _linear_relaxation_constant_coefficient_2D_field_target,
-    _linear_relaxation_constant_coefficient_3D_field_target,
+    _linear_relaxation_constant_coefficient_1D_field_target_impl,
+    _linear_relaxation_constant_coefficient_2D_field_target_impl,
+    _linear_relaxation_constant_coefficient_3D_field_target_impl,
     _linear_relaxation_constant_coefficient_constant_target,
     _linear_relaxation_constant_coefficient_property_target,
     _linear_relaxation_constant_coefficient_scalar_target,
-    _quadratic_relaxation_constant_coefficient_1D_field_target,
-    _quadratic_relaxation_constant_coefficient_2D_field_target,
-    _quadratic_relaxation_constant_coefficient_3D_field_target,
+    _quadratic_relaxation_constant_coefficient_1D_field_target_impl,
+    _quadratic_relaxation_constant_coefficient_2D_field_target_impl,
+    _quadratic_relaxation_constant_coefficient_3D_field_target_impl,
     _quadratic_relaxation_constant_coefficient_constant_target,
     _quadratic_relaxation_constant_coefficient_property_target,
     _quadratic_relaxation_constant_coefficient_scalar_target,
@@ -51,7 +47,7 @@ _INDEX_DECLARATION_MAPPING = {
 
 def construct_relaxation_kernel_constant_coefficient_constant_target(
     prop: str,
-    dprop: str,
+    tendency: str,
     relaxation_coefficient: np.inexact | float,
     target: np.inexact | float,
     dtype: npt.DTypeLike = np.float64,
@@ -63,7 +59,7 @@ def construct_relaxation_kernel_constant_coefficient_constant_target(
     ----------
     prop : str
         The binding of the particle property to which the relaxation forcing will be applied.
-    dprop : str
+    tendency : str
         The binding of the particle property accumulating tendency terms.
     relaxation_coefficient : np.inexact | float
         The coefficient for the relaxation forcing.
@@ -87,31 +83,22 @@ def construct_relaxation_kernel_constant_coefficient_constant_target(
     dtype = np.dtype(dtype).type
 
     if form == "linear":
-        kernel_function_impl = _linear_relaxation_constant_coefficient_constant_target(
+        kernel_fn = _linear_relaxation_constant_coefficient_constant_target(
             dtype(relaxation_coefficient), dtype(target)
         )
     elif form == "quadratic":
-        kernel_function_impl = _quadratic_relaxation_constant_coefficient_constant_target(
+        kernel_fn = _quadratic_relaxation_constant_coefficient_constant_target(
             dtype(relaxation_coefficient), dtype(target)
         )
     else:
         raise ValueError(f"Invalid form: {form}. Must be 'linear' or 'quadratic'.")
 
-    def kernel_function(
-        particle_properties: ParticlePropertiesType, scalars: ScalarsType, field_data: FieldDataType
-    ) -> None:
-        return kernel_function_impl(
-            particle_properties["status"],
-            particle_properties["prop"],
-            particle_properties["dprop"],
-        )
-
     kernel = ParticleKernel(
-        kernel_function,
+        kernel_fn,
         particle_properties=[
             STATUS_DECLARATION,
+            ParticlePropertyDeclaration("tendency", dtype),
             ParticlePropertyDeclaration("prop", dtype),
-            ParticlePropertyDeclaration("dprop", dtype),
         ],
     )
 
@@ -119,7 +106,7 @@ def construct_relaxation_kernel_constant_coefficient_constant_target(
         kernel,
         particle_property_bindings={
             "prop": prop,
-            "dprop": dprop,
+            "tendency": tendency,
         },
     )
 
@@ -128,7 +115,7 @@ def construct_relaxation_kernel_constant_coefficient_constant_target(
 
 def construct_relaxation_kernel_constant_coefficient_property_target(
     prop: str,
-    dprop: str,
+    tendency: str,
     relaxation_coefficient: np.inexact | float,
     target: str,
     dtype: npt.DTypeLike = np.float64,
@@ -140,7 +127,7 @@ def construct_relaxation_kernel_constant_coefficient_property_target(
     ----------
     prop : str
         The binding of the particle property to which the relaxation forcing will be applied.
-    dprop : str
+    tendency : str
         The binding of the particle property accumulating tendency terms.
     relaxation_coefficient : np.inexact | float
         The coefficient for the relaxation forcing.
@@ -164,28 +151,18 @@ def construct_relaxation_kernel_constant_coefficient_property_target(
     dtype = np.dtype(dtype).type
 
     if form == "linear":
-        kernel_function_impl = _linear_relaxation_constant_coefficient_property_target(dtype(relaxation_coefficient))
+        kernel_fn = _linear_relaxation_constant_coefficient_property_target(dtype(relaxation_coefficient))
     elif form == "quadratic":
-        kernel_function_impl = _quadratic_relaxation_constant_coefficient_property_target(dtype(relaxation_coefficient))
+        kernel_fn = _quadratic_relaxation_constant_coefficient_property_target(dtype(relaxation_coefficient))
     else:
         raise ValueError(f"Invalid form: {form}. Must be 'linear' or 'quadratic'.")
 
-    def kernel_function(
-        particle_properties: ParticlePropertiesType, scalars: ScalarsType, field_data: FieldDataType
-    ) -> None:
-        return kernel_function_impl(
-            particle_properties["status"],
-            particle_properties["prop"],
-            particle_properties["target"],
-            particle_properties["dprop"],
-        )
-
     kernel = ParticleKernel(
-        kernel_function,
+        kernel_fn,
         particle_properties=[
             STATUS_DECLARATION,
+            ParticlePropertyDeclaration("tendency", dtype),
             ParticlePropertyDeclaration("prop", dtype),
-            ParticlePropertyDeclaration("dprop", dtype),
             ParticlePropertyDeclaration("target", dtype),
         ],
     )
@@ -194,7 +171,7 @@ def construct_relaxation_kernel_constant_coefficient_property_target(
         kernel,
         particle_property_bindings={
             "prop": prop,
-            "dprop": dprop,
+            "tendency": tendency,
             "target": target,
         },
     )
@@ -204,7 +181,7 @@ def construct_relaxation_kernel_constant_coefficient_property_target(
 
 def construct_relaxation_kernel_constant_coefficient_scalar_target(
     prop: str,
-    dprop: str,
+    tendency: str,
     relaxation_coefficient: np.inexact | float,
     target: str,
     dtype: npt.DTypeLike = np.float64,
@@ -216,7 +193,7 @@ def construct_relaxation_kernel_constant_coefficient_scalar_target(
     ----------
     prop : str
         The binding of the particle property to which the relaxation forcing will be applied.
-    dprop : str
+    tendency : str
         The binding of the particle property accumulating tendency terms.
     relaxation_coefficient : np.inexact | float
         The coefficient for the relaxation forcing.
@@ -240,28 +217,18 @@ def construct_relaxation_kernel_constant_coefficient_scalar_target(
     dtype = np.dtype(dtype).type
 
     if form == "linear":
-        kernel_function_impl = _linear_relaxation_constant_coefficient_scalar_target(dtype(relaxation_coefficient))
+        kernel_fn = _linear_relaxation_constant_coefficient_scalar_target(dtype(relaxation_coefficient))
     elif form == "quadratic":
-        kernel_function_impl = _quadratic_relaxation_constant_coefficient_scalar_target(dtype(relaxation_coefficient))
+        kernel_fn = _quadratic_relaxation_constant_coefficient_scalar_target(dtype(relaxation_coefficient))
     else:
         raise ValueError(f"Invalid form: {form}. Must be 'linear' or 'quadratic'.")
 
-    def kernel_function(
-        particle_properties: ParticlePropertiesType, scalars: ScalarsType, field_data: FieldDataType
-    ) -> None:
-        return kernel_function_impl(
-            particle_properties["status"],
-            particle_properties["prop"],
-            particle_properties["dprop"],
-            scalars["target"],
-        )
-
     kernel = ParticleKernel(
-        kernel_function,
+        kernel_fn,
         particle_properties=[
             STATUS_DECLARATION,
+            ParticlePropertyDeclaration("tendency", dtype),
             ParticlePropertyDeclaration("prop", dtype),
-            ParticlePropertyDeclaration("dprop", dtype),
         ],
         scalars=[
             ScalarDeclaration("target", dtype),
@@ -272,7 +239,7 @@ def construct_relaxation_kernel_constant_coefficient_scalar_target(
         kernel,
         particle_property_bindings={
             "prop": prop,
-            "dprop": dprop,
+            "tendency": tendency,
         },
         scalar_bindings={
             "target": target,
@@ -282,150 +249,9 @@ def construct_relaxation_kernel_constant_coefficient_scalar_target(
     return bound_kernel
 
 
-def _construct_1d_kernel_function(
-    kernel_function_impl: Callable[..., None],
-    axis0: ArrayAxis,
-) -> KernelFunction:
-    """Construct a kernel function for a 1D array layout.
-
-    Parameters
-    ----------
-    kernel_function_impl : Callable[..., None]
-        The implementation of the kernel function to be constructed.
-    axis0 : ArrayAxis
-        The first axis of the 1D array layout.
-
-    Returns
-    -------
-    KernelFunction
-        The constructed kernel function for the 1D array layout.
-    """
-    index_declaration = _INDEX_DECLARATION_MAPPING[axis0]
-    idx0 = index_declaration.name
-
-    def kernel_function(
-        particle_properties: ParticlePropertiesType, scalars: ScalarsType, field_data: FieldDataType
-    ) -> None:
-        fd = field_data["target"]
-        field_array = fd.array
-        (offset,) = fd.offsets
-
-        kernel_function_impl(
-            particle_properties["status"],
-            particle_properties[idx0],
-            particle_properties["prop"],
-            particle_properties["dprop"],
-            field_array,
-            offset,
-        )
-
-    return kernel_function
-
-
-def _construct_2d_kernel_function(
-    kernel_function_impl: Callable[..., None],
-    axis0: ArrayAxis,
-    axis1: ArrayAxis,
-) -> KernelFunction:
-    """Construct a kernel function for a 2D array layout.
-
-    Parameters
-    ----------
-    kernel_function_impl : Callable[..., None]
-        The implementation of the kernel function to be constructed.
-    axis0 : ArrayAxis
-        The first axis of the 2D array layout.
-    axis1 : ArrayAxis
-        The second axis of the 2D array layout.
-
-    Returns
-    -------
-    KernelFunction
-        The constructed kernel function for the 2D array layout.
-    """
-    index_declaration_0 = _INDEX_DECLARATION_MAPPING[axis0]
-    index_declaration_1 = _INDEX_DECLARATION_MAPPING[axis1]
-    idx0 = index_declaration_0.name
-    idx1 = index_declaration_1.name
-
-    def kernel_function(
-        particle_properties: ParticlePropertiesType, scalars: ScalarsType, field_data: FieldDataType
-    ) -> None:
-        fd = field_data["target"]
-        field_array = fd.array
-        offset_0, offset_1 = fd.offsets
-
-        kernel_function_impl(
-            particle_properties["status"],
-            particle_properties[idx0],
-            particle_properties[idx1],
-            particle_properties["prop"],
-            particle_properties["dprop"],
-            field_array,
-            offset_0,
-            offset_1,
-        )
-
-    return kernel_function
-
-
-def _construct_3d_kernel_function(
-    kernel_function_impl: Callable[..., None],
-    axis0: ArrayAxis,
-    axis1: ArrayAxis,
-    axis2: ArrayAxis,
-) -> KernelFunction:
-    """Construct a kernel function for a 3D array layout.
-
-    Parameters
-    ----------
-    kernel_function_impl : Callable[..., None]
-        The implementation of the kernel function to be constructed.
-    axis0 : ArrayAxis
-        The first axis of the 3D array layout.
-    axis1 : ArrayAxis
-        The second axis of the 3D array layout.
-    axis2 : ArrayAxis
-        The third axis of the 3D array layout.
-
-    Returns
-    -------
-    KernelFunction
-        The constructed kernel function for the 3D array layout.
-    """
-    index_declaration_0 = _INDEX_DECLARATION_MAPPING[axis0]
-    index_declaration_1 = _INDEX_DECLARATION_MAPPING[axis1]
-    index_declaration_2 = _INDEX_DECLARATION_MAPPING[axis2]
-    idx0 = index_declaration_0.name
-    idx1 = index_declaration_1.name
-    idx2 = index_declaration_2.name
-
-    def kernel_function(
-        particle_properties: ParticlePropertiesType, scalars: ScalarsType, field_data: FieldDataType
-    ) -> None:
-        fd = field_data["target"]
-        field_array = fd.array
-        offset_0, offset_1, offset_2 = fd.offsets
-
-        kernel_function_impl(
-            particle_properties["status"],
-            particle_properties[idx0],
-            particle_properties[idx1],
-            particle_properties[idx2],
-            particle_properties["prop"],
-            particle_properties["dprop"],
-            field_array,
-            offset_0,
-            offset_1,
-            offset_2,
-        )
-
-    return kernel_function
-
-
 def construct_relaxation_kernel_constant_coefficient_field_target(
     prop: str,
-    dprop: str,
+    tendency: str,
     relaxation_coefficient: np.inexact | float,
     target: str,
     array_layout: ArrayLayout,
@@ -439,7 +265,7 @@ def construct_relaxation_kernel_constant_coefficient_field_target(
     ----------
     prop : str
         The binding of the particle property to which the relaxation forcing will be applied.
-    dprop : str
+    tendency : str
         The binding of the particle property accumulating tendency terms.
     relaxation_coefficient : np.inexact | float
         The coefficient for the relaxation forcing.
@@ -469,64 +295,51 @@ def construct_relaxation_kernel_constant_coefficient_field_target(
 
     match form, array_layout.axes:
         # 1D field target
-        case "linear", (axis0,):
-            kernel_function_impl = _linear_relaxation_constant_coefficient_1D_field_target(
+        case "linear", (_,):
+            kernel_function_impl = _linear_relaxation_constant_coefficient_1D_field_target_impl(
                 dtype(relaxation_coefficient), interpolation_half_width
             )
-            index_declarations = [_INDEX_DECLARATION_MAPPING[axis0]]
-            kernel_function = _construct_1d_kernel_function(kernel_function_impl, axis0)
-        case "quadratic", (axis0,):
-            kernel_function_impl = _quadratic_relaxation_constant_coefficient_1D_field_target(
+        case "quadratic", (_,):
+            kernel_function_impl = _quadratic_relaxation_constant_coefficient_1D_field_target_impl(
                 dtype(relaxation_coefficient), interpolation_half_width
             )
-            index_declarations = [_INDEX_DECLARATION_MAPPING[axis0]]
-            kernel_function = _construct_1d_kernel_function(kernel_function_impl, axis0)
         # 2D field target
-        case "linear", (axis0, axis1):
-            kernel_function_impl = _linear_relaxation_constant_coefficient_2D_field_target(
+        case "linear", (_, _):
+            kernel_function_impl = _linear_relaxation_constant_coefficient_2D_field_target_impl(
                 dtype(relaxation_coefficient), interpolation_half_width
             )
-            index_declarations = [_INDEX_DECLARATION_MAPPING[axis0], _INDEX_DECLARATION_MAPPING[axis1]]
-            kernel_function = _construct_2d_kernel_function(kernel_function_impl, axis0, axis1)
-        case "quadratic", (axis0, axis1):
-            kernel_function_impl = _quadratic_relaxation_constant_coefficient_2D_field_target(
+        case "quadratic", (_, _):
+            kernel_function_impl = _quadratic_relaxation_constant_coefficient_2D_field_target_impl(
                 dtype(relaxation_coefficient), interpolation_half_width
             )
-            index_declarations = [_INDEX_DECLARATION_MAPPING[axis0], _INDEX_DECLARATION_MAPPING[axis1]]
-            kernel_function = _construct_2d_kernel_function(kernel_function_impl, axis0, axis1)
         # 3D field target
-        case "linear", (axis0, axis1, axis2):
-            kernel_function_impl = _linear_relaxation_constant_coefficient_3D_field_target(
+        case "linear", (_, _, _):
+            kernel_function_impl = _linear_relaxation_constant_coefficient_3D_field_target_impl(
                 dtype(relaxation_coefficient), interpolation_half_width
             )
-            index_declarations = [
-                _INDEX_DECLARATION_MAPPING[axis0],
-                _INDEX_DECLARATION_MAPPING[axis1],
-                _INDEX_DECLARATION_MAPPING[axis2],
-            ]
-            kernel_function = _construct_3d_kernel_function(kernel_function_impl, axis0, axis1, axis2)
-        case "quadratic", (axis0, axis1, axis2):
-            kernel_function_impl = _quadratic_relaxation_constant_coefficient_3D_field_target(
+        case "quadratic", (_, _, _):
+            kernel_function_impl = _quadratic_relaxation_constant_coefficient_3D_field_target_impl(
                 dtype(relaxation_coefficient), interpolation_half_width
             )
-            index_declarations = [
-                _INDEX_DECLARATION_MAPPING[axis0],
-                _INDEX_DECLARATION_MAPPING[axis1],
-                _INDEX_DECLARATION_MAPPING[axis2],
-            ]
-            kernel_function = _construct_3d_kernel_function(kernel_function_impl, axis0, axis1, axis2)
         case _:
             raise ValueError(f"Invalid array layout axes {array_layout.axes}.")
 
+    index_declarations = [_INDEX_DECLARATION_MAPPING[axis] for axis in array_layout.axes]
+    index_names = [decl.name for decl in index_declarations]
     validator = ordering_validator_factory(array_layout.axes)
 
+    kernel_fn = kernel_function(
+        particle_property_keys=["status", *index_names, "tendency", "prop"],
+        field_data_keys=["target"],
+    )(kernel_function_impl)
+
     kernel = ParticleKernel(
-        kernel_function,
+        kernel_fn,
         particle_properties=[
             STATUS_DECLARATION,
             *index_declarations,
+            ParticlePropertyDeclaration("tendency", dtype),
             ParticlePropertyDeclaration("prop", dtype),
-            ParticlePropertyDeclaration("dprop", dtype),
         ],
         field_data=[
             FieldDataDeclaration("target", dtype, [validator]),
@@ -537,7 +350,7 @@ def construct_relaxation_kernel_constant_coefficient_field_target(
         kernel,
         particle_property_bindings={
             "prop": prop,
-            "dprop": dprop,
+            "tendency": tendency,
         },
         field_data_bindings={
             "target": target,

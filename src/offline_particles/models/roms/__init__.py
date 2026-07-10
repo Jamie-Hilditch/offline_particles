@@ -171,8 +171,8 @@ def roms_ab3_timestepper(
     # relative vertical velocity damping
     if linear_damping:
         linear_damping_kernel = construct_linear_damping_kernel(
-            "w_rel",
             "_dw_rel0",
+            "w_rel",
             constant_coefficient=constant_linear_damping_coefficient,
             property_coefficient=property_linear_damping_coefficient,
             scalar_coefficient=scalar_linear_damping_coefficient,
@@ -180,8 +180,8 @@ def roms_ab3_timestepper(
         tendency_kernels.append(linear_damping_kernel)
     if quadratic_damping:
         quadratic_damping_kernel = construct_quadratic_damping_kernel(
-            "w_rel",
             "_dw_rel0",
+            "w_rel",
             constant_coefficient=constant_quadratic_damping_coefficient,
             property_coefficient=property_quadratic_damping_coefficient,
             scalar_coefficient=scalar_quadratic_damping_coefficient,

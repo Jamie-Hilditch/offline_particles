@@ -202,13 +202,13 @@ def test_roms_ab3_timestepper_with_buoyancy_and_damping_wires_optional_kernels(
     assert calls["y_adv"]["args"] == ("_dyidx0", "v_field", "pn_field", ("Z", "Y", "X"), ("Y", "X"))
     assert "z_adv" not in calls
 
-    assert calls["linear_damping"]["args"] == ("w_rel", "_dw_rel0")
+    assert calls["linear_damping"]["args"] == ("_dw_rel0", "w_rel")
     assert calls["linear_damping"]["kwargs"] == {
         "constant_coefficient": 0.25,
         "property_coefficient": None,
         "scalar_coefficient": None,
     }
-    assert calls["quadratic_damping"]["args"] == ("w_rel", "_dw_rel0")
+    assert calls["quadratic_damping"]["args"] == ("_dw_rel0", "w_rel")
     assert calls["quadratic_damping"]["kwargs"] == {
         "constant_coefficient": None,
         "property_coefficient": "quad_drag",
@@ -255,7 +255,7 @@ def test_roms_ab3_timestepper_linear_scalar_damping_wires_scalar_coefficient(mon
     )
 
     assert isinstance(timestepper, ABTimestepper)
-    assert calls["linear_damping"]["args"] == ("w_rel", "_dw_rel0")
+    assert calls["linear_damping"]["args"] == ("_dw_rel0", "w_rel")
     assert calls["linear_damping"]["kwargs"] == {
         "constant_coefficient": None,
         "property_coefficient": None,
@@ -283,7 +283,7 @@ def test_roms_ab3_timestepper_quadratic_scalar_damping_wires_scalar_coefficient(
     )
 
     assert isinstance(timestepper, ABTimestepper)
-    assert calls["quadratic_damping"]["args"] == ("w_rel", "_dw_rel0")
+    assert calls["quadratic_damping"]["args"] == ("_dw_rel0", "w_rel")
     assert calls["quadratic_damping"]["kwargs"] == {
         "constant_coefficient": None,
         "property_coefficient": None,
