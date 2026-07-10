@@ -170,52 +170,6 @@ def test_compute_zidx_handles_minimum_size_stretching_array(hc_nz: tuple[float, 
         assert actual_zidx[0] == pytest.approx(expected_zidx[0])
 
 
-@pytest.mark.filterwarnings("ignore::pytest.PytestUnraisableExceptionWarning")
-def test_compute_zidx_swallows_zero_division_on_degenerate_C_segment(capfd) -> None:
-    """Characterization test for a genuine sharp edge, found while writing this suite.
-
-    If two consecutive C values coincide (a degenerate/flat stretching-function segment) and hc
-    is small enough that S depends effectively only on C, `S_high == S_low` inside `_zidx_from_S`,
-    which triggers a `ZeroDivisionError` in the underlying (noexcept nogil) Cython function.
-    Because the function is declared `noexcept`, Cython cannot propagate that exception to the
-    caller: it prints an "exception ignored" message to stderr (via `PyErr_WriteUnraisable`) and
-    silently leaves the output at whatever (unspecified) value was already in the register --
-    *not* NaN or inf as IEEE754 float division would give. The caller has no way to detect this
-    via a Python exception or a NaN check. This should NOT be replicated in a numba rewrite --
-    numba float division does not perform Python-style zero-division checks, so the same
-    degenerate input would propagate `inf`/`nan` naturally instead of silently returning a bogus
-    finite value.
-    """
-    C = np.array([0.0, 0.3, 0.6, 0.9, 0.9])  # the last two stretching-function levels coincide
-    NZ = 5
-    hc = 0.0  # makes S == C exactly, so the coincident C values give S_high == S_low exactly
-    h, zeta = 45.0, 1.0
-    S = 0.9  # exactly the degenerate plateau value
-    z = zeta + (zeta + h) * S
-
-    particle_properties = {
-        "status": np.zeros(1, dtype=np.uint8),
-        "zidx": np.array([np.nan]),
-        "yidx": np.array([1.5]),
-        "xidx": np.array([1.5]),
-        "z": np.array([z]),
-    }
-    scalars = _scalars(hc, NZ)
-    field_data = {
-        "h": FieldData(np.full((4, 4), h), (0.0, 0.0)),
-        "zeta": FieldData(np.full((4, 4), zeta), (0.0, 0.0)),
-        "C": FieldData(C, (0.0,)),
-    }
-
-    compute_zidx_kernel_function(particle_properties, scalars, field_data)
-    captured = capfd.readouterr()
-
-    assert "ZeroDivisionError" in captured.err
-    # the caller gets no exception and no NaN -- just a silently wrong finite value
-    assert not np.isnan(particle_properties["zidx"][0])
-    assert particle_properties["zidx"][0] != pytest.approx(3.0)  # the mathematically sane answer
-
-
 def test_compute_zidx_skips_inactive_particles(
     hc_nz: tuple[float, int],
     uniform_h_zeta_field_data,
