@@ -14,18 +14,7 @@ import pytest
 
 from offline_particles.kernels.interpolation import lagrange2N_mapped_particle_factory
 from offline_particles.spatial_arrays import ArrayAxis
-
-_PARTICLE_COORDS = {
-    ArrayAxis.Z: 1.25,
-    ArrayAxis.Y: 2.5,
-    ArrayAxis.X: 3.75,
-}
-
-_OFFSETS = {
-    ArrayAxis.Z: 0.125,
-    ArrayAxis.Y: -0.25,
-    ArrayAxis.X: 0.5,
-}
+from tests.kernels.conftest import PARTICLE_COORDS, offsets_in_layout
 
 _SPY_MAX_IDXS = {
     ArrayAxis.Z: 11,
@@ -34,18 +23,10 @@ _SPY_MAX_IDXS = {
 }
 
 _CANONICAL_PARTICLE_COORDS = (
-    _PARTICLE_COORDS[ArrayAxis.Z],
-    _PARTICLE_COORDS[ArrayAxis.Y],
-    _PARTICLE_COORDS[ArrayAxis.X],
+    PARTICLE_COORDS[ArrayAxis.Z],
+    PARTICLE_COORDS[ArrayAxis.Y],
+    PARTICLE_COORDS[ArrayAxis.X],
 )
-
-
-def _particle_coords_in_layout(layout: tuple[ArrayAxis, ...]) -> tuple[float, ...]:
-    return tuple(_PARTICLE_COORDS[axis] for axis in layout)
-
-
-def _offsets_in_layout(layout: tuple[ArrayAxis, ...]) -> tuple[float, ...]:
-    return tuple(_OFFSETS[axis] for axis in layout)
 
 
 def _build_affine_field(shape: tuple[int, ...]) -> npt.NDArray[np.float64]:
@@ -70,7 +51,7 @@ def _build_affine_field(shape: tuple[int, ...]) -> npt.NDArray[np.float64]:
 
 def _expected_affine_value(layout: tuple[ArrayAxis, ...], offsets: tuple[float, ...]) -> float:
     return 7.0 + sum(
-        coefficient * (_PARTICLE_COORDS[axis] + offset)
+        coefficient * (PARTICLE_COORDS[axis] + offset)
         for coefficient, axis, offset in zip((1.0, 10.0, 100.0)[: len(layout)], layout, offsets, strict=True)
     )
 
@@ -87,7 +68,7 @@ def test_mapped_1d_interpolation_matches_affine_field(layout: tuple[ArrayAxis, .
     field = 7.0 + 1.0 * np.arange(shape[0], dtype=np.float64)
     impl = lagrange2N_mapped_particle_factory(layout, n)
 
-    offsets = _offsets_in_layout(layout)
+    offsets = offsets_in_layout(layout)
     max_idxs = _max_idxs_for_shape(shape, n)
     result = impl(
         _CANONICAL_PARTICLE_COORDS[0],
@@ -109,7 +90,7 @@ def test_mapped_2d_interpolation_matches_affine_field(layout: tuple[ArrayAxis, .
     field = _build_affine_field(shape)
     impl = lagrange2N_mapped_particle_factory(layout, n)
 
-    offsets = _offsets_in_layout(layout)
+    offsets = offsets_in_layout(layout)
     max_idxs = _max_idxs_for_shape(shape, n)
     result = impl(
         _CANONICAL_PARTICLE_COORDS[0],
@@ -133,7 +114,7 @@ def test_mapped_3d_interpolation_matches_affine_field(layout: tuple[ArrayAxis, .
     field = _build_affine_field(shape)
     impl = lagrange2N_mapped_particle_factory(layout, n)
 
-    offsets = _offsets_in_layout(layout)
+    offsets = offsets_in_layout(layout)
     max_idxs = _max_idxs_for_shape(shape, n)
     result = impl(
         _CANONICAL_PARTICLE_COORDS[0],
