@@ -81,24 +81,12 @@ def _build_kernel_inputs(coefficient_kind: str, field_layout_axes: tuple[str, ..
     return particle_properties, scalars, field_data, coefficient, ambient_density
 
 
-def _run_bound_kernel(bound_kernel: BoundKernel, particle_properties, scalars, field_data) -> None:
-    kernel_particle_properties = {
-        decl_name: particle_properties[binding]
-        for decl_name, binding in bound_kernel.particle_property_bindings.items()
-    }
-    kernel_scalars = {decl_name: scalars[binding] for decl_name, binding in bound_kernel.scalar_bindings.items()}
-    kernel_field_data = {
-        decl_name: field_data[binding] for decl_name, binding in bound_kernel.field_data_bindings.items()
-    }
-
-    bound_kernel.kernel(kernel_particle_properties, kernel_scalars, kernel_field_data)
-
-
 @pytest.mark.parametrize("coefficient_kind", _COEFFICIENT_KINDS)
 @pytest.mark.parametrize("field_layout_axes", _FIELD_LAYOUTS)
 def test_buoyancy_force_kernel_covers_all_dimensionalities_and_coefficient_kinds(
     coefficient_kind: str,
     field_layout_axes: tuple[str, ...],
+    run_bound_kernel,
 ) -> None:
     bound_kernel = _construct_buoyancy_kernel(coefficient_kind, field_layout_axes)
     particle_properties, scalars, field_data, coefficient, ambient_density = _build_kernel_inputs(
@@ -108,7 +96,7 @@ def test_buoyancy_force_kernel_covers_all_dimensionalities_and_coefficient_kinds
     particle_density = particle_properties["my_prop"][0]
     expected_active = particle_properties["my_tendency"][0] + coefficient * (ambient_density - particle_density)
 
-    _run_bound_kernel(bound_kernel, particle_properties, scalars, field_data)
+    run_bound_kernel(bound_kernel, particle_properties, scalars, field_data)
 
     assert particle_properties["my_tendency"][0] == pytest.approx(expected_active)
     # inactive particle must be left untouched

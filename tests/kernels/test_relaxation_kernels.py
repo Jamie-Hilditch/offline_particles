@@ -210,6 +210,7 @@ def test_relaxation_kernels_cover_all_nonfield_combinations(
     form: str,
     coefficient_kind: str,
     target_kind: str,
+    run_bound_kernel,
 ) -> None:
     bound_kernel = _construct_relaxation_kernel(form, coefficient_kind, target_kind)
     particle_properties, scalars, field_data, coefficient, target = _build_kernel_inputs(
@@ -223,16 +224,7 @@ def test_relaxation_kernels_cover_all_nonfield_combinations(
         prop=particle_properties["my_prop"][0],
     )
 
-    kernel_particle_properties = {
-        decl_name: particle_properties[binding]
-        for decl_name, binding in bound_kernel.particle_property_bindings.items()
-    }
-    kernel_scalars = {decl_name: scalars[binding] for decl_name, binding in bound_kernel.scalar_bindings.items()}
-    kernel_field_data = {
-        decl_name: field_data[binding] for decl_name, binding in bound_kernel.field_data_bindings.items()
-    }
-
-    bound_kernel.kernel(kernel_particle_properties, kernel_scalars, kernel_field_data)
+    run_bound_kernel(bound_kernel, particle_properties, scalars, field_data)
 
     assert particle_properties["my_tendency"][0] == pytest.approx(expected_active)
     assert particle_properties["my_tendency"][1] == pytest.approx(-0.8)
@@ -245,6 +237,7 @@ def test_relaxation_kernels_cover_all_field_target_combinations(
     form: str,
     coefficient_kind: str,
     field_layout_axes: tuple[str, ...],
+    run_bound_kernel,
 ) -> None:
     bound_kernel = _construct_relaxation_kernel(
         form,
@@ -263,16 +256,7 @@ def test_relaxation_kernels_cover_all_field_target_combinations(
         prop=particle_properties["my_prop"][0],
     )
 
-    kernel_particle_properties = {
-        decl_name: particle_properties[binding]
-        for decl_name, binding in bound_kernel.particle_property_bindings.items()
-    }
-    kernel_scalars = {decl_name: scalars[binding] for decl_name, binding in bound_kernel.scalar_bindings.items()}
-    kernel_field_data = {
-        decl_name: field_data[binding] for decl_name, binding in bound_kernel.field_data_bindings.items()
-    }
-
-    bound_kernel.kernel(kernel_particle_properties, kernel_scalars, kernel_field_data)
+    run_bound_kernel(bound_kernel, particle_properties, scalars, field_data)
 
     assert particle_properties["my_tendency"][0] == pytest.approx(expected_active)
     assert particle_properties["my_tendency"][1] == pytest.approx(-0.8)

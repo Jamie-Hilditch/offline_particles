@@ -77,14 +77,6 @@ def _affine_value_at(
     )
 
 
-def _kernel_call_dict(bound_kernel: BoundKernel, values: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
-    return {decl_name: values[binding] for decl_name, binding in bound_kernel.particle_property_bindings.items()}
-
-
-def _field_call_dict(bound_kernel: BoundKernel, values: dict[str, FieldData]) -> dict[str, FieldData]:
-    return {decl_name: values[binding] for decl_name, binding in bound_kernel.field_data_bindings.items()}
-
-
 def _build_particle_properties() -> dict[str, np.ndarray]:
     return {
         "status": np.array([0, INACTIVE_FLAG], dtype=np.uint8),
@@ -150,6 +142,7 @@ def test_construct_advection_kernel_binds_and_matches_affine_fields(
     scaling_layout: tuple[ArrayAxis, ...],
     N: int,
     metric: bool,
+    run_bound_kernel,
 ) -> None:
     bound_kernel = construct_advection_kernel(
         "idx_tendency_out",
@@ -194,11 +187,7 @@ def test_construct_advection_kernel_binds_and_matches_affine_fields(
     expected = particle_properties["idx_tendency_out"].copy()
     expected[0] += expected_delta
 
-    bound_kernel.kernel(
-        _kernel_call_dict(bound_kernel, particle_properties),
-        {},
-        _field_call_dict(bound_kernel, field_data),
-    )
+    run_bound_kernel(bound_kernel, particle_properties, {}, field_data)
 
     np.testing.assert_allclose(particle_properties["idx_tendency_out"], expected, rtol=1e-12, atol=1e-12)
 
