@@ -683,6 +683,7 @@ class TimeDependentField(Field):
         data: npt.NDArray,
         axes: tuple[ArrayAxis | str, ...],
         staggers: tuple[Stagger | str, ...],
+        output_dtype: npt.DTypeLike | None = None,
         *,
         attrs: dict[str, Any] | None = None,
     ) -> "TimeDependentField":
@@ -696,6 +697,8 @@ class TimeDependentField(Field):
             Tuple of axes corresponding to the spatial dimensions of the field.
         staggers : tuple[Stagger | str, ...]
             Tuple of staggers corresponding to the spatial dimensions of the field.
+        output_dtype : npt.DTypeLike | None, optional
+            The data type of the output array.
         attrs : dict[str, Any] | None, optional
             Attributes for the field.
 
@@ -712,7 +715,7 @@ class TimeDependentField(Field):
         layout = ArrayLayout(axes, staggers)
         if not isinstance(data, np.ndarray):
             raise TypeError(f"Expected a NumPy array, got {type(data).__name__}")
-        return cls(data, layout, NumpyArray, attrs=attrs)
+        return cls(data, layout, NumpyArray, output_dtype=output_dtype, attrs=attrs)
 
     @classmethod
     def from_dask(
@@ -720,6 +723,7 @@ class TimeDependentField(Field):
         data: da.Array,
         axes: tuple[ArrayAxis | str, ...],
         staggers: tuple[Stagger | str, ...],
+        output_dtype: npt.DTypeLike | None = None,
         *,
         preload_space: bool = False,
         attrs: dict[str, Any] | None = None,
@@ -734,6 +738,8 @@ class TimeDependentField(Field):
             Tuple of axes corresponding to the spatial dimensions of the field.
         staggers : tuple[Stagger | str, ...]
             Tuple of staggers corresponding to the spatial dimensions of the field.
+        output_dtype : npt.DTypeLike | None, optional
+            The data type of the output array.
         preload_space : bool, optional
             If True, the spatial arrays will be preloaded into memory as NumPy arrays.
             If False (default), the spatial arrays will remain as Dask arrays and will be computed on demand.
@@ -757,7 +763,7 @@ class TimeDependentField(Field):
             factory = NumpyArray
         else:
             factory = ChunkedDaskArray
-        return cls(data, layout, factory, attrs=attrs)
+        return cls(data, layout, factory, output_dtype=output_dtype, attrs=attrs)
 
     @classmethod
     def from_arraylike(
@@ -765,6 +771,7 @@ class TimeDependentField(Field):
         data: npt.ArrayLike,
         axes: tuple[ArrayAxis | str, ...],
         staggers: tuple[Stagger | str, ...],
+        output_dtype: npt.DTypeLike | None = None,
         *,
         attrs: dict[str, Any] | None = None,
     ) -> "TimeDependentField":
@@ -778,6 +785,8 @@ class TimeDependentField(Field):
             Tuple of axes corresponding to the spatial dimensions of the field.
         staggers : tuple[Stagger | str, ...]
             Tuple of staggers corresponding to the spatial dimensions of the field.
+        output_dtype : npt.DTypeLike | None, optional
+            The data type of the output array.
         attrs : dict[str, Any] | None, optional
             Attributes for the field.
 
@@ -798,7 +807,7 @@ class TimeDependentField(Field):
                 "Use TimeDependentField.from_dask for Dask arrays.",
                 stacklevel=2,
             )
-        return cls.from_numpy(np.asarray(data), axes, staggers, attrs=attrs)
+        return cls.from_numpy(np.asarray(data), axes, staggers, output_dtype=output_dtype, attrs=attrs)
 
     @classmethod
     def from_xarray(
@@ -806,6 +815,7 @@ class TimeDependentField(Field):
         data: xr.DataArray,
         time_dim: str,
         dims: Mapping[str, tuple[ArrayAxis | str, Stagger | str]],
+        output_dtype: npt.DTypeLike | None = None,
         *,
         ignore_missing_dims: bool = False,
     ) -> "TimeDependentField":
@@ -820,6 +830,8 @@ class TimeDependentField(Field):
         dims : Mapping[str, tuple[ArrayAxis | str, Stagger | str]]
             Mapping of spatial dimension names to ``(ArrayAxis, Stagger)`` tuples.
             Cannot be combined with keyword arguments.
+        output_dtype : npt.DTypeLike | None, optional
+            The data type of the output array.
         ignore_missing_dims : bool, optional
             If True, dimensions specified in ``dims`` that are not present in the DataArray will
             be ignored. If False (default), a ValueError will be raised.
@@ -877,6 +889,7 @@ class TimeDependentField(Field):
                 data=array,
                 axes=tuple(axes),
                 staggers=tuple(staggers),
+                output_dtype=output_dtype,
                 attrs=data.attrs,
             )
         else:
@@ -884,6 +897,7 @@ class TimeDependentField(Field):
                 data=array,
                 axes=tuple(axes),
                 staggers=tuple(staggers),
+                output_dtype=output_dtype,
                 attrs=data.attrs,
             )
 
