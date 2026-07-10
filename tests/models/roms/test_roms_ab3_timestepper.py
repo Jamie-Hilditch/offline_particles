@@ -16,6 +16,7 @@ def _install_constructor_spies(
     *,
     patch_linear_damping: bool = True,
     patch_quadratic_damping: bool = True,
+    patch_buoyancy: bool = True,
 ) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
     calls: dict[str, dict[str, Any]] = {}
     sentinels = {
@@ -74,12 +75,13 @@ def _install_constructor_spies(
             stub("quadratic_damping", sentinels["quadratic_damping"]),
             raising=True,
         )
-    monkeypatch.setattr(
-        roms_models,
-        "construct_buoyancy_force_accumulation_kernel",
-        stub("buoyancy", sentinels["buoyancy"]),
-        raising=True,
-    )
+    if patch_buoyancy:
+        monkeypatch.setattr(
+            roms_models,
+            "construct_buoyancy_force_kernel",
+            stub("buoyancy", sentinels["buoyancy"]),
+            raising=True,
+        )
     monkeypatch.setattr(
         roms_models, "construct_add_property_kernel", stub("add_property", sentinels["add_property"]), raising=True
     )
@@ -148,7 +150,6 @@ def test_roms_ab3_timestepper_forwards_compute_zidx_kwargs(monkeypatch: pytest.M
 
     timestepper = roms_models.roms_ab3_timestepper(
         vertical_velocity=False,
-        buoyant_particles=False,
         hc="hc_scalar",
         NZ="nz_scalar",
         h="bathymetry",
@@ -175,7 +176,6 @@ def test_roms_ab3_timestepper_with_buoyancy_and_damping_wires_optional_kernels(
 
     timestepper = roms_models.roms_ab3_timestepper(
         vertical_velocity=False,
-        buoyant_particles=True,
         index_padding=9,
         u="u_field",
         v="v_field",
@@ -188,10 +188,9 @@ def test_roms_ab3_timestepper_with_buoyancy_and_damping_wires_optional_kernels(
         rho="density",
         hc="hc_scalar",
         NZ="nz_scalar",
-        g="gravity",
-        rho0="rho0_scalar",
         constant_linear_damping_coefficient=0.25,
         property_quadratic_damping_coefficient="quad_drag",
+        scalar_buoyancy_coefficient="g_over_rho0",
     )
 
     assert isinstance(timestepper, ABTimestepper)
@@ -216,9 +215,12 @@ def test_roms_ab3_timestepper_with_buoyancy_and_damping_wires_optional_kernels(
     }
     assert calls["buoyancy"]["args"] == ("_dw_rel0",)
     assert calls["buoyancy"]["kwargs"] == {
+        "particle_density": "rho",
         "density_field": "density",
-        "reference_density": "rho0_scalar",
-        "gravity": "gravity",
+        "array_layout": roms_models._DENSITY_FIELD_ARRAY_LAYOUT,
+        "constant_coefficient": None,
+        "property_coefficient": None,
+        "scalar_coefficient": "g_over_rho0",
     }
     assert calls["add_property"]["args"] == ("w_rel", "_dz0")
     assert calls["add_property"]["kwargs"] == {}
@@ -383,6 +385,33 @@ def test_roms_ab3_timestepper_quadratic_damping_rejects_multiple_coefficient_sel
         patch_linear_damping=patch_linear_damping,
         patch_quadratic_damping=patch_quadratic_damping,
     )
+
+    with pytest.raises(ValueError, match="Exactly one coefficient"):
+        roms_models.roms_ab3_timestepper(**kwargs)  # type: ignore[call-arg]
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "constant_buoyancy_coefficient": 0.5,
+            "property_buoyancy_coefficient": "buoyancy_coeff",
+        },
+        {
+            "constant_buoyancy_coefficient": 0.5,
+            "scalar_buoyancy_coefficient": "buoyancy_coeff",
+        },
+        {
+            "property_buoyancy_coefficient": "buoyancy_coeff",
+            "scalar_buoyancy_coefficient": "buoyancy_coeff_scalar",
+        },
+    ],
+)
+def test_roms_ab3_timestepper_buoyancy_rejects_multiple_coefficient_selectors(
+    monkeypatch: pytest.MonkeyPatch,
+    kwargs: dict[str, Any],
+) -> None:
+    _install_constructor_spies(monkeypatch, patch_buoyancy=False)
 
     with pytest.raises(ValueError, match="Exactly one coefficient"):
         roms_models.roms_ab3_timestepper(**kwargs)  # type: ignore[call-arg]
