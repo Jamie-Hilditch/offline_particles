@@ -8,11 +8,7 @@ import numpy as np
 import pytest
 
 from offline_particles.fields import TimeDependentField
-from offline_particles.spatial_arrays import BBox, ChunkedDaskArray, NumpyArray
-
-
-def _full_domain_bbox(nx: int) -> BBox:
-    return BBox(zmin=0.0, zmax=0.0, ymin=0.0, ymax=0.0, xmin=0.0, xmax=float(nx - 1))
+from offline_particles.spatial_arrays import ChunkedDaskArray, NumpyArray
 
 
 def _make_field(num_timesteps: int, nx: int = 3) -> TimeDependentField:
@@ -22,20 +18,20 @@ def _make_field(num_timesteps: int, nx: int = 3) -> TimeDependentField:
 
 
 class TestIncrementTime:
-    def test_advances_previous_and_next_slices(self) -> None:
+    def test_advances_previous_and_next_slices(self, full_domain_bbox) -> None:
         field = _make_field(4)
 
         field.increment_time()
 
         assert field._It == 1
-        previous_data, _ = field.previous_time_slice.get_data_subset(_full_domain_bbox(nx=3))
-        next_data, _ = field.next_time_slice.get_data_subset(_full_domain_bbox(nx=3))
+        previous_data, _ = field.previous_time_slice.get_data_subset(full_domain_bbox(nx=3))
+        next_data, _ = field.next_time_slice.get_data_subset(full_domain_bbox(nx=3))
         np.testing.assert_array_equal(previous_data, np.full(3, 1.0))
         np.testing.assert_array_equal(next_data, np.full(3, 2.0))
 
-    def test_invalidates_delta_and_output_caches(self) -> None:
+    def test_invalidates_delta_and_output_caches(self, full_domain_bbox) -> None:
         field = _make_field(4)
-        field.get_field_data(0.5, _full_domain_bbox(nx=3))
+        field.get_field_data(0.5, full_domain_bbox(nx=3))
         assert field._output_valid is True
         assert field._cached_delta_valid is True
 
@@ -53,22 +49,22 @@ class TestIncrementTime:
 
 
 class TestDecrementTime:
-    def test_moves_previous_and_next_slices_back(self) -> None:
+    def test_moves_previous_and_next_slices_back(self, full_domain_bbox) -> None:
         field = _make_field(4)
         field.increment_time()  # It == 1
 
         field.decrement_time()
 
         assert field._It == 0
-        previous_data, _ = field.previous_time_slice.get_data_subset(_full_domain_bbox(nx=3))
-        next_data, _ = field.next_time_slice.get_data_subset(_full_domain_bbox(nx=3))
+        previous_data, _ = field.previous_time_slice.get_data_subset(full_domain_bbox(nx=3))
+        next_data, _ = field.next_time_slice.get_data_subset(full_domain_bbox(nx=3))
         np.testing.assert_array_equal(previous_data, np.full(3, 0.0))
         np.testing.assert_array_equal(next_data, np.full(3, 1.0))
 
-    def test_invalidates_delta_and_output_caches(self) -> None:
+    def test_invalidates_delta_and_output_caches(self, full_domain_bbox) -> None:
         field = _make_field(4)
         field.increment_time()  # It == 1
-        field.get_field_data(1.5, _full_domain_bbox(nx=3))  # stays at It == 1
+        field.get_field_data(1.5, full_domain_bbox(nx=3))  # stays at It == 1
         assert field._output_valid is True
 
         field.decrement_time()
@@ -84,9 +80,9 @@ class TestDecrementTime:
 
 
 class TestSetTimeIndex:
-    def test_same_index_is_noop(self) -> None:
+    def test_same_index_is_noop(self, full_domain_bbox) -> None:
         field = _make_field(4)
-        field.get_field_data(0.5, _full_domain_bbox(nx=3))
+        field.get_field_data(0.5, full_domain_bbox(nx=3))
         output_before = field._output
 
         field.set_time_index(0)
@@ -110,14 +106,14 @@ class TestSetTimeIndex:
 
         assert field._It == 0
 
-    def test_direct_jump_loads_correct_slices(self) -> None:
+    def test_direct_jump_loads_correct_slices(self, full_domain_bbox) -> None:
         field = _make_field(5)  # valid time indices are 0..3
 
         field.set_time_index(3)
 
         assert field._It == 3
-        previous_data, _ = field.previous_time_slice.get_data_subset(_full_domain_bbox(nx=3))
-        next_data, _ = field.next_time_slice.get_data_subset(_full_domain_bbox(nx=3))
+        previous_data, _ = field.previous_time_slice.get_data_subset(full_domain_bbox(nx=3))
+        next_data, _ = field.next_time_slice.get_data_subset(full_domain_bbox(nx=3))
         np.testing.assert_array_equal(previous_data, np.full(3, 3.0))
         np.testing.assert_array_equal(next_data, np.full(3, 4.0))
 

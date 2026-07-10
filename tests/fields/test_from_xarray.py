@@ -8,11 +8,13 @@ import xarray as xr
 from offline_particles.fields import StaticField, TimeDependentField
 from offline_particles.spatial_arrays import ArrayAxis, Stagger
 
+STANDARD_DIMS = {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")}
+
 
 class TestStaticFieldFromXarray:
     def test_3d_numpy_backed(self) -> None:
         data = xr.DataArray(np.ones((3, 4, 5), dtype=np.float64), dims=["z", "y", "x"])
-        field = StaticField.from_xarray(data, {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")})
+        field = StaticField.from_xarray(data, STANDARD_DIMS)
         assert isinstance(field, StaticField)
         assert field.spatial_shape == (3, 4, 5)
         assert field.staggers == (Stagger.CENTER, Stagger.CENTER, Stagger.CENTER)
@@ -20,7 +22,7 @@ class TestStaticFieldFromXarray:
     def test_3d_dims_as_variable(self) -> None:
         """Dims mapping can be passed as a variable."""
         data = xr.DataArray(np.ones((3, 4, 5), dtype=np.float64), dims=["z", "y", "x"])
-        dims = {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")}
+        dims = STANDARD_DIMS
         field = StaticField.from_xarray(data, dims)
         assert isinstance(field, StaticField)
         assert field.spatial_shape == (3, 4, 5)
@@ -53,19 +55,19 @@ class TestStaticFieldFromXarray:
 
     def test_3d_dask_backed(self) -> None:
         data = xr.DataArray(da.ones((3, 4, 5), chunks=(3, 4, 5), dtype=np.float64), dims=["z", "y", "x"])
-        field = StaticField.from_xarray(data, {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")})
+        field = StaticField.from_xarray(data, STANDARD_DIMS)
         assert isinstance(field, StaticField)
         assert field.spatial_shape == (3, 4, 5)
 
     def test_attrs_preserved(self) -> None:
         data = xr.DataArray(np.ones((3, 4, 5)), dims=["z", "y", "x"], attrs={"units": "m/s"})
-        field = StaticField.from_xarray(data, {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")})
+        field = StaticField.from_xarray(data, STANDARD_DIMS)
         assert field.attrs == {"units": "m/s"}
 
     def test_dim_order_preserved(self) -> None:
         """Field preserves the dimension ordering of the input DataArray."""
         data = xr.DataArray(np.arange(60, dtype=np.float64).reshape(5, 4, 3), dims=["x", "y", "z"])
-        field = StaticField.from_xarray(data, {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")})
+        field = StaticField.from_xarray(data, STANDARD_DIMS)
         assert isinstance(field, StaticField)
         # field preserves the dim ordering of the xarray DataArray (x, y, z) → shape (5, 4, 3)
         assert field.axes == (ArrayAxis.X, ArrayAxis.Y, ArrayAxis.Z)
@@ -91,7 +93,7 @@ class TestStaticFieldFromXarray:
     def test_validation_error_extra_dim(self) -> None:
         data = xr.DataArray(np.ones((4, 5)), dims=["y", "x"])
         with pytest.raises(ValueError, match="Dimensions in dims mapping not found in data"):
-            StaticField.from_xarray(data, {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")})  # extra z
+            StaticField.from_xarray(data, STANDARD_DIMS)  # extra z
 
     def test_validation_error_duplicate_axis(self) -> None:
         data = xr.DataArray(np.ones((3, 4, 5)), dims=["z", "y", "x"])
@@ -105,7 +107,7 @@ class TestStaticFieldFromXarray:
         data = xr.DataArray(np.ones((4, 5), dtype=np.float64), dims=["y", "x"])
         field = StaticField.from_xarray(
             data,
-            {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")},
+            STANDARD_DIMS,
             ignore_missing_dims=True,
         )
         assert isinstance(field, StaticField)
@@ -116,16 +118,14 @@ class TestStaticFieldFromXarray:
 class TestTimeDependentFieldFromXarray:
     def test_4d_numpy_backed(self) -> None:
         data = xr.DataArray(np.ones((3, 4, 5, 6), dtype=np.float64), dims=["t", "z", "y", "x"])
-        field = TimeDependentField.from_xarray(
-            data, "t", {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")}
-        )
+        field = TimeDependentField.from_xarray(data, "t", STANDARD_DIMS)
         assert isinstance(field, TimeDependentField)
         assert field.spatial_shape == (4, 5, 6)
 
     def test_4d_dims_as_variable(self) -> None:
         """Dims mapping can be passed as a variable."""
         data = xr.DataArray(np.ones((3, 4, 5, 6), dtype=np.float64), dims=["t", "z", "y", "x"])
-        dims = {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")}
+        dims = STANDARD_DIMS
         field = TimeDependentField.from_xarray(data, "t", dims)
         assert isinstance(field, TimeDependentField)
         assert field.spatial_shape == (4, 5, 6)
@@ -158,9 +158,7 @@ class TestTimeDependentFieldFromXarray:
 
     def test_4d_dask_backed(self) -> None:
         data = xr.DataArray(da.ones((3, 4, 5, 6), chunks=(1, 4, 5, 6), dtype=np.float64), dims=["t", "z", "y", "x"])
-        field = TimeDependentField.from_xarray(
-            data, "t", {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")}
-        )
+        field = TimeDependentField.from_xarray(data, "t", STANDARD_DIMS)
         assert isinstance(field, TimeDependentField)
         assert field.spatial_shape == (4, 5, 6)
 
@@ -172,9 +170,7 @@ class TestTimeDependentFieldFromXarray:
     def test_time_dim_moved_to_front(self) -> None:
         """DataArray with time not at first position: time is moved to front, spatial ordering preserved."""
         data = xr.DataArray(np.ones((4, 3, 6, 5), dtype=np.float64), dims=["z", "t", "x", "y"])
-        field = TimeDependentField.from_xarray(
-            data, "t", {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")}
-        )
+        field = TimeDependentField.from_xarray(data, "t", STANDARD_DIMS)
         assert isinstance(field, TimeDependentField)
         # time moved to front, spatial dims keep original order (z, x, y) → shape (3, 4, 6, 5)
         assert field.data.shape == (3, 4, 6, 5)
@@ -193,9 +189,7 @@ class TestTimeDependentFieldFromXarray:
     def test_validation_error_extra_spatial_dim(self) -> None:
         data = xr.DataArray(np.ones((3, 4, 5)), dims=["t", "y", "x"])
         with pytest.raises(ValueError, match="Dimensions in dims mapping not found in data"):
-            TimeDependentField.from_xarray(
-                data, "t", {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")}
-            )
+            TimeDependentField.from_xarray(data, "t", STANDARD_DIMS)
 
     def test_validation_error_duplicate_axis(self) -> None:
         data = xr.DataArray(np.ones((3, 4, 5, 6)), dims=["t", "z", "y", "x"])
@@ -210,7 +204,7 @@ class TestTimeDependentFieldFromXarray:
         field = TimeDependentField.from_xarray(
             data,
             "t",
-            {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")},
+            STANDARD_DIMS,
             ignore_missing_dims=True,
         )
         assert isinstance(field, TimeDependentField)

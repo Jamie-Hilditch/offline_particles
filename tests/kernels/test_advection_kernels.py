@@ -20,18 +20,7 @@ from offline_particles.kernels._kernels import BoundKernel, ParticleKernel
 from offline_particles.kernels.advection import advection_particle_kernel_factory, construct_advection_kernel
 from offline_particles.kernels.status import INACTIVE_FLAG
 from offline_particles.spatial_arrays import ArrayAxis
-
-_PARTICLE_COORDS = {
-    ArrayAxis.Z: 1.25,
-    ArrayAxis.Y: 2.5,
-    ArrayAxis.X: 3.75,
-}
-
-_FIELD_OFFSETS = {
-    ArrayAxis.Z: 0.125,
-    ArrayAxis.Y: -0.25,
-    ArrayAxis.X: 0.5,
-}
+from tests.kernels.conftest import PARTICLE_COORDS, offsets_in_layout
 
 _VELOCITY_BASE = 5.0
 _SCALING_BASE = 3.0
@@ -57,14 +46,6 @@ _REPRESENTATIVE_CASES = [
 ]
 
 
-def _particle_coords_in_layout(layout: tuple[ArrayAxis, ...]) -> tuple[float, ...]:
-    return tuple(_PARTICLE_COORDS[axis] for axis in layout)
-
-
-def _offsets_in_layout(layout: tuple[ArrayAxis, ...]) -> tuple[float, ...]:
-    return tuple(_FIELD_OFFSETS[axis] for axis in layout)
-
-
 def _field_shape_for_ndim(ndim: int, N: int) -> tuple[int, ...]:
     return tuple(2 * N + 4 + axis_index for axis_index in range(ndim))
 
@@ -81,7 +62,7 @@ def _build_affine_field(
     field = np.full(shape, base, dtype=np.float64)
     for coefficient, grid in zip(tuple(coefficients)[: len(layout)], grids, strict=True):
         field = field + coefficient * grid
-    return field, _offsets_in_layout(layout)
+    return field, offsets_in_layout(layout)
 
 
 def _affine_value_at(
@@ -91,25 +72,17 @@ def _affine_value_at(
     offsets: tuple[float, ...],
 ) -> float:
     return base + sum(
-        coefficient * (_PARTICLE_COORDS[axis] + offset)
+        coefficient * (PARTICLE_COORDS[axis] + offset)
         for coefficient, axis, offset in zip(tuple(coefficients)[: len(layout)], layout, offsets, strict=True)
     )
-
-
-def _kernel_call_dict(bound_kernel: BoundKernel, values: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
-    return {decl_name: values[binding] for decl_name, binding in bound_kernel.particle_property_bindings.items()}
-
-
-def _field_call_dict(bound_kernel: BoundKernel, values: dict[str, FieldData]) -> dict[str, FieldData]:
-    return {decl_name: values[binding] for decl_name, binding in bound_kernel.field_data_bindings.items()}
 
 
 def _build_particle_properties() -> dict[str, np.ndarray]:
     return {
         "status": np.array([0, INACTIVE_FLAG], dtype=np.uint8),
-        "zidx": np.array([_PARTICLE_COORDS[ArrayAxis.Z], _PARTICLE_COORDS[ArrayAxis.Z]], dtype=np.float64),
-        "yidx": np.array([_PARTICLE_COORDS[ArrayAxis.Y], _PARTICLE_COORDS[ArrayAxis.Y]], dtype=np.float64),
-        "xidx": np.array([_PARTICLE_COORDS[ArrayAxis.X], _PARTICLE_COORDS[ArrayAxis.X]], dtype=np.float64),
+        "zidx": np.array([PARTICLE_COORDS[ArrayAxis.Z], PARTICLE_COORDS[ArrayAxis.Z]], dtype=np.float64),
+        "yidx": np.array([PARTICLE_COORDS[ArrayAxis.Y], PARTICLE_COORDS[ArrayAxis.Y]], dtype=np.float64),
+        "xidx": np.array([PARTICLE_COORDS[ArrayAxis.X], PARTICLE_COORDS[ArrayAxis.X]], dtype=np.float64),
         "idx_tendency": np.array([1.5, -2.5], dtype=np.float64),
     }
 
@@ -169,6 +142,7 @@ def test_construct_advection_kernel_binds_and_matches_affine_fields(
     scaling_layout: tuple[ArrayAxis, ...],
     N: int,
     metric: bool,
+    run_bound_kernel,
 ) -> None:
     bound_kernel = construct_advection_kernel(
         "idx_tendency_out",
@@ -213,11 +187,7 @@ def test_construct_advection_kernel_binds_and_matches_affine_fields(
     expected = particle_properties["idx_tendency_out"].copy()
     expected[0] += expected_delta
 
-    bound_kernel.kernel(
-        _kernel_call_dict(bound_kernel, particle_properties),
-        {},
-        _field_call_dict(bound_kernel, field_data),
-    )
+    run_bound_kernel(bound_kernel, particle_properties, {}, field_data)
 
     np.testing.assert_allclose(particle_properties["idx_tendency_out"], expected, rtol=1e-12, atol=1e-12)
 

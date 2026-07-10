@@ -4,15 +4,10 @@ import numpy as np
 import pytest
 
 from offline_particles.fieldset import Fieldset
-from offline_particles.kernels import BoundKernel, ParticleKernel
 from offline_particles.kernels.status import Status
 from offline_particles.launcher import Launcher
 from offline_particles.particles import Particles
-from offline_particles.timestepping import ABTimestepper, Clock
-
-
-def _make_clock() -> Clock:
-    return Clock(np.array([0.0, 1.0, 2.0], dtype=np.float64), np.float64(1.0))
+from offline_particles.timestepping import ABTimestepper
 
 
 def _make_particles() -> Particles:
@@ -34,13 +29,6 @@ def _make_particles() -> Particles:
         dtype=np.uint8,
     )
     return particles
-
-
-def _make_noop_kernel() -> BoundKernel:
-    def _noop(pp, sc, fd) -> None:
-        pass
-
-    return BoundKernel(ParticleKernel(_noop))
 
 
 class _RecordingLauncher:
@@ -93,18 +81,18 @@ class TestABTimestepperPrognosticKernelConstruction:
 
 
 class TestABTimestepperExecution:
-    def test_run_step_launches_tendency_then_update_then_status_bump(self) -> None:
+    def test_run_step_launches_tendency_then_update_then_status_bump(self, make_clock, make_bound_noop_kernel) -> None:
         timestepper = ABTimestepper(order=2)
-        tendency_0 = _make_noop_kernel()
-        tendency_1 = _make_noop_kernel()
-        ab_update = _make_noop_kernel()
+        tendency_0 = make_bound_noop_kernel()
+        tendency_1 = make_bound_noop_kernel()
+        ab_update = make_bound_noop_kernel()
 
         timestepper.add_tendency_kernels(tendency_0, tendency_1)
         timestepper.add_ab_update_kernels(ab_update)
 
         launcher = _RecordingLauncher()
         particles = _make_particles()
-        clock = _make_clock()
+        clock = make_clock(np.array([0.0, 1.0, 2.0], dtype=np.float64), 1.0)
 
         timestepper.run_step(particles, launcher, clock)  # type: ignore
 
@@ -123,11 +111,13 @@ class TestABTimestepperExecution:
             (3, np.uint8(Status.MULTISTEP_2)),
         ],
     )
-    def test_run_initialisation_sets_expected_ab_statuses(self, order: int, expected_status: np.uint8) -> None:
+    def test_run_initialisation_sets_expected_ab_statuses(
+        self, order: int, expected_status: np.uint8, make_clock
+    ) -> None:
         timestepper = ABTimestepper(order=order)
         particles = _make_particles()
         launcher = Launcher(Fieldset(1, 1, 1, 1), history_size=1)
-        clock = _make_clock()
+        clock = make_clock(np.array([0.0, 1.0, 2.0], dtype=np.float64), 1.0)
 
         timestepper.run_initialisation(particles, launcher, clock)
 
