@@ -11,19 +11,19 @@ from ..._kernels import (
 )
 from ...input_declarations import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
 from ...layout_validators import validate_YX_ordering, validate_Z_ordering
-from .vertical_coordinate import compute_z_kernel_function, compute_zidx_kernel_function
+from ._vertical_coordinate import compute_z_kernel_function, compute_zidx_kernel_function
 
 __all__ = [
     "construct_compute_z_kernel",
     "construct_compute_zidx_kernel",
 ]
 
-z_declaration = ParticlePropertyDeclaration("z", np.float64)
-hc_declaration = ScalarDeclaration("hc", np.float64)
-NZ_declaration = ScalarDeclaration("NZ", np.int32)
-h_declaration = FieldDataDeclaration("h", np.float64, [validate_YX_ordering])
-zeta_declaration = FieldDataDeclaration("zeta", np.float64, [validate_YX_ordering])
-C_declaration = FieldDataDeclaration("C", np.float64, [validate_Z_ordering])
+z_declaration = ParticlePropertyDeclaration("z", np.floating)
+hc_declaration = ScalarDeclaration("hc", np.floating)
+NZ_declaration = ScalarDeclaration("NZ", np.integer)
+h_declaration = FieldDataDeclaration("h", np.floating, [validate_YX_ordering])
+zeta_declaration = FieldDataDeclaration("zeta", np.floating, [validate_YX_ordering])
+C_declaration = FieldDataDeclaration("C", np.floating, [validate_Z_ordering])
 
 
 def construct_compute_z_kernel(
@@ -49,7 +49,7 @@ def construct_compute_z_kernel(
     zeta : str, optional
         Binding for the sea surface height field
     C : str, optional
-        Binding for the vertical stretching function field
+        Binding for the vertical stretching function field. Must be strictly increasing.
 
     Returns
     -------
@@ -115,7 +115,11 @@ def construct_compute_zidx_kernel(
     zeta : str, optional
         Binding for the sea surface height field
     C : str, optional
-        Binding for the vertical stretching function field
+        Binding for the vertical stretching function field. Must be strictly increasing; a
+        binary search over `C` is used to invert the S-coordinate transform, and behavior is
+        undefined if this precondition does not hold. This is a physical requirement of the ROMS
+        S-coordinate system (a valid vertical grid never has degenerate or crossing levels), so
+        it should always be satisfied by real ROMS output.
 
     Returns
     -------

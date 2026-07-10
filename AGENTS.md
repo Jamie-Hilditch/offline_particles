@@ -39,7 +39,7 @@ A `BoundKernel` binds a `ParticleKernel`'s declared input names to concrete argu
 
 Kernel construction is organized by physics domain as submodules under `kernels/`: `advection`, `buoyancy`, `relaxation`, `interpolation`, `timestepping` (Adams-Bashforth update kernels), `validation` (bounding-box / finite-index checks), `roms` (ROMS-specific z-coordinate kernels), `status`, `timed_activation`, `base`. Each exposes `construct_*_kernel(...)` factory functions returning `ParticleKernel`s rather than exposing raw kernel functions. `models/roms/__init__.py` (`roms_ab3_timestepper`) shows the top-level pattern: assemble domain kernels into tendency/AB-update/post-step kernel lists and hand them to an `ABTimestepper`.
 
-Some kernel input/output (e.g. `kernels/_core/inputs/field_data.pyx`, `kernels/roms/vertical_coordinate/vertical_coordinate.pyx`, `kernels/status/_status.pyx`) is implemented in Cython for performance and compiled via CMake (see `CMakeLists.txt`'s `EXTENSION_MODULES` list) — add new compiled modules there, not just as `.pyx` files.
+Some kernel input/output (e.g. `kernels/_core/inputs/field_data.pyx`, `kernels/status/_status.pyx`) is implemented in Cython for performance and compiled via CMake (see `CMakeLists.txt`'s `EXTENSION_MODULES` list) — add new compiled modules there, not just as `.pyx` files.
 
 ### Fields and data (`fields.py`, `fieldset.py`, `spatial_arrays.py`)
 
