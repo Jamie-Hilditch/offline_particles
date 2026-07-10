@@ -131,10 +131,11 @@ def lagrange2N_1D_particle_factory(N: int) -> Callable[[npt.NDArray[np.inexact],
         # work in the field array's dtype to avoid unnecessary casts and preserve precision
         scalar_t = field_array.dtype.type
 
-        # get integer and fractional parts of the index
-        shifted_idx = offset_idx - N
+        # get integer and fractional parts of the index; shift by N-1 (not N) so the 2N-point
+        # stencil straddles offset_idx symmetrically: N points at-or-below the lower index, N above
+        shifted_idx = offset_idx - (N - 1)
         I0 = _truncate_index(shifted_idx, max_idx)
-        x0 = N + shifted_idx - I0
+        x0 = (N - 1) + shifted_idx - I0
 
         # accumulate value
         value = scalar_t(0.0)
@@ -305,13 +306,14 @@ def lagrange2N_2D_particle_factory(
         # work in the field array's dtype to avoid unnecessary casts and preserve precision
         scalar_t = field_array.dtype.type
 
-        # get integer and fractional parts of the index
-        shifted_idx_0 = offset_idx_0 - N
-        shifted_idx_1 = offset_idx_1 - N
+        # get integer and fractional parts of the index; shift by N-1 (not N) so the 2N-point
+        # stencil straddles the target symmetrically: N points at-or-below the lower index, N above
+        shifted_idx_0 = offset_idx_0 - (N - 1)
+        shifted_idx_1 = offset_idx_1 - (N - 1)
         I0 = _truncate_index(shifted_idx_0, max_idx_0)
         I1 = _truncate_index(shifted_idx_1, max_idx_1)
-        x0 = N + shifted_idx_0 - I0
-        x1 = N + shifted_idx_1 - I1
+        x0 = (N - 1) + shifted_idx_0 - I0
+        x1 = (N - 1) + shifted_idx_1 - I1
 
         # compute lagrange basis polynomial weights
         # the branching is ugly but N is a compile-time constant and with this numba can use registers for N = 1, 2 and 3
@@ -541,16 +543,17 @@ def lagrange2N_3D_particle_factory(
         # work in the field array's dtype to avoid unnecessary casts and preserve precision
         scalar_t = field_array.dtype.type
 
-        # get integer and fractional parts of the index
-        shifted_idx_0 = offset_idx_0 - N
-        shifted_idx_1 = offset_idx_1 - N
-        shifted_idx_2 = offset_idx_2 - N
+        # get integer and fractional parts of the index; shift by N-1 (not N) so the 2N-point
+        # stencil straddles the target symmetrically: N points at-or-below the lower index, N above
+        shifted_idx_0 = offset_idx_0 - (N - 1)
+        shifted_idx_1 = offset_idx_1 - (N - 1)
+        shifted_idx_2 = offset_idx_2 - (N - 1)
         I0 = _truncate_index(shifted_idx_0, max_idx_0)
         I1 = _truncate_index(shifted_idx_1, max_idx_1)
         I2 = _truncate_index(shifted_idx_2, max_idx_2)
-        x0 = N + shifted_idx_0 - I0
-        x1 = N + shifted_idx_1 - I1
-        x2 = N + shifted_idx_2 - I2
+        x0 = (N - 1) + shifted_idx_0 - I0
+        x1 = (N - 1) + shifted_idx_1 - I1
+        x2 = (N - 1) + shifted_idx_2 - I2
 
         # compute lagrange basis polynomial weights
         # the branching is ugly but N is a compile-time constant and with this numba can use registers for N = 1, 2 and 3

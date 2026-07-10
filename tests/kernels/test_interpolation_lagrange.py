@@ -15,10 +15,20 @@ from offline_particles.kernels.interpolation import (
 
 
 def _stencil_origin_and_local_position(idx: float, N: int, offset: float = 0.0) -> tuple[int, float]:
-    offset_idx = idx + offset - N
+    offset_idx = idx + offset - (N - 1)
     I0 = int(offset_idx)
-    x0 = N + offset_idx - I0
+    x0 = (N - 1) + offset_idx - I0
     return I0, x0
+
+
+# standalone Lagrange basis polynomial evaluator, written independently of production code
+def _independent_lagrange_basis_weight(x: float, j: int, num_nodes: int) -> float:
+    weight = 1.0
+    for k in range(num_nodes):
+        if k == j:
+            continue
+        weight *= (x - k) / (j - k)
+    return weight
 
 
 @pytest.mark.parametrize("N", [1, 2, 3, 4])
@@ -55,6 +65,74 @@ def test_lagrange_1d_not_exact_for_degree_2n_polynomial(N: int) -> None:
 
     expected = polynomial(x0)
     assert abs(output[0] - expected) > 1e-10
+
+
+def test_lagrange_1d_matches_hand_computed_linear_interpolation() -> None:
+    # field = [0, 10, 40, 90]; querying idx=2.3 should bracket indices 2 and 3:
+    # 40 + 0.3*(90-40) = 55. A stencil shifted one cell too far left would instead
+    # extrapolate from indices 1 and 2, giving 49.
+    impl = lagrange2N_1D_particle_factory(N=1)
+    field = np.array([0.0, 10.0, 40.0, 90.0], dtype=np.float64)
+
+    result = impl(field, np.float64(2.3), field.shape[0] - 2)
+
+    assert result == pytest.approx(55.0)
+
+
+@pytest.mark.parametrize("N", [1, 2, 3, 4])
+def test_lagrange_1d_stencil_is_symmetric_about_the_lower_index(N: int) -> None:
+    """The 2N-point stencil for idx=k+0.5 must span [k-N+1, k+N]: N points on either side of k."""
+    impl = lagrange2N_1D_particle_factory(N=N)
+    k = 20
+    idx = k + 0.5
+    field = np.zeros(64, dtype=np.float64)
+    marker_index = k + N  # rightmost point of the correct window; outside the old (shifted) window
+    field[marker_index] = 1.0
+    max_idx = field.shape[0] - 2 * N
+
+    result = impl(field, np.float64(idx), max_idx)
+
+    x0 = N - 0.5  # local position of idx relative to the correct I0 = k - N + 1
+    expected = _independent_lagrange_basis_weight(x0, 2 * N - 1, 2 * N)
+    assert expected != 0.0
+    assert result == pytest.approx(expected)
+
+
+@pytest.mark.parametrize("N", [1, 2, 3])
+def test_lagrange_2d_stencil_is_symmetric_about_the_lower_index(N: int) -> None:
+    impl = lagrange2N_2D_particle_factory(N=N)
+    k0, k1 = 20, 18
+    idx0, idx1 = k0 + 0.5, k1 + 0.5
+    field = np.zeros((64, 64), dtype=np.float64)
+    field[k0 + N, k1 + N] = 1.0
+    max_idx0 = field.shape[0] - 2 * N
+    max_idx1 = field.shape[1] - 2 * N
+
+    result = impl(field, np.float64(idx0), np.float64(idx1), max_idx0, max_idx1)
+
+    weight = _independent_lagrange_basis_weight(N - 0.5, 2 * N - 1, 2 * N)
+    expected = weight**2
+    assert expected != 0.0
+    assert result == pytest.approx(expected)
+
+
+@pytest.mark.parametrize("N", [1, 2])
+def test_lagrange_3d_stencil_is_symmetric_about_the_lower_index(N: int) -> None:
+    impl = lagrange2N_3D_particle_factory(N=N)
+    k0, k1, k2 = 16, 14, 12
+    idx0, idx1, idx2 = k0 + 0.5, k1 + 0.5, k2 + 0.5
+    field = np.zeros((40, 40, 40), dtype=np.float64)
+    field[k0 + N, k1 + N, k2 + N] = 1.0
+    max_idx0 = field.shape[0] - 2 * N
+    max_idx1 = field.shape[1] - 2 * N
+    max_idx2 = field.shape[2] - 2 * N
+
+    result = impl(field, np.float64(idx0), np.float64(idx1), np.float64(idx2), max_idx0, max_idx1, max_idx2)
+
+    weight = _independent_lagrange_basis_weight(N - 0.5, 2 * N - 1, 2 * N)
+    expected = weight**3
+    assert expected != 0.0
+    assert result == pytest.approx(expected)
 
 
 @pytest.mark.parametrize("N", [1, 2, 3])
