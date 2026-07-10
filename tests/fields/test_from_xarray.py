@@ -100,6 +100,18 @@ class TestStaticFieldFromXarray:
                 data, {"z": ("Z", "center"), "y": ("Z", "center"), "x": ("X", "center")}
             )  # both z and y map to Z axis
 
+    def test_ignore_missing_dims_true_skips_extra_dims_mapping(self) -> None:
+        """When ignore_missing_dims=True, dims entries absent from the data are silently ignored."""
+        data = xr.DataArray(np.ones((4, 5), dtype=np.float64), dims=["y", "x"])
+        field = StaticField.from_xarray(
+            data,
+            {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")},
+            ignore_missing_dims=True,
+        )
+        assert isinstance(field, StaticField)
+        assert field.spatial_shape == (4, 5)
+        assert ArrayAxis.Z not in field.axes
+
 
 class TestTimeDependentFieldFromXarray:
     def test_4d_numpy_backed(self) -> None:
@@ -191,3 +203,16 @@ class TestTimeDependentFieldFromXarray:
             TimeDependentField.from_xarray(
                 data, "t", {"z": ("Z", "center"), "y": ("Z", "center"), "x": ("X", "center")}
             )  # both z and y map to Z axis
+
+    def test_ignore_missing_dims_true_skips_extra_dims_mapping(self) -> None:
+        """When ignore_missing_dims=True, dims entries absent from the data are silently ignored."""
+        data = xr.DataArray(np.ones((3, 4, 5), dtype=np.float64), dims=["t", "y", "x"])
+        field = TimeDependentField.from_xarray(
+            data,
+            "t",
+            {"z": ("Z", "center"), "y": ("Y", "center"), "x": ("X", "center")},
+            ignore_missing_dims=True,
+        )
+        assert isinstance(field, TimeDependentField)
+        assert field.spatial_shape == (4, 5)
+        assert ArrayAxis.Z not in field.axes
