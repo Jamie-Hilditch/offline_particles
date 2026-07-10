@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 This file provides guidance to AI agents when working with code in this repository.
 
@@ -6,14 +6,13 @@ This file provides guidance to AI agents when working with code in this reposito
 
 `offline_particles` is a Lagrangian particle-tracking library for offline advection through ocean model output (in particular ROMS). Simulations advect particles through a `Fieldset` of gridded fields using composable, kernel-based physics. The package is in early development (`0.1.0`); breaking changes are expected.
 
-Managed with `uv`. Package build uses `scikit-build-core` + Cython + CMake for a handful of performance-critical extension modules; everything else is plain Python, with `numba`-jitted kernel functions for hot loops.
+Managed with `uv`. The package is pure Python, with `numba`-jitted kernel functions for performance-critical hot loops.
 
 ## Commands
 
 All commands run through `uv` (uses `uv.lock`, Python >=3.12).
 
 - Install/sync dev environment: `uv sync --frozen --group dev`
-- Build the Cython/C extensions (needed after editing any `.pyx`/`.pxd` or `CMakeLists.txt`): `uv sync --reinstall-package offline-particles` or `uv run pip install -e . --no-build-isolation`
 - Run all tests: `uv run pytest`
 - Run a single test file: `uv run pytest tests/kernels/test_advection_kernels.py`
 - Run a single test: `uv run pytest tests/kernels/test_advection_kernels.py::test_name`
@@ -21,11 +20,10 @@ All commands run through `uv` (uses `uv.lock`, Python >=3.12).
 - Type check: `uv run ty check`
 - Lint: `uv run ruff check --fix .`
 - Format: `uv run ruff format .`
-- Lint Cython sources: `uv run cython-lint .`
 - Build docs: `uv run sphinx-build docs/source docs/build`
-- Pre-commit runs ruff-check, ruff-format, and cython-lint on `src|tests|docs/source` — install with `uv run pre-commit install`.
+- Pre-commit runs ruff-check and ruff-format on `src|tests|docs/source` — install with `uv run pre-commit install`.
 
-CI (`.github/workflows/ci.yml`) runs `ty check`, `ruff check`/`format`, `cython-lint`, and `pytest` as separate jobs — match these locally before pushing.
+CI (`.github/workflows/ci.yml`) runs `ty check`, `ruff check`/`format`, and `pytest` as separate jobs — match these locally before pushing.
 
 ## Architecture
 
@@ -39,7 +37,7 @@ A `BoundKernel` binds a `ParticleKernel`'s declared input names to concrete argu
 
 Kernel construction is organized by physics domain as submodules under `kernels/`: `advection`, `buoyancy`, `relaxation`, `interpolation`, `timestepping` (Adams-Bashforth update kernels), `validation` (bounding-box / finite-index checks), `roms` (ROMS-specific z-coordinate kernels), `status`, `timed_activation`, `base`. Each exposes `construct_*_kernel(...)` factory functions returning `ParticleKernel`s rather than exposing raw kernel functions. `models/roms/__init__.py` (`roms_ab3_timestepper`) shows the top-level pattern: assemble domain kernels into tendency/AB-update/post-step kernel lists and hand them to an `ABTimestepper`.
 
-Some kernel input/output (e.g. `kernels/_core/inputs/field_data.pyx`, `kernels/status/_status.pyx`) is implemented in Cython for performance and compiled via CMake (see `CMakeLists.txt`'s `EXTENSION_MODULES` list) — add new compiled modules there, not just as `.pyx` files.
+Performance-critical kernel input/output is implemented as plain Python with `numba`-jitted hot loops (e.g. `kernels/status/`, `kernels/roms/vertical_coordinate/`), not compiled extension modules.
 
 ### Fields and data (`fields.py`, `fieldset.py`, `spatial_arrays.py`)
 
@@ -71,4 +69,4 @@ Apply these when reviewing or authoring changes to `src` or `tests`:
 - Classes should implement `__str__` and `__repr__` unless there's a good reason not to (see `ParticleKernel`, `BoundKernel`, `KernelInputDeclaration` for the established pattern).
 - Consider adding a `description`/`summary` property to a class when a more detailed, end-user-facing description of an instance would be useful; this is in addition to, not a replacement for, a proper class-level docstring.
 - This codebase is still in development, so breaking changes are acceptable — but if a change has downstream impact elsewhere in the codebase, call that out explicitly in review.
-- Refactors and additions should prefer plain Python and `numba` implementations. A goal is to remove all Cython dependencies.
+- Kernel implementations are plain Python with `numba`-jitted hot loops; the codebase has no Cython dependencies, and refactors/additions should keep it that way.

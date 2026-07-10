@@ -3,7 +3,7 @@
 Every other test file in this package trusts `_reference.py` to produce correct expected
 values. If the oracle itself had a bug, it could silently invalidate all of those tests, so
 this file checks the oracle against a handful of values worked out by hand directly from the
-equations documented in `_vertical_coordinate.pxd`.
+equations documented in `_vertical_coordinate.py`.
 """
 
 import numpy as np

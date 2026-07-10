@@ -16,8 +16,3 @@ repos:
       entry: uv run --frozen ruff format
       types_or: [python, pyi]
       files: ^(src|tests|docs/source)/
-    - id: cython-lint
-      name: cython-lint
-      language: system
-      entry: uv run --frozen cython-lint
-      files: ^src/.*\.(pyx|pxd)$
