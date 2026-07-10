@@ -20,7 +20,6 @@ find_package(OpenMP REQUIRED)
 
 # Declare extension modules
 set(EXTENSION_MODULES
-    kernels.status._status
 )
 
 # Cython compilation arguments
