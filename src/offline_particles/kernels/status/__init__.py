@@ -1,4 +1,5 @@
 import enum
+from typing import overload
 
 import numpy as np
 import numpy.typing as npt
@@ -39,33 +40,41 @@ class Status(enum.IntEnum):
 INACTIVE_FLAG = np.uint8(Status.INACTIVE)
 
 
-def is_inactive(status: npt.NDArray[np.uint8]) -> npt.NDArray[np.bool_]:
+@overload
+def is_inactive(status: np.uint8) -> np.bool_: ...
+@overload
+def is_inactive(status: npt.NDArray[np.uint8]) -> npt.NDArray[np.bool_]: ...
+def is_inactive(status: np.uint8 | npt.NDArray[np.uint8]) -> np.bool_ | npt.NDArray[np.bool_]:
     """Check if particles are inactive.
 
     Parameters
     ----------
-    status : npt.NDArray[np.unit8]
-        Array of particle status codes.
+    status : np.uint8 or npt.NDArray[np.uint8]
+        Status code of a single particle, or array of particle status codes.
 
     Returns
     -------
-    npt.NDArray[np.bool_]
-        Boolean array indicating active particles.
+    np.bool_ or npt.NDArray[np.bool_]
+        Whether the particle is inactive, or boolean array indicating inactive particles.
     """
     return (status & INACTIVE_FLAG) == INACTIVE_FLAG
 
 
-def is_active(status: npt.NDArray[np.uint8]) -> npt.NDArray[np.bool_]:
+@overload
+def is_active(status: np.uint8) -> np.bool_: ...
+@overload
+def is_active(status: npt.NDArray[np.uint8]) -> npt.NDArray[np.bool_]: ...
+def is_active(status: np.uint8 | npt.NDArray[np.uint8]) -> np.bool_ | npt.NDArray[np.bool_]:
     """Check if particles are active.
 
     Parameters
     ----------
-    status : npt.NDArray[np.unit8]
-        Array of particle status codes.
+    status : np.uint8 or npt.NDArray[np.uint8]
+        Status code of a single particle, or array of particle status codes.
 
     Returns
     -------
-    npt.NDArray[np.bool_]
-        Boolean array indicating active particles.
+    np.bool_ or npt.NDArray[np.bool_]
+        Whether the particle is active, or boolean array indicating active particles.
     """
     return np.logical_not(is_inactive(status))
