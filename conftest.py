@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from offline_particles.kernels import BoundKernel, ParticleKernel
-from offline_particles.timestepping import Clock
+from offline_particles.timestepping import Clock, Timestepper
 
 
 @pytest.fixture(autouse=True)
@@ -24,3 +24,12 @@ def make_bound_noop_kernel():
         return BoundKernel(ParticleKernel(lambda pp, sc, fd: None, particle_properties or []))
 
     return _make_bound_noop_kernel
+
+
+@pytest.fixture
+def noop_timestepper() -> Timestepper:
+    class _NoOpTimestepper(Timestepper):
+        def run_step(self, particles, launcher, clock) -> None:
+            pass
+
+    return _NoOpTimestepper()

@@ -20,11 +20,6 @@ class _RecordingLauncher(Launcher):
         self.calls.append((bound_kernel, particles, tinfo))
 
 
-class _NoOpTimestepper(Timestepper):
-    def run_step(self, particles, launcher, clock) -> None:
-        pass
-
-
 class _RecordingLifecycleTimestepper(Timestepper):
     def __init__(self) -> None:
         super().__init__()
@@ -61,8 +56,8 @@ def _make_builder(
 
 
 class TestTimestepperValidationKernelStorage:
-    def test_add_validation_kernels_appends_in_order(self, make_bound_noop_kernel) -> None:
-        timestepper = _NoOpTimestepper()
+    def test_add_validation_kernels_appends_in_order(self, make_bound_noop_kernel, noop_timestepper) -> None:
+        timestepper = noop_timestepper
         kernel_0 = make_bound_noop_kernel()
         kernel_1 = make_bound_noop_kernel()
 
@@ -70,8 +65,8 @@ class TestTimestepperValidationKernelStorage:
 
         assert timestepper.validation_kernels == [kernel_0, kernel_1]
 
-    def test_kernels_iterator_places_validation_before_pre_step(self, make_bound_noop_kernel) -> None:
-        timestepper = _NoOpTimestepper()
+    def test_kernels_iterator_places_validation_before_pre_step(self, make_bound_noop_kernel, noop_timestepper) -> None:
+        timestepper = noop_timestepper
         validation_kernel = make_bound_noop_kernel()
         pre_step_kernel = make_bound_noop_kernel()
 
@@ -80,8 +75,10 @@ class TestTimestepperValidationKernelStorage:
 
         assert list(timestepper.kernels) == [validation_kernel, pre_step_kernel]
 
-    def test_run_validation_launches_each_validation_kernel(self, make_clock, make_bound_noop_kernel) -> None:
-        timestepper = _NoOpTimestepper()
+    def test_run_validation_launches_each_validation_kernel(
+        self, make_clock, make_bound_noop_kernel, noop_timestepper
+    ) -> None:
+        timestepper = noop_timestepper
         kernel_0 = make_bound_noop_kernel()
         kernel_1 = make_bound_noop_kernel()
         timestepper.add_validation_kernels(kernel_0, kernel_1)
@@ -98,11 +95,11 @@ class TestTimestepperValidationKernelStorage:
 
 
 class TestSimulationBuilderValidationInjection:
-    def test_build_simulation_injects_validation_kernel_from_fieldset_bbox(self, make_clock) -> None:
+    def test_build_simulation_injects_validation_kernel_from_fieldset_bbox(self, make_clock, noop_timestepper) -> None:
         fieldset = Fieldset(
             2, 3, 4, 5, zidx_min=2.0, zidx_max=4.0, yidx_min=10.0, yidx_max=20.0, xidx_min=30.0, xidx_max=40.0
         )
-        timestepper = _NoOpTimestepper()
+        timestepper = noop_timestepper
         builder = _make_builder(timestepper, make_clock, fieldset=fieldset)
 
         builder.build_simulation()
@@ -131,8 +128,8 @@ class TestSimulationBuilderValidationInjection:
             np.array([np.uint8(Status.NORMAL), np.uint8(Status.BELOW_BOTTOM)], dtype=np.uint8),
         )
 
-    def test_build_simulation_can_skip_validation_kernel(self, make_clock) -> None:
-        timestepper = _NoOpTimestepper()
+    def test_build_simulation_can_skip_validation_kernel(self, make_clock, noop_timestepper) -> None:
+        timestepper = noop_timestepper
         builder = _make_builder(timestepper, make_clock, include_validation_kernel=False)
 
         builder.build_simulation()

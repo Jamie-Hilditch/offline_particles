@@ -9,12 +9,6 @@ from offline_particles.kernels import ParticlePropertyDeclaration
 from offline_particles.output import AbstractOutputWriter, AbstractOutputWriterBuilder
 from offline_particles.particles import ParticlesView
 from offline_particles.simulation import ParticleSet, SimulationBuilder
-from offline_particles.timestepping import Timestepper
-
-
-class _NoOpTimestepper(Timestepper):
-    def run_step(self, particles, launcher, clock) -> None:
-        pass
 
 
 class _RecordingWriter(AbstractOutputWriter):
@@ -78,9 +72,11 @@ class _RecordingBuilder(AbstractOutputWriterBuilder):
         return _RecordingWriter()
 
 
-def test_build_simulation_passes_particles_view_to_output_builder(make_clock, make_bound_noop_kernel) -> None:
+def test_build_simulation_passes_particles_view_to_output_builder(
+    make_clock, make_bound_noop_kernel, noop_timestepper
+) -> None:
     fieldset = Fieldset(1, 1, 1, 1)
-    timestepper = _NoOpTimestepper()
+    timestepper = noop_timestepper
     mass_kernel = make_bound_noop_kernel(particle_properties=[ParticlePropertyDeclaration("mass", np.float32)])
     timestepper.add_pre_step_kernels(mass_kernel)
     particle_set = ParticleSet("pset", 3, timestepper, include_validation_kernel=False)
