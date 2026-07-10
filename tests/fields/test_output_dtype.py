@@ -6,14 +6,9 @@ import pytest
 import xarray as xr
 
 from offline_particles.fields import TimeDependentField
-from offline_particles.spatial_arrays import BBox
 
 AXES_ARGS = ("X",)
 STAGGER_ARGS = ("center",)
-
-
-def _full_domain_bbox(nx: int) -> BBox:
-    return BBox(zmin=0.0, zmax=0.0, ymin=0.0, ymax=0.0, xmin=0.0, xmax=float(nx - 1))
 
 
 class TestFromNumpyOutputDtype:
@@ -82,20 +77,20 @@ class TestFromXarrayOutputDtype:
 class TestOutputDtypeAffectsInterpolatedOutput:
     """End-to-end check that a constructor-supplied output_dtype is used when computing field data."""
 
-    def test_from_numpy_output_dtype_used_in_get_field_data(self) -> None:
+    def test_from_numpy_output_dtype_used_in_get_field_data(self, full_domain_bbox) -> None:
         data = np.array([[0.0, 1.0], [2.0, 3.0]], dtype=np.float32)
         field = TimeDependentField.from_numpy(data, AXES_ARGS, STAGGER_ARGS, output_dtype=np.float64)
 
-        field_data = field.get_field_data(0.25, _full_domain_bbox(nx=2))
+        field_data = field.get_field_data(0.25, full_domain_bbox(nx=2))
 
         assert field_data.array.dtype == np.float64
         np.testing.assert_allclose(field_data.array, np.array([0.5, 1.5], dtype=np.float64))
 
-    def test_from_xarray_output_dtype_used_in_get_field_data(self) -> None:
+    def test_from_xarray_output_dtype_used_in_get_field_data(self, full_domain_bbox) -> None:
         data = xr.DataArray(np.array([[0.0, 1.0], [2.0, 3.0]], dtype=np.float32), dims=["t", "x"])
         field = TimeDependentField.from_xarray(data, "t", {"x": ("X", "center")}, output_dtype=np.float64)
 
-        field_data = field.get_field_data(0.25, _full_domain_bbox(nx=2))
+        field_data = field.get_field_data(0.25, full_domain_bbox(nx=2))
 
         assert field_data.array.dtype == np.float64
         np.testing.assert_allclose(field_data.array, np.array([0.5, 1.5], dtype=np.float64))
