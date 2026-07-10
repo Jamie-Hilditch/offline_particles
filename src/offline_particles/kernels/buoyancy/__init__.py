@@ -1,86 +1,87 @@
 """Kernels for working with buoyant particles."""
 
 import numpy as np
+import numpy.typing as npt
 
-from .._kernels import (
-    BoundKernel,
-    FieldDataDeclaration,
-    ParticleKernel,
-    ParticlePropertyDeclaration,
-    ScalarDeclaration,
-)
-from ..input_declarations import (
-    STATUS_DECLARATION,
-    XIDX_DECLARATION,
-    YIDX_DECLARATION,
-    ZIDX_DECLARATION,
-)
-from ..layout_validators import validate_ZYX_ordering
-from ._buoyancy_force import buoyancy_force_accumulation
-
-rhs_declaration = ParticlePropertyDeclaration("rhs", np.float64)
-rho_property_declaration = ParticlePropertyDeclaration("rho", np.float64)
-rho0_declaration = ScalarDeclaration("rho0", np.float64)
-g_declaration = ScalarDeclaration("g", np.float64)
-rho_field_declaration = FieldDataDeclaration("rho", np.float64, [validate_ZYX_ordering])
+from ...spatial_arrays import ArrayLayout
+from .._kernels import BoundKernel
+from ..relaxation import construct_linear_relaxation_kernel
 
 
-def construct_buoyancy_force_accumulation_kernel(
+def construct_buoyancy_force_kernel(
     rhs: str,
-    particle_density: str = "rho",
-    density_field: str = "rho",
-    reference_density: str = "rho0",
-    gravity: str = "g",
+    particle_density: str,
+    density_field: str,
+    array_layout: ArrayLayout,
+    dtype: npt.DTypeLike = np.float64,
+    *,
+    constant_coefficient: np.inexact | float | None = None,
+    property_coefficient: str | None = None,
+    scalar_coefficient: str | None = None,
+    interpolation_half_width: int | None = None,
 ) -> BoundKernel:
-    """Construct a kernel to compute buoyancy force accumulation on particles.
+    r"""Construct a kernel to compute buoyancy force on particles.
+
+    This is a special case of linear relaxation where the particle feels a restoring force
+    towards the it's level of neutral buoyancy. For density based models, the coefficient
+    is :math:`g/\rho_0`.
 
     Parameters
     ----------
     rhs : str
-        The name of the particle property to add the computed buoyancy force to.
-    particle_density : str, optional
-        The binding for the particle property that contains the particle density. Default is "rho".
-    density_field : str, optional
-        The binding for the field data that contains the fluid density. Default is "rho".
-    reference_density : str, optional
-        The binding for the scalar that contains the reference fluid density. Default is "rho0".
-    gravity : str, optional
-        The binding for the scalar that contains the gravitational acceleration. Default is "g".
+        The binding for the particle property to add the computed buoyancy force to.
+    particle_density : str
+        The binding for the particle property that contains the particle density.
+    density_field : str
+        The binding for the field data that contains the ambient fluid density.
+    array_layout : ArrayLayout
+        The layout of the density field array.
+    dtype : npt.DTypeLike, optional
+        The data type of the particle properties and coefficient, by default np.float64.
+    constant_coefficient : np.inexact | float | None, optional
+        A constant value for :math:`g/\rho_0`, by default None.
+    property_coefficient : str | None, optional
+        The binding for a particle property containing :math:`g/\rho_0`, by default None.
+    scalar_coefficient : str | None, optional
+        The binding for a scalar containing :math:`g/\rho_0`, by default None.
+    interpolation_half_width : int | None, optional
+        The half-width of the interpolation stencil to use when interpolating the ambient density field to
+        particle positions. Defaults to 1, corresponding to trilinear interpolation.
 
     Returns
     -------
     BoundKernel
         A bound kernel that computes the buoyancy force on particles.
+
+    Raises
+    ------
+    ValueError
+        If zero or more than one of `constant_coefficient`, `property_coefficient`, or `scalar_coefficient` is provided.
+
+    Notes
+    -----
+    Exactly one of `constant_coefficient`, `property_coefficient`, or `scalar_coefficient` must be provided.
+
+    Buoyancy forcing is defined as:
+
+    .. math::
+
+        \frac{d\,\mathrm{rhs}}{d\,t} = -\frac{g}{\rho_0} \left(\rho_{\mathrm{particle}} - \rho_{\mathrm{env}}\right)
+
+    where :math:`\rho_{\mathrm{particle}}` is `particle_density` and :math:`\rho_{\mathrm{env}}` is interpolated
+    from `density_field`.
     """
-    kernel = ParticleKernel(
-        buoyancy_force_accumulation,
-        particle_properties=[
-            STATUS_DECLARATION,
-            ZIDX_DECLARATION,
-            YIDX_DECLARATION,
-            XIDX_DECLARATION,
-            rhs_declaration,
-            rho_property_declaration,
-        ],
-        scalars=[
-            rho0_declaration,
-            g_declaration,
-        ],
-        field_data=[
-            rho_field_declaration,
-        ],
-    )
-    return BoundKernel(
-        kernel,
-        particle_property_bindings={
-            "rhs": rhs,
-            "rho": particle_density,
-        },
-        scalar_bindings={
-            "rho0": reference_density,
-            "g": gravity,
-        },
-        field_data_bindings={
-            "rho": density_field,
-        },
+    if sum(c is not None for c in (constant_coefficient, property_coefficient, scalar_coefficient)) != 1:
+        raise ValueError("Exactly one coefficient (constant/property/scalar) must be provided.")
+
+    return construct_linear_relaxation_kernel(
+        rhs,
+        particle_density,
+        dtype=dtype,
+        constant_coefficient=constant_coefficient,
+        property_coefficient=property_coefficient,
+        scalar_coefficient=scalar_coefficient,
+        field_target=density_field,
+        array_layout=array_layout,
+        interpolation_half_width=interpolation_half_width,
     )

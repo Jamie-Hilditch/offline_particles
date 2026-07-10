@@ -1,4 +1,4 @@
-"""Kernels for applying relaxation and damping to particle properties."""
+"""Kernels for applying relaxation and damping tendencies."""
 
 import warnings
 from typing import cast
@@ -36,8 +36,8 @@ __all__ = [
 
 
 def construct_linear_relaxation_kernel(
+    tendency: str,
     prop: str,
-    dprop: str,
     dtype: npt.DTypeLike = np.float64,
     *,
     constant_coefficient: np.inexact | float | None = None,
@@ -50,14 +50,14 @@ def construct_linear_relaxation_kernel(
     array_layout: ArrayLayout | None = None,
     interpolation_half_width: int | None = None,
 ) -> BoundKernel:
-    r"""Construct a kernel for applying linear relaxation to a particle property.
+    r"""Construct a kernel for applying a linear relaxation tendency.
 
     Parameters
     ----------
+    tendency : str
+        The binding for particle property to add the tendency to.
     prop : str
-        The binding for the particle property to relax.
-    dprop : str
-        The binding for the particle property to store the rate of change of `prop`.
+        The binding for the particle property containing the current value.
     dtype : npt.DTypeLike, optional
         The data type of the particle properties, coefficient and target values, by default np.float64.
     constant_coefficient : np.inexact | float | None, optional
@@ -99,13 +99,26 @@ def construct_linear_relaxation_kernel(
     The kernel will apply the relaxation according to the specified coefficient and target.
     `array_layout` must be provided if `field_target` is specified.
 
-    Linear relaxation is defined as:
+    Linear relaxation tendency is defined as:
+
+    .. math::
+
+        \mathrm{tendency} = -\mathrm{coefficient} \left(\mathrm{prop} - \mathrm{target}\right)
+
+    where `coefficient` is the relaxation coefficient, `target` is the target value for the property, and `prop` is the current
+    value of the property. The obvious usage is for `tendency` to be the rate of change of `prop`, i.e.
 
     .. math::
 
         \frac{d\,\mathrm{prop}}{d\,t} = -\mathrm{coefficient} \left(\mathrm{prop} - \mathrm{target}\right)
 
-    where `coefficient` is the relaxation coefficient, `target` is the target value for the property, and `prop` is the current value of the property.
+    but it can be any other property that should be relaxed towards the target value. For example, buoyancy forcing follows the
+    same form where the tendency is of the vertical velocity
+
+    .. math::
+
+        \frac{d\,\mathrm{w}}{d\,t} = -\frac{g}{\rho_0} \left(\rho_{\mathrm{particle}} - \rho_{\mathrm{env}}\right).
+
     """
     coefficient = (constant_coefficient, property_coefficient, scalar_coefficient)
     target = (constant_target, property_target, scalar_target, field_target)
@@ -128,17 +141,17 @@ def construct_linear_relaxation_kernel(
     match coefficient, target:
         # constant coefficient
         case (c, None, None), (t, None, None, None) if c is not None and t is not None:
-            return construct_relaxation_kernel_constant_coefficient_constant_target(prop, dprop, c, t, dtype)
+            return construct_relaxation_kernel_constant_coefficient_constant_target(prop, tendency, c, t, dtype)
         case (c, None, None), (None, t, None, None) if c is not None and t is not None:
-            return construct_relaxation_kernel_constant_coefficient_property_target(prop, dprop, c, t, dtype)
+            return construct_relaxation_kernel_constant_coefficient_property_target(prop, tendency, c, t, dtype)
         case (c, None, None), (None, None, t, None) if c is not None and t is not None:
-            return construct_relaxation_kernel_constant_coefficient_scalar_target(prop, dprop, c, t, dtype)
+            return construct_relaxation_kernel_constant_coefficient_scalar_target(prop, tendency, c, t, dtype)
         case (c, None, None), (None, None, None, t) if c is not None and t is not None:
             # cast array_layout to ArrayLayout to satisfy type checker, since we already checked that array_layout is not None
             # also cast interpolation_half_width to int to satisfy type checker, since we already checked that interpolation_half_width is not None
             return construct_relaxation_kernel_constant_coefficient_field_target(
                 prop,
-                dprop,
+                tendency,
                 c,
                 t,
                 cast(ArrayLayout, array_layout),
@@ -148,17 +161,17 @@ def construct_linear_relaxation_kernel(
 
         # property coefficient
         case (None, c, None), (t, None, None, None) if c is not None and t is not None:
-            return construct_relaxation_kernel_property_coefficient_constant_target(prop, dprop, c, t, dtype)
+            return construct_relaxation_kernel_property_coefficient_constant_target(prop, tendency, c, t, dtype)
         case (None, c, None), (None, t, None, None) if c is not None and t is not None:
-            return construct_relaxation_kernel_property_coefficient_property_target(prop, dprop, c, t, dtype)
+            return construct_relaxation_kernel_property_coefficient_property_target(prop, tendency, c, t, dtype)
         case (None, c, None), (None, None, t, None) if c is not None and t is not None:
-            return construct_relaxation_kernel_property_coefficient_scalar_target(prop, dprop, c, t, dtype)
+            return construct_relaxation_kernel_property_coefficient_scalar_target(prop, tendency, c, t, dtype)
         case (None, c, None), (None, None, None, t) if c is not None and t is not None:
             # cast array_layout to ArrayLayout to satisfy type checker, since we already checked that array_layout is not None
             # also cast interpolation_half_width to int to satisfy type checker, since we already checked that interpolation_half_width is not None
             return construct_relaxation_kernel_property_coefficient_field_target(
                 prop,
-                dprop,
+                tendency,
                 c,
                 t,
                 cast(ArrayLayout, array_layout),
@@ -168,17 +181,17 @@ def construct_linear_relaxation_kernel(
 
         # scalar coefficient
         case (None, None, c), (t, None, None, None) if c is not None and t is not None:
-            return construct_relaxation_kernel_scalar_coefficient_constant_target(prop, dprop, c, t, dtype)
+            return construct_relaxation_kernel_scalar_coefficient_constant_target(prop, tendency, c, t, dtype)
         case (None, None, c), (None, t, None, None) if c is not None and t is not None:
-            return construct_relaxation_kernel_scalar_coefficient_property_target(prop, dprop, c, t, dtype)
+            return construct_relaxation_kernel_scalar_coefficient_property_target(prop, tendency, c, t, dtype)
         case (None, None, c), (None, None, t, None) if c is not None and t is not None:
-            return construct_relaxation_kernel_scalar_coefficient_scalar_target(prop, dprop, c, t, dtype)
+            return construct_relaxation_kernel_scalar_coefficient_scalar_target(prop, tendency, c, t, dtype)
         case (None, None, c), (None, None, None, t) if c is not None and t is not None:
             # cast array_layout to ArrayLayout to satisfy type checker, since we already checked that array_layout is not None
             # also cast interpolation_half_width to int to satisfy type checker, since we already checked that interpolation_half_width is not None
             return construct_relaxation_kernel_scalar_coefficient_field_target(
                 prop,
-                dprop,
+                tendency,
                 c,
                 t,
                 cast(ArrayLayout, array_layout),
@@ -194,8 +207,8 @@ def construct_linear_relaxation_kernel(
 
 
 def construct_quadratic_relaxation_kernel(
+    tendency: str,
     prop: str,
-    dprop: str,
     dtype: npt.DTypeLike = np.float64,
     *,
     constant_coefficient: np.inexact | float | None = None,
@@ -208,14 +221,14 @@ def construct_quadratic_relaxation_kernel(
     array_layout: ArrayLayout | None = None,
     interpolation_half_width: int | None = None,
 ) -> BoundKernel:
-    r"""Construct a kernel for applying quadratic relaxation to a particle property.
+    r"""Construct a kernel for applying a quadratic relaxation tendency.
 
     Parameters
     ----------
+    tendency : str
+        The binding for particle property to add the tendency to.
     prop : str
-        The binding for the particle property to relax.
-    dprop : str
-        The binding for the particle property to store the rate of change of `prop`.
+        The binding for the particle property containing the current value.
     dtype : npt.DTypeLike, optional
         The data type of the particle properties, coefficient and target values, by default np.float64.
     constant_coefficient : np.inexact | float | None, optional
@@ -257,13 +270,14 @@ def construct_quadratic_relaxation_kernel(
     The kernel will apply the relaxation according to the specified coefficient and target.
     `array_layout` must be provided if `field_target` is specified.
 
-    Quadratic relaxation is defined as:
+    Quadratic relaxation tendency is defined as:
 
     .. math::
 
-        \frac{d\,\mathrm{prop}}{d\,t} = -\mathrm{coefficient} \left(\mathrm{prop} - \mathrm{target}\right) |\mathrm{prop} - \mathrm{target}|
+        \mathrm{tendency} = -\mathrm{coefficient} \left(\mathrm{prop} - \mathrm{target}\right) |\mathrm{prop} - \mathrm{target}|
 
-    where `coefficient` is the relaxation coefficient, `target` is the target value for the property, and `prop` is the current value of the property.
+    where `coefficient` is the relaxation coefficient, `target` is the target value for the property, and `prop` is the current
+    value of the property.
     """
     coefficient = (constant_coefficient, property_coefficient, scalar_coefficient)
     target = (constant_target, property_target, scalar_target, field_target)
@@ -288,22 +302,22 @@ def construct_quadratic_relaxation_kernel(
         # constant coefficient
         case (c, None, None), (t, None, None, None) if c is not None and t is not None:
             return construct_relaxation_kernel_constant_coefficient_constant_target(
-                prop, dprop, c, t, dtype, form="quadratic"
+                prop, tendency, c, t, dtype, form="quadratic"
             )
         case (c, None, None), (None, t, None, None) if c is not None and t is not None:
             return construct_relaxation_kernel_constant_coefficient_property_target(
-                prop, dprop, c, t, dtype, form="quadratic"
+                prop, tendency, c, t, dtype, form="quadratic"
             )
         case (c, None, None), (None, None, t, None) if c is not None and t is not None:
             return construct_relaxation_kernel_constant_coefficient_scalar_target(
-                prop, dprop, c, t, dtype, form="quadratic"
+                prop, tendency, c, t, dtype, form="quadratic"
             )
         case (c, None, None), (None, None, None, t) if c is not None and t is not None:
             # cast array_layout to ArrayLayout to satisfy type checker, since we already checked that array_layout is not None
             # also cast interpolation_half_width to int to satisfy type checker, since we already checked that interpolation_half_width is not None
             return construct_relaxation_kernel_constant_coefficient_field_target(
                 prop,
-                dprop,
+                tendency,
                 c,
                 t,
                 cast(ArrayLayout, array_layout),
@@ -315,22 +329,22 @@ def construct_quadratic_relaxation_kernel(
         # property coefficient
         case (None, c, None), (t, None, None, None) if c is not None and t is not None:
             return construct_relaxation_kernel_property_coefficient_constant_target(
-                prop, dprop, c, t, dtype, form="quadratic"
+                prop, tendency, c, t, dtype, form="quadratic"
             )
         case (None, c, None), (None, t, None, None) if c is not None and t is not None:
             return construct_relaxation_kernel_property_coefficient_property_target(
-                prop, dprop, c, t, dtype, form="quadratic"
+                prop, tendency, c, t, dtype, form="quadratic"
             )
         case (None, c, None), (None, None, t, None) if c is not None and t is not None:
             return construct_relaxation_kernel_property_coefficient_scalar_target(
-                prop, dprop, c, t, dtype, form="quadratic"
+                prop, tendency, c, t, dtype, form="quadratic"
             )
         case (None, c, None), (None, None, None, t) if c is not None and t is not None:
             # cast array_layout to ArrayLayout to satisfy type checker, since we already checked that array_layout is not None
             # also cast interpolation_half_width to int to satisfy type checker, since we already checked that interpolation_half_width is not None
             return construct_relaxation_kernel_property_coefficient_field_target(
                 prop,
-                dprop,
+                tendency,
                 c,
                 t,
                 cast(ArrayLayout, array_layout),
@@ -342,22 +356,22 @@ def construct_quadratic_relaxation_kernel(
         # scalar coefficient
         case (None, None, c), (t, None, None, None) if c is not None and t is not None:
             return construct_relaxation_kernel_scalar_coefficient_constant_target(
-                prop, dprop, c, t, dtype, form="quadratic"
+                prop, tendency, c, t, dtype, form="quadratic"
             )
         case (None, None, c), (None, t, None, None) if c is not None and t is not None:
             return construct_relaxation_kernel_scalar_coefficient_property_target(
-                prop, dprop, c, t, dtype, form="quadratic"
+                prop, tendency, c, t, dtype, form="quadratic"
             )
         case (None, None, c), (None, None, t, None) if c is not None and t is not None:
             return construct_relaxation_kernel_scalar_coefficient_scalar_target(
-                prop, dprop, c, t, dtype, form="quadratic"
+                prop, tendency, c, t, dtype, form="quadratic"
             )
         case (None, None, c), (None, None, None, t) if c is not None and t is not None:
             # cast array_layout to ArrayLayout to satisfy type checker, since we already checked that array_layout is not None
             # also cast interpolation_half_width to int to satisfy type checker, since we already checked that interpolation_half_width is not None
             return construct_relaxation_kernel_scalar_coefficient_field_target(
                 prop,
-                dprop,
+                tendency,
                 c,
                 t,
                 cast(ArrayLayout, array_layout),
@@ -379,22 +393,22 @@ def construct_quadratic_relaxation_kernel(
 
 
 def construct_linear_damping_kernel(
+    tendency: str,
     prop: str,
-    dprop: str,
     dtype: npt.DTypeLike = np.float64,
     *,
     constant_coefficient: np.inexact | float | None = None,
     property_coefficient: str | None = None,
     scalar_coefficient: str | None = None,
 ) -> BoundKernel:
-    """Construct a kernel for applying linear damping to a particle property.
+    r"""Construct a kernel for applying a linear damping tendency.
 
     Parameters
     ----------
+    tendency : str
+        The binding for particle property to add the tendency to.
     prop : str
-        The binding for the particle property to relax.
-    dprop : str
-        The binding for the particle property to store the rate of change of `prop`.
+        The binding for the particle property containing the current value.
     dtype : npt.DTypeLike, optional
         The data type of the particle properties, coefficient and target values, by default np.float64.
     constant_coefficient : np.inexact | float | None, optional
@@ -420,11 +434,11 @@ def construct_linear_damping_kernel(
     Exactly one of `constant_coefficient`, `property_coefficient`, or `scalar_coefficient` must be provided.
     The kernel will apply the damping according to the specified coefficient.
 
-    Linear damping is defined as:
+    Linear damping tendency is defined as:
 
     .. math::
 
-        d prop / d t = - coefficient * prop
+        \mathrm{tendency} = -\mathrm{coefficient} \cdot \mathrm{prop}
 
     where `coefficient` is the damping coefficient and `prop` is the current value of the property.
     """
@@ -432,8 +446,8 @@ def construct_linear_damping_kernel(
         raise ValueError("Exactly one coefficient (constant/property/scalar) must be provided.")
 
     return construct_linear_relaxation_kernel(
+        tendency,
         prop,
-        dprop,
         dtype=dtype,
         constant_coefficient=constant_coefficient,
         property_coefficient=property_coefficient,
@@ -443,22 +457,22 @@ def construct_linear_damping_kernel(
 
 
 def construct_quadratic_damping_kernel(
+    tendency: str,
     prop: str,
-    dprop: str,
     dtype: npt.DTypeLike = np.float64,
     *,
     constant_coefficient: np.inexact | float | None = None,
     property_coefficient: str | None = None,
     scalar_coefficient: str | None = None,
 ) -> BoundKernel:
-    """Construct a kernel for applying quadratic damping to a particle property.
+    r"""Construct a kernel for applying a quadratic damping tendency.
 
     Parameters
     ----------
+    tendency : str
+        The binding for particle property to add the tendency to.
     prop : str
-        The binding for the particle property to relax.
-    dprop : str
-        The binding for the particle property to store the rate of change of `prop`.
+        The binding for the particle property containing the current value.
     dtype : npt.DTypeLike, optional
         The data type of the particle properties, coefficient and target values, by default np.float64.
     constant_coefficient : np.inexact | float | None, optional
@@ -484,11 +498,11 @@ def construct_quadratic_damping_kernel(
     Exactly one of `constant_coefficient`, `property_coefficient`, or `scalar_coefficient` must be provided.
     The kernel will apply the damping according to the specified coefficient.
 
-    Quadratic damping is defined as:
+    Quadratic damping tendency is defined as:
 
     .. math::
 
-        d prop / d t = - coefficient * prop * |prop|
+        \mathrm{tendency} = -\mathrm{coefficient} \cdot \mathrm{prop} \cdot |\mathrm{prop}|
 
     where `coefficient` is the damping coefficient and `prop` is the current value of the property.
     """
@@ -496,8 +510,8 @@ def construct_quadratic_damping_kernel(
         raise ValueError("Exactly one coefficient (constant/property/scalar) must be provided.")
 
     return construct_quadratic_relaxation_kernel(
+        tendency,
         prop,
-        dprop,
         dtype=dtype,
         constant_coefficient=constant_coefficient,
         property_coefficient=property_coefficient,

@@ -21,7 +21,6 @@ find_package(OpenMP REQUIRED)
 # Declare extension modules
 set(EXTENSION_MODULES
     kernels._core.inputs.field_data
-    kernels.buoyancy._buoyancy_force
     kernels.roms.vertical_coordinate.vertical_coordinate
     kernels.status._status
 )

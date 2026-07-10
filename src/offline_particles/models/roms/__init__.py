@@ -4,7 +4,7 @@ import numpy as np
 
 from ...kernels.advection import construct_advection_kernel
 from ...kernels.base import construct_add_property_kernel
-from ...kernels.buoyancy import construct_buoyancy_force_accumulation_kernel
+from ...kernels.buoyancy import construct_buoyancy_force_kernel
 from ...kernels.interpolation import construct_ZYX_interpolation_kernel
 from ...kernels.relaxation import (
     construct_linear_damping_kernel,
@@ -16,7 +16,7 @@ from ...kernels.roms import (
 )
 from ...kernels.timestepping import construct_ab3_update_kernel
 from ...kernels.validation import construct_validation_kernel
-from ...spatial_arrays import BBox
+from ...spatial_arrays import ArrayAxis, ArrayLayout, BBox, Stagger
 from ...timestepping import ABTimestepper
 
 __all__ = [
@@ -27,11 +27,16 @@ __all__ = [
     "roms_ab3_timestepper",
 ]
 
+# the ambient density field for buoyancy forcing is always a 3D field ordered Z, Y, X;
+_DENSITY_FIELD_ARRAY_LAYOUT = ArrayLayout(
+    (ArrayAxis.Z, ArrayAxis.Y, ArrayAxis.X),
+    (Stagger.CENTER, Stagger.CENTER, Stagger.CENTER),
+)
+
 
 def roms_ab3_timestepper(
     *,
     vertical_velocity: bool = True,
-    buoyant_particles: bool = False,
     index_padding: int = 5,
     u: str = "u",
     v: str = "v",
@@ -44,14 +49,15 @@ def roms_ab3_timestepper(
     rho: str = "rho",
     hc: str = "hc",
     NZ: str = "NZ",
-    g: str = "g",
-    rho0: str = "rho0",
     constant_linear_damping_coefficient: np.inexact | float | None = None,
     constant_quadratic_damping_coefficient: np.inexact | float | None = None,
     property_linear_damping_coefficient: str | None = None,
     property_quadratic_damping_coefficient: str | None = None,
     scalar_linear_damping_coefficient: str | None = None,
     scalar_quadratic_damping_coefficient: str | None = None,
+    constant_buoyancy_coefficient: np.inexact | float | None = None,
+    property_buoyancy_coefficient: str | None = None,
+    scalar_buoyancy_coefficient: str | None = None,
 ) -> ABTimestepper:
     r"""Create an AB3 timestepper with ROMS advection kernels.
 
@@ -59,8 +65,6 @@ def roms_ab3_timestepper(
     ----------
     vertical_velocity : bool, optional
         Whether to include vertical velocity advection (default True).
-    buoyant_particles : bool, optional
-        Whether to include a buoyancy driven component to the vertical velocity (default False).
     index_padding : int, optional
         Index padding, i.e. the minimum amount by which the field indices
         exceed the particle indices (default 5).
@@ -81,15 +85,13 @@ def roms_ab3_timestepper(
     C : str, optional
         Binding for the vertical stretching function field (default "C").
     rho : str, optional
-        Binding for the density field (default "rho"). Only used if `buoyant_particles` is True.
+        Binding for the ambient density field (default "rho"). Only used if buoyancy forcing is enabled,
+        i.e. one of `constant_buoyancy_coefficient`, `property_buoyancy_coefficient`, or `scalar_buoyancy_coefficient`
+        is provided.
     hc : str, optional
         Binding for the critical depth scalar (default "hc").
     NZ : str, optional
         Binding for the number of vertical levels scalar (default "NZ").
-    g : str, optional
-        Binding for the gravitational acceleration scalar (default "g"). Only used if `buoyant_particles` is True.
-    rho0 : str, optional
-        Binding for the reference density scalar (default "rho0"). Only used if `buoyant_particles` is True.
     constant_linear_damping_coefficient : np.inexact | float | None, optional
         If not None, include linear damping with a constant damping coefficient (default None).
     constant_quadratic_damping_coefficient : np.inexact | float | None, optional
@@ -102,6 +104,12 @@ def roms_ab3_timestepper(
         If provided the binding for a scalar field to use as the linear damping coefficient.
     scalar_quadratic_damping_coefficient : str, optional
         If provided the binding for a scalar field to use as the quadratic damping coefficient.
+    constant_buoyancy_coefficient : np.inexact | float | None, optional
+        If not None, include buoyancy forcing with this constant value for :math:`g/\rho_0` (default None).
+    property_buoyancy_coefficient : str, optional
+        If provided, the binding for the particle property to use for :math:`g/\rho_0`.
+    scalar_buoyancy_coefficient : str, optional
+        If provided, the binding for a scalar to use for :math:`g/\rho_0`.
 
     Returns
     -------
@@ -111,8 +119,9 @@ def roms_ab3_timestepper(
     Raises
     ------
     ValueError
-        If more than one of the linear or quadratic damping coefficient arguments are provided.
-        From :function:`construct_linear_damping_kernel` or :function:`construct_quadratic_damping_kernel`.
+        If more than one of the linear damping, quadratic damping, or buoyancy coefficient arguments are provided
+        for a given tendency. From :function:`construct_linear_damping_kernel`, :function:`construct_quadratic_damping_kernel`,
+        or :function:`construct_buoyancy_force_kernel`.
 
     Notes
     -----
@@ -128,21 +137,25 @@ def roms_ab3_timestepper(
     Horizontal advection occurs in index space, i.e. in `xidx` and `yidx`.
 
     Vertical advection using `w` (vertical velocity) is optional and can be disabled by setting `vertical_velocity=False`.
-    The particles can be made buoyant by setting `buoyant_particles=True`, which adds a buoyancy driven component to the
+    The particles can be made buoyant by providing exactly one of `constant_buoyancy_coefficient`,
+    `property_buoyancy_coefficient`, or `scalar_buoyancy_coefficient`, which adds a buoyancy driven component to the
     vertical velocity. This adds a relative vertical velocity `w_rel` to the particle. The tendency of `w_rel` is computed
     based on the local density difference between the particle :math:`(\rho_{\mathrm{particle}})` and the surrounding fluid :math:`(\rho_{\mathrm{env}})`.
 
     .. math::
 
-        \frac{dw_{\mathrm{rel}}}{dt} = \frac{(\rho_{\mathrm{env}} - \rho_{\mathrm{particle}})}{\rho_0}g
+        \frac{dw_{\mathrm{rel}}}{dt} = \mathrm{coefficient} \left(\rho_{\mathrm{env}} - \rho_{\mathrm{particle}}\right)
 
-    where :math:`g` is the gravitational acceleration and :math:`\rho_0` is a reference density.
+    where `coefficient` is typically :math:`g/\rho_0`, i.e. the gravitational acceleration divided by a reference density,
+    but may be any combined coefficient supplied via `constant_buoyancy_coefficient`, `property_buoyancy_coefficient`,
+    or `scalar_buoyancy_coefficient`.
 
     Damping can be applied to `w_rel` using linear damping by specifying at most one of
     `constant_linear_damping_coefficient`, `property_linear_damping_coefficient`, `scalar_linear_damping_coefficient`.
     Similar for quadratic damping at most one of `constant_quadratic_damping_coefficient`, `property_quadratic_damping_coefficient`,
     `scalar_quadratic_damping_coefficient` may be provided.
-    These arguments are passed onto :function:`construct_linear_damping_kernel` and :function:`construct_quadratic_damping_kernel`.
+    These arguments are passed onto :function:`construct_linear_damping_kernel`, :function:`construct_quadratic_damping_kernel`,
+    and :function:`construct_buoyancy_force_kernel` respectively.
     """
     # construct the tendency kernels based on the options
     tendency_kernels = []
@@ -167,12 +180,17 @@ def roms_ab3_timestepper(
         or property_quadratic_damping_coefficient is not None
         or scalar_quadratic_damping_coefficient is not None
     )
+    buoyant_particles = (
+        constant_buoyancy_coefficient is not None
+        or property_buoyancy_coefficient is not None
+        or scalar_buoyancy_coefficient is not None
+    )
 
     # relative vertical velocity damping
     if linear_damping:
         linear_damping_kernel = construct_linear_damping_kernel(
-            "w_rel",
             "_dw_rel0",
+            "w_rel",
             constant_coefficient=constant_linear_damping_coefficient,
             property_coefficient=property_linear_damping_coefficient,
             scalar_coefficient=scalar_linear_damping_coefficient,
@@ -180,8 +198,8 @@ def roms_ab3_timestepper(
         tendency_kernels.append(linear_damping_kernel)
     if quadratic_damping:
         quadratic_damping_kernel = construct_quadratic_damping_kernel(
-            "w_rel",
             "_dw_rel0",
+            "w_rel",
             constant_coefficient=constant_quadratic_damping_coefficient,
             property_coefficient=property_quadratic_damping_coefficient,
             scalar_coefficient=scalar_quadratic_damping_coefficient,
@@ -191,8 +209,14 @@ def roms_ab3_timestepper(
     # buoyancy forcing
     if buoyant_particles:
         tendency_kernels.append(
-            construct_buoyancy_force_accumulation_kernel(
-                "_dw_rel0", density_field=rho, reference_density=rho0, gravity=g
+            construct_buoyancy_force_kernel(
+                "_dw_rel0",
+                particle_density="rho",
+                density_field=rho,
+                array_layout=_DENSITY_FIELD_ARRAY_LAYOUT,
+                constant_coefficient=constant_buoyancy_coefficient,
+                property_coefficient=property_buoyancy_coefficient,
+                scalar_coefficient=scalar_buoyancy_coefficient,
             )
         )
 
