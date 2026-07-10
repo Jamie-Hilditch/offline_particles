@@ -1,13 +1,12 @@
 """Pure-Python/NumPy reference oracle for the ROMS vertical-coordinate transform.
 
-Mirrors, line for line, the equations documented in
-``src/offline_particles/kernels/roms/vertical_coordinate/_vertical_coordinate.pxd`` and the
-generic interpolation helpers in ``src/offline_particles/kernels/_core/interpolation/linear.pxd``.
-This gives the compiled Cython kernel an independent second implementation to be checked against,
-without needing to expose the private ``cdef inline`` helpers to Python.
+Mirrors, line for line, the equations implemented by the `numba`-jitted vertical-coordinate
+kernel in ``src/offline_particles/kernels/roms/vertical_coordinate/_vertical_coordinate.py``.
+This gives that kernel an independent second implementation to be checked against, without
+needing to reach into its private helper functions.
 
-If the vertical-coordinate kernels are ever rewritten (e.g. in numba), this module should keep
-mirroring whatever equations that rewrite implements, so it continues to serve as ground truth.
+If the vertical-coordinate kernels are ever rewritten, this module should keep mirroring
+whatever equations that rewrite implements, so it continues to serve as ground truth.
 """
 
 from __future__ import annotations
@@ -17,7 +16,7 @@ import numpy.typing as npt
 
 from offline_particles.kernels.status import INACTIVE_FLAG
 
-# --- interpolation helpers, mirroring kernels/_core/interpolation/linear.pxd ---
+# --- interpolation helpers, mirroring the linear-interpolation kernel implementation ---
 
 
 # mirrors truncate_index: floor (toward zero) and clamp to [0, max_idx]
@@ -53,7 +52,7 @@ def bilinear_interpolation(array: npt.NDArray[np.float64], idx0: float, idx1: fl
     return g0 * g1 * v00 + g0 * f1 * v01 + f0 * g1 * v10 + f0 * f1 * v11
 
 
-# --- core S-coordinate transform, mirroring _vertical_coordinate.pxd ---
+# --- core S-coordinate transform, mirroring _vertical_coordinate.py ---
 
 
 # mirrors _sigma_coordinate
@@ -102,7 +101,7 @@ def compute_Cidx_from_S(
     lo = 0
     hi = C_size - 2
 
-    # boundary clamps, exactly as documented in the .pxd docstring
+    # boundary clamps, exactly as documented in the kernel implementation's docstring
     if S <= S_coordinate(hc, sigma_from_Cidx(0, C_offset, NZ), h, C[0]):
         return 0
     if S >= S_coordinate(hc, sigma_from_Cidx(C_size - 2, C_offset, NZ), h, C[C_size - 2]):
@@ -149,7 +148,7 @@ def compute_zidx(
     return zidx_from_S(S, hc, NZ, h, zeta, C, C_offset)
 
 
-# --- whole-kernel reference, mirroring vertical_coordinate.pyx ---
+# --- whole-kernel reference, mirroring _vertical_coordinate.py ---
 
 
 # reference re-implementation of compute_z_kernel_function

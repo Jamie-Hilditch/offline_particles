@@ -1,8 +1,8 @@
 """Tests for the forward ROMS vertical-coordinate transform (zidx -> z).
 
-These are black-box tests: they call the compiled `compute_z_kernel_function` (and the public
-`construct_compute_z_kernel` factory) and check the results against the pure-Python reference
-oracle in `_reference.py`, rather than reaching into the private Cython helpers.
+These are black-box tests: they call the `numba`-jitted `compute_z_kernel_function` (and the
+public `construct_compute_z_kernel` factory) and check the results against the pure-Python
+reference oracle in `_reference.py`, rather than reaching into its private helper functions.
 """
 
 import copy

@@ -1,9 +1,9 @@
 """Direct unit tests for the numba ROMS vertical-coordinate helper functions.
 
-Unlike the old Cython `cdef inline` helpers, these numba functions are directly callable from
-Python, so they can be unit-tested individually rather than only indirectly through the
-black-box kernel tests. Reuses the same hand-derived values already validated against the
-reference oracle in `test_reference_oracle.py`, now checking the real implementation.
+These numba functions are directly callable from Python, so they can be unit-tested individually
+rather than only indirectly through the black-box kernel tests. Reuses the same hand-derived
+values already validated against the reference oracle in `test_reference_oracle.py`, now checking
+the real implementation.
 """
 
 import numpy as np
