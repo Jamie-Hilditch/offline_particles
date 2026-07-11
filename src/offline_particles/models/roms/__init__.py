@@ -47,8 +47,8 @@ def roms_ab3_timestepper(
     zeta: str = "zeta",
     C: str = "C",
     rho: str = "rho",
-    hc: str = "hc",
-    NZ: str = "NZ",
+    hc: float,
+    NZ: int,
     constant_linear_damping_coefficient: np.inexact | float | None = None,
     constant_quadratic_damping_coefficient: np.inexact | float | None = None,
     property_linear_damping_coefficient: str | None = None,
@@ -88,10 +88,12 @@ def roms_ab3_timestepper(
         Binding for the ambient density field (default "rho"). Only used if buoyancy forcing is enabled,
         i.e. one of `constant_buoyancy_coefficient`, `property_buoyancy_coefficient`, or `scalar_buoyancy_coefficient`
         is provided.
-    hc : str, optional
-        Binding for the critical depth scalar (default "hc").
-    NZ : str, optional
-        Binding for the number of vertical levels scalar (default "NZ").
+    hc : float
+        The critical depth. Baked into the compiled vertical-coordinate kernel as a compile-time
+        constant.
+    NZ : int
+        The total number of vertical rho levels. Baked into the compiled vertical-coordinate
+        kernel as a compile-time constant.
     constant_linear_damping_coefficient : np.inexact | float | None, optional
         If not None, include linear damping with a constant damping coefficient (default None).
     constant_quadratic_damping_coefficient : np.inexact | float | None, optional

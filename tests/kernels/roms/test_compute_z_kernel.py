@@ -12,25 +12,22 @@ import pytest
 
 from offline_particles.fields import StaticField
 from offline_particles.kernels.roms import construct_compute_z_kernel
-from offline_particles.kernels.roms.vertical_coordinate import compute_z_kernel_function
+from offline_particles.kernels.roms._vertical_coordinate import compute_z_kernel_function_factory
 from offline_particles.kernels.status import INACTIVE_FLAG
 
 from . import _reference as ref
 
 
-def _run_and_get_reference_z(particle_properties, scalars, field_data) -> tuple[np.ndarray, np.ndarray]:
+def _run_and_get_reference_z(particle_properties, hc: float, NZ: int, field_data) -> tuple[np.ndarray, np.ndarray]:
     # run the compiled kernel and the reference kernel on independent copies, return both z arrays
     actual_properties = copy.deepcopy(particle_properties)
     expected_properties = copy.deepcopy(particle_properties)
 
-    compute_z_kernel_function(actual_properties, scalars, field_data)
-    ref.reference_compute_z_kernel_function(expected_properties, scalars, field_data)
+    compute_z_kernel_function = compute_z_kernel_function_factory(hc, NZ)
+    compute_z_kernel_function(actual_properties, {}, field_data)
+    ref.reference_compute_z_kernel_function(expected_properties, hc, NZ, field_data)
 
     return actual_properties["z"], expected_properties["z"]
-
-
-def _scalars(hc: float, NZ: int) -> dict[str, np.generic]:
-    return {"hc": np.float64(hc), "NZ": np.int32(NZ)}
 
 
 @pytest.mark.parametrize("zidx", [-0.5, 0.0, 1.5, 3.0, 3.5])
@@ -45,7 +42,7 @@ def test_compute_z_matches_reference_with_uniform_fields_and_linear_C(
     particle_properties = make_particle_properties(zidx=[zidx], yidx=[1.5], xidx=[1.5], z=[np.nan])
     field_data = {**uniform_h_zeta_field_data, **linear_C_field_data}
 
-    actual_z, expected_z = _run_and_get_reference_z(particle_properties, _scalars(hc, NZ), field_data)
+    actual_z, expected_z = _run_and_get_reference_z(particle_properties, hc, NZ, field_data)
 
     assert actual_z[0] == pytest.approx(expected_z[0])
 
@@ -62,7 +59,7 @@ def test_compute_z_matches_reference_with_uniform_fields_and_nonlinear_C(
     particle_properties = make_particle_properties(zidx=[zidx], yidx=[1.5], xidx=[1.5], z=[np.nan])
     field_data = {**uniform_h_zeta_field_data, **nonlinear_C_field_data}
 
-    actual_z, expected_z = _run_and_get_reference_z(particle_properties, _scalars(hc, NZ), field_data)
+    actual_z, expected_z = _run_and_get_reference_z(particle_properties, hc, NZ, field_data)
 
     assert actual_z[0] == pytest.approx(expected_z[0])
 
@@ -84,7 +81,7 @@ def test_compute_z_matches_reference_with_varying_fields_and_nonlinear_C(
     )
     field_data = {**varying_h_zeta_field_data, **nonlinear_C_field_data}
 
-    actual_z, expected_z = _run_and_get_reference_z(particle_properties, _scalars(hc, NZ), field_data)
+    actual_z, expected_z = _run_and_get_reference_z(particle_properties, hc, NZ, field_data)
 
     assert actual_z == pytest.approx(expected_z)
 
@@ -105,7 +102,7 @@ def test_compute_z_skips_inactive_particles(
     )
     field_data = {**uniform_h_zeta_field_data, **nonlinear_C_field_data}
 
-    compute_z_kernel_function(particle_properties, _scalars(hc, NZ), field_data)
+    compute_z_kernel_function_factory(hc, NZ)(particle_properties, {}, field_data)
 
     assert np.isfinite(particle_properties["z"][0])
     assert particle_properties["z"][1] == pytest.approx(-999.0)
@@ -119,7 +116,7 @@ def test_construct_compute_z_kernel_honours_custom_bindings(
     run_bound_kernel,
 ) -> None:
     hc, NZ = hc_nz
-    bound_kernel = construct_compute_z_kernel(z="my_z", hc="my_hc", NZ="my_NZ", h="my_h", zeta="my_zeta", C="my_C")
+    bound_kernel = construct_compute_z_kernel(hc=hc, NZ=NZ, z="my_z", h="my_h", zeta="my_zeta", C="my_C")
 
     base_particle_properties = make_particle_properties(zidx=[1.5], yidx=[1.5], xidx=[1.5], z=[np.nan])
     particle_properties = {
@@ -129,7 +126,7 @@ def test_construct_compute_z_kernel_honours_custom_bindings(
         "xidx": base_particle_properties["xidx"],
         "my_z": base_particle_properties["z"],
     }
-    scalars = {"my_hc": np.float64(hc), "my_NZ": np.int32(NZ)}
+    scalars = {}
     field_data = {
         "my_h": uniform_h_zeta_field_data["h"],
         "my_zeta": uniform_h_zeta_field_data["zeta"],
@@ -137,7 +134,7 @@ def test_construct_compute_z_kernel_honours_custom_bindings(
     }
 
     _, expected_z = _run_and_get_reference_z(
-        base_particle_properties, _scalars(hc, NZ), {**uniform_h_zeta_field_data, **linear_C_field_data}
+        base_particle_properties, hc, NZ, {**uniform_h_zeta_field_data, **linear_C_field_data}
     )
 
     run_bound_kernel(bound_kernel, particle_properties, scalars, field_data)
@@ -145,17 +142,31 @@ def test_construct_compute_z_kernel_honours_custom_bindings(
     assert particle_properties["my_z"][0] == pytest.approx(expected_z[0])
 
 
-def test_construct_compute_z_kernel_rejects_h_field_with_wrong_axis_ordering() -> None:
-    bound_kernel = construct_compute_z_kernel()
+def test_construct_compute_z_kernel_rejects_h_field_with_wrong_axis_ordering(hc_nz: tuple[float, int]) -> None:
+    hc, NZ = hc_nz
+    bound_kernel = construct_compute_z_kernel(hc=hc, NZ=NZ)
     bad_h_field = StaticField.from_arraylike(np.zeros((3, 3)), axes=("X", "Y"), staggers=("center", "center"))
 
     with pytest.raises(ValueError):
         bound_kernel.kernel.field_data["h"].validate_field(bad_h_field)
 
 
-def test_construct_compute_z_kernel_rejects_C_field_with_wrong_axis_ordering() -> None:
-    bound_kernel = construct_compute_z_kernel()
+def test_construct_compute_z_kernel_rejects_C_field_with_wrong_axis_ordering(hc_nz: tuple[float, int]) -> None:
+    hc, NZ = hc_nz
+    bound_kernel = construct_compute_z_kernel(hc=hc, NZ=NZ)
     bad_C_field = StaticField.from_arraylike(np.zeros((3,)), axes=("Y",), staggers=("center",))
 
     with pytest.raises(ValueError):
         bound_kernel.kernel.field_data["C"].validate_field(bad_C_field)
+
+
+@pytest.mark.parametrize("hc", [0.0, -1.0])
+def test_compute_z_kernel_function_factory_rejects_non_positive_hc(hc: float) -> None:
+    with pytest.raises(ValueError, match="hc"):
+        compute_z_kernel_function_factory(hc, 4)
+
+
+@pytest.mark.parametrize("NZ", [0, -1])
+def test_compute_z_kernel_function_factory_rejects_non_positive_NZ(NZ: int) -> None:
+    with pytest.raises(ValueError, match="NZ"):
+        compute_z_kernel_function_factory(5.0, NZ)

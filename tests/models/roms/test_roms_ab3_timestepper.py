@@ -108,7 +108,7 @@ def _install_constructor_spies(
 def test_roms_ab3_timestepper_default_constructor_wires_expected_kernels(monkeypatch: pytest.MonkeyPatch) -> None:
     calls, sentinels = _install_constructor_spies(monkeypatch)
 
-    timestepper = roms_models.roms_ab3_timestepper()
+    timestepper = roms_models.roms_ab3_timestepper(hc=5.0, NZ=4)
 
     assert isinstance(timestepper, ABTimestepper)
     assert timestepper._order == 3
@@ -122,8 +122,8 @@ def test_roms_ab3_timestepper_default_constructor_wires_expected_kernels(monkeyp
     assert calls["z_adv"]["kwargs"] == {"accumulate": True}
     assert calls["compute_zidx"]["args"] == ()
     assert calls["compute_zidx"]["kwargs"] == {
-        "hc": "hc",
-        "NZ": "NZ",
+        "hc": 5.0,
+        "NZ": 4,
         "h": "h",
         "zeta": "zeta",
         "C": "C",
@@ -150,8 +150,8 @@ def test_roms_ab3_timestepper_forwards_compute_zidx_kwargs(monkeypatch: pytest.M
 
     timestepper = roms_models.roms_ab3_timestepper(
         vertical_velocity=False,
-        hc="hc_scalar",
-        NZ="nz_scalar",
+        hc=7.5,
+        NZ=10,
         h="bathymetry",
         zeta="surface",
         C="stretching",
@@ -160,8 +160,8 @@ def test_roms_ab3_timestepper_forwards_compute_zidx_kwargs(monkeypatch: pytest.M
     assert isinstance(timestepper, ABTimestepper)
     assert calls["compute_zidx"]["args"] == ()
     assert calls["compute_zidx"]["kwargs"] == {
-        "hc": "hc_scalar",
-        "NZ": "nz_scalar",
+        "hc": 7.5,
+        "NZ": 10,
         "h": "bathymetry",
         "zeta": "surface",
         "C": "stretching",
@@ -186,8 +186,8 @@ def test_roms_ab3_timestepper_with_buoyancy_and_damping_wires_optional_kernels(
         zeta="surface",
         C="stretching",
         rho="density",
-        hc="hc_scalar",
-        NZ="nz_scalar",
+        hc=7.5,
+        NZ=10,
         constant_linear_damping_coefficient=0.25,
         property_quadratic_damping_coefficient="quad_drag",
         scalar_buoyancy_coefficient="g_over_rho0",
@@ -251,6 +251,8 @@ def test_roms_ab3_timestepper_linear_scalar_damping_wires_scalar_coefficient(mon
 
     timestepper = roms_models.roms_ab3_timestepper(
         vertical_velocity=False,
+        hc=5.0,
+        NZ=4,
         constant_linear_damping_coefficient=None,
         property_linear_damping_coefficient=None,
         scalar_linear_damping_coefficient="linear_drag",
@@ -279,6 +281,8 @@ def test_roms_ab3_timestepper_quadratic_scalar_damping_wires_scalar_coefficient(
 
     timestepper = roms_models.roms_ab3_timestepper(
         vertical_velocity=False,
+        hc=5.0,
+        NZ=4,
         constant_quadratic_damping_coefficient=None,
         property_quadratic_damping_coefficient=None,
         scalar_quadratic_damping_coefficient="quadratic_drag",
@@ -342,7 +346,7 @@ def test_roms_ab3_timestepper_linear_damping_rejects_multiple_coefficient_select
     )
 
     with pytest.raises(ValueError, match="Exactly one coefficient"):
-        roms_models.roms_ab3_timestepper(**kwargs)  # type: ignore[call-arg]
+        roms_models.roms_ab3_timestepper(hc=5.0, NZ=4, **kwargs)  # type: ignore[call-arg]
 
 
 @pytest.mark.parametrize(
@@ -387,7 +391,7 @@ def test_roms_ab3_timestepper_quadratic_damping_rejects_multiple_coefficient_sel
     )
 
     with pytest.raises(ValueError, match="Exactly one coefficient"):
-        roms_models.roms_ab3_timestepper(**kwargs)  # type: ignore[call-arg]
+        roms_models.roms_ab3_timestepper(hc=5.0, NZ=4, **kwargs)  # type: ignore[call-arg]
 
 
 @pytest.mark.parametrize(
@@ -414,4 +418,4 @@ def test_roms_ab3_timestepper_buoyancy_rejects_multiple_coefficient_selectors(
     _install_constructor_spies(monkeypatch, patch_buoyancy=False)
 
     with pytest.raises(ValueError, match="Exactly one coefficient"):
-        roms_models.roms_ab3_timestepper(**kwargs)  # type: ignore[call-arg]
+        roms_models.roms_ab3_timestepper(hc=5.0, NZ=4, **kwargs)  # type: ignore[call-arg]

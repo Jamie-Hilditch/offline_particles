@@ -27,9 +27,9 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from offline_particles.fields import FieldData
-from offline_particles.kernels.roms.vertical_coordinate import (
-    compute_z_kernel_function,
-    compute_zidx_kernel_function,
+from offline_particles.kernels.roms._vertical_coordinate import (
+    compute_z_kernel_function_factory,
+    compute_zidx_kernel_function_factory,
 )
 
 
@@ -53,7 +53,12 @@ def _monotonic_C_array(draw, min_size: int = 4, max_size: int = 10):
 def _roms_grid_and_zidx(draw, extrapolation: float):
     C = draw(_monotonic_C_array())
     NZ = C.shape[0]
-    hc = draw(st.floats(min_value=0.5, max_value=50.0, allow_nan=False, allow_infinity=False))
+    # hc (and NZ, via C's size) select which compiled kernel variant is exercised -- each distinct
+    # (hc, NZ) pair triggers a fresh numba compile the first time it's seen (see
+    # compute_z_kernel_function_factory/compute_zidx_kernel_function_factory), so hc is drawn from
+    # a small fixed set rather than a continuous range to keep the compile cache bounded across
+    # examples, instead of recompiling for nearly every one of the (up to 200) draws.
+    hc = draw(st.sampled_from([0.5, 1.0, 2.5, 5.0, 10.0, 25.0, 50.0]))
     h = draw(st.floats(min_value=1.0, max_value=500.0, allow_nan=False, allow_infinity=False))
     # keep |zeta| well below h so zeta + h stays safely away from zero
     zeta = h * draw(st.floats(min_value=-0.4, max_value=0.4, allow_nan=False, allow_infinity=False))
@@ -76,23 +81,24 @@ def _build_inputs(hc: float, h: float, zeta: float, C: np.ndarray, NZ: int, zidx
         "xidx": np.array([1.5]),
         "z": np.array([np.nan]),
     }
-    scalars = {"hc": np.float64(hc), "NZ": np.int32(NZ)}
     field_data = {
         "h": FieldData(np.full((4, 4), h), (0.0, 0.0)),
         "zeta": FieldData(np.full((4, 4), zeta), (0.0, 0.0)),
         "C": FieldData(C, (0.0,)),
     }
-    return particle_properties, scalars, field_data
+    return particle_properties, field_data
 
 
 def _round_trip_zidx_to_z_to_zidx(hc: float, h: float, zeta: float, C: np.ndarray, NZ: int, zidx: float):
-    particle_properties, scalars, field_data = _build_inputs(hc, h, zeta, C, NZ, zidx)
+    particle_properties, field_data = _build_inputs(hc, h, zeta, C, NZ, zidx)
+    compute_z_kernel_function = compute_z_kernel_function_factory(hc, NZ)
+    compute_zidx_kernel_function = compute_zidx_kernel_function_factory(hc, NZ)
 
-    compute_z_kernel_function(particle_properties, scalars, field_data)
+    compute_z_kernel_function(particle_properties, {}, field_data)
     z = particle_properties["z"][0]
 
     particle_properties["zidx"][0] = np.nan
-    compute_zidx_kernel_function(particle_properties, scalars, field_data)
+    compute_zidx_kernel_function(particle_properties, {}, field_data)
     recovered_zidx = particle_properties["zidx"][0]
 
     return z, recovered_zidx
@@ -127,8 +133,8 @@ def test_interior_round_trip_z_to_zidx_to_z_is_exact(params) -> None:
     hc, h, zeta, C, NZ, zidx = params
     z, recovered_zidx = _round_trip_zidx_to_z_to_zidx(hc, h, zeta, C, NZ, zidx)
 
-    particle_properties, scalars, field_data = _build_inputs(hc, h, zeta, C, NZ, recovered_zidx)
-    compute_z_kernel_function(particle_properties, scalars, field_data)
+    particle_properties, field_data = _build_inputs(hc, h, zeta, C, NZ, recovered_zidx)
+    compute_z_kernel_function_factory(hc, NZ)(particle_properties, {}, field_data)
     recovered_z = particle_properties["z"][0]
 
     assert recovered_z == pytest.approx(z, rel=1e-9, abs=1e-9)
