@@ -51,6 +51,7 @@ html_theme_options = {
     "secondary_sidebar_items": [],
 }
 html_static_path = ["_static"]
+html_css_files = ["custom.css"]
 
 # -- warnings
 # suppress_warnings = ["docutils"]
