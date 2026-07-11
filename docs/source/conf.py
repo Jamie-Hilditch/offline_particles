@@ -42,14 +42,13 @@ napoleon_use_param = False
 napoleon_use_rtype = False
 
 # -- HTML output
-html_theme = "pydata_sphinx_theme"
+html_theme = "sphinx_book_theme"
 html_theme_options = {
-    # ...
-    "navbar_start": ["navbar-logo"],
-    "navbar_center": ["navbar-nav"],
-    "navbar_end": ["navbar-icon-links"],
-    "navbar_persistent": ["search-button"],
-    # ...
+    "repository_url": "https://github.com/Jamie-Hilditch/ROMS_particles",
+    "use_repository_button": True,
+    "use_issues_button": True,
+    "path_to_docs": "docs/source",
+    "secondary_sidebar_items": [],
 }
 html_static_path = ["_static"]
 

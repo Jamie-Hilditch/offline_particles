@@ -1,4 +1,4 @@
-{{ fullname | escape | underline }}
+{{ fullname.split('.')[-1] | escape | underline }}
 
 .. automodule:: {{ fullname }}
 
@@ -39,6 +39,7 @@ Functions
 .. autosummary::
    :toctree:
    :nosignatures:
+   :template: autosummary/function.rst
 
 {% for item in functions %}
    {{ item }}
