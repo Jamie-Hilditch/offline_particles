@@ -1,7 +1,7 @@
 """Pure-Python/NumPy reference oracle for the ROMS vertical-coordinate transform.
 
 Mirrors, line for line, the equations implemented by the `numba`-jitted vertical-coordinate
-kernel in ``src/offline_particles/kernels/roms/vertical_coordinate/_vertical_coordinate.py``.
+kernel in ``src/offline_particles/kernels/roms/_vertical_coordinate.py``.
 This gives that kernel an independent second implementation to be checked against, without
 needing to reach into its private helper functions.
 
@@ -152,15 +152,12 @@ def compute_zidx(
 
 
 # reference re-implementation of compute_z_kernel_function
-def reference_compute_z_kernel_function(particle_properties, scalars, field_data) -> None:
+def reference_compute_z_kernel_function(particle_properties, hc, NZ, field_data) -> None:
     status = particle_properties["status"]
     zidx = particle_properties["zidx"]
     yidx = particle_properties["yidx"]
     xidx = particle_properties["xidx"]
     z = particle_properties["z"]
-
-    hc = scalars["hc"]
-    NZ = int(scalars["NZ"])
 
     h_array, h_offy, h_offx = field_data["h"].unpack()
     zeta_array, zeta_offy, zeta_offx = field_data["zeta"].unpack()
@@ -176,15 +173,12 @@ def reference_compute_z_kernel_function(particle_properties, scalars, field_data
 
 
 # reference re-implementation of compute_zidx_kernel_function
-def reference_compute_zidx_kernel_function(particle_properties, scalars, field_data) -> None:
+def reference_compute_zidx_kernel_function(particle_properties, hc, NZ, field_data) -> None:
     status = particle_properties["status"]
     zidx = particle_properties["zidx"]
     yidx = particle_properties["yidx"]
     xidx = particle_properties["xidx"]
     z = particle_properties["z"]
-
-    hc = scalars["hc"]
-    NZ = int(scalars["NZ"])
 
     h_array, h_offy, h_offx = field_data["h"].unpack()
     zeta_array, zeta_offy, zeta_offx = field_data["zeta"].unpack()

@@ -9,7 +9,7 @@ the real implementation.
 import numpy as np
 import pytest
 
-from offline_particles.kernels.roms.vertical_coordinate._vertical_coordinate import (
+from offline_particles.kernels.roms._vertical_coordinate import (
     _compute_Cidx_from_S,
     _S_coordinate,
     _S_from_z,

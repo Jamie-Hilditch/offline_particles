@@ -84,16 +84,15 @@ def test_reference_kernel_functions_match_scalar_helpers() -> None:
         "xidx": np.array([1.5]),
         "z": np.array([np.nan]),
     }
-    scalars = {"hc": _HC, "NZ": _NZ}
     field_data = {
         "h": FieldData(np.full((4, 4), _H), (0.0, 0.0)),
         "zeta": FieldData(np.full((4, 4), _ZETA), (0.0, 0.0)),
         "C": FieldData(_LINEAR_C, (0.0,)),
     }
 
-    ref.reference_compute_z_kernel_function(particle_properties, scalars, field_data)
+    ref.reference_compute_z_kernel_function(particle_properties, _HC, _NZ, field_data)
     assert particle_properties["z"][0] == pytest.approx(_Z)
 
     particle_properties["zidx"] = np.array([np.nan])
-    ref.reference_compute_zidx_kernel_function(particle_properties, scalars, field_data)
+    ref.reference_compute_zidx_kernel_function(particle_properties, _HC, _NZ, field_data)
     assert particle_properties["zidx"][0] == pytest.approx(_ZIDX)
