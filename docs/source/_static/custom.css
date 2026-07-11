@@ -46,3 +46,32 @@ html {
 .bd-article dl.field-list dt.field-odd .colon {
   display: none;
 }
+
+/* Parameters/Returns/Raises/... tables (napoleon_tables extension): drop the
+ * theme's gridlines and zebra striping, and tighten row padding so entries
+ * read like lines in a paragraph rather than a padded, boxed table. */
+.bd-article .napoleon-table {
+  border: none;
+}
+
+.bd-article .napoleon-table td ~ td,
+.bd-article .napoleon-table td ~ th,
+.bd-article .napoleon-table th ~ td,
+.bd-article .napoleon-table th ~ th {
+  border-left: none;
+}
+
+.bd-article .napoleon-table > :not(caption) > * > * {
+  border-bottom-width: 0;
+  padding: 0.15rem 0.75rem 0.15rem 0;
+}
+
+.bd-article .napoleon-table tbody tr:nth-child(odd),
+.bd-article .napoleon-table tbody tr:nth-child(2n),
+.bd-article .napoleon-table tbody tr:hover {
+  background-color: transparent;
+}
+
+.bd-article .napoleon-table td > p {
+  margin-bottom: 0;
+}

@@ -1,5 +1,10 @@
 # Configuration file for the Sphinx documentation builder.
 
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath("_ext"))
+
 # -- Project information
 project = "Offline Particles"
 copyright = "2026, Jamie Hilditch"
@@ -11,6 +16,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "myst_parser",
+    "napoleon_tables",
 ]
 
 templates_path = ["_templates"]
