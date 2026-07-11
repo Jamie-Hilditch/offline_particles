@@ -26,6 +26,9 @@ autodoc_default_options = {
     "show-inheritance": True,
     "undoc-members": False,
 }
+# Numpydoc-style docstrings document parameter/return types by hand, so drop
+# type hints from the rendered signature line rather than duplicating them.
+autodoc_typehints = "none"
 autosummary_generate = True
 autosummary_imported_members = False
 autosummary_template_dir = "_templates/autosummary"
