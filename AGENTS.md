@@ -20,7 +20,7 @@ All commands run through `uv` (uses `uv.lock`, Python >=3.12).
 - Type check: `uv run ty check`
 - Lint: `uv run ruff check --fix .`
 - Format: `uv run ruff format .`
-- Build docs: `uv run sphinx-build docs/source docs/build`
+- Build docs: `uv run sphinx-build docs/source docs/_build`. `docs/source/_api` and `docs/_build` are autosummary/build artifacts (gitignored) that are only regenerated for files that changed, so a stale `_api` stub left over from a module rename can reference a module that no longer exists and break the build with an `ImportExceptionGroup`. If the build fails after renaming/moving modules, delete both directories first: `rm -rf docs/_build docs/source/_api` (or `Remove-Item -Recurse -Force docs/_build, docs/source/_api` in PowerShell), then rebuild.
 - Pre-commit runs ruff-check and ruff-format on `src|tests|docs/source` — install with `uv run pre-commit install`.
 
 CI (`.github/workflows/ci.yml`) runs `ty check`, `ruff check`/`format`, and `pytest` as separate jobs — match these locally before pushing.
