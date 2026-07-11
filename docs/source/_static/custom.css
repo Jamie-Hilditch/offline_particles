@@ -28,3 +28,21 @@ html {
 .bd-article dl[class]:not(.option-list, .field-list, .footnote, .glossary, .simple) {
   margin-bottom: 0.5rem;
 }
+
+/* Numpydoc's Parameters/Returns/Raises render as field lists, which the theme
+ * shades with a background chip behind the field name. Restyle them to match
+ * the plain bold-title + underline look that `.rubric` (e.g. Notes) already
+ * has, instead of the boxed chip. */
+.bd-article dl.field-list dt.field-even,
+.bd-article dl.field-list dt.field-odd {
+  background-color: transparent;
+  border-bottom: 1px solid var(--pst-color-border);
+  margin-top: 1rem;
+  margin-bottom: 0.35rem;
+  padding-left: 0;
+}
+
+.bd-article dl.field-list dt.field-even .colon,
+.bd-article dl.field-list dt.field-odd .colon {
+  display: none;
+}
