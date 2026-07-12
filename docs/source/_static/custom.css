@@ -75,3 +75,11 @@ html {
 .bd-article .napoleon-table td > p {
   margin-bottom: 0;
 }
+
+/* With the secondary sidebar removed, `.bd-main` reclaims the ~17rem it used
+ * to take, but the article container's own `max-width: 60em` still centers
+ * content in a narrower box, leaving that reclaimed width as empty margin.
+ * Widen the cap by roughly the same 17rem to use the space instead. */
+.bd-main .bd-content .bd-article-container {
+  max-width: 75em;
+}
