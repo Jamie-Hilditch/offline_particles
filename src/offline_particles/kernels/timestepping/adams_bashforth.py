@@ -12,7 +12,8 @@ from .._kernels import (
     ScalarsType,
 )
 from ..input_declarations import DT_DECLARATION, STATUS_DECLARATION
-from ._adams_bashforth import ab2_update, ab3_update, ab_bump_status, ab_initialisation_factory
+from ..status import Status, construct_initialise_status_kernel
+from ._adams_bashforth import ab2_update, ab3_update, ab_bump_status
 
 
 # particle property declarations for Adams-Bashforth
@@ -179,8 +180,39 @@ def construct_ab_bump_status_kernel() -> BoundKernel:
     return BoundKernel(kernel)
 
 
+def ab_initial_status(order: int) -> Status:
+    """Map an Adams-Bashforth order to the multistep status a particle should start initialisation at.
+
+    Parameters
+    ----------
+    order : int
+        The order of the Adams-Bashforth method (2 or 3).
+
+    Returns
+    -------
+    Status
+        ``Status.MULTISTEP_2`` for order 3, ``Status.MULTISTEP_1`` for order 2.
+
+    Raises
+    ------
+    ValueError
+        If an unsupported Adams-Bashforth order is specified.
+    """
+    if order == 2:
+        return Status.MULTISTEP_1
+    elif order == 3:
+        return Status.MULTISTEP_2
+    else:
+        raise ValueError(f"Unsupported Adams-Bashforth order: {order}")
+
+
 def construct_ab_initialisation_kernel(order: int) -> BoundKernel:
-    """Construct an Adams-Bashforth initialisation kernel.
+    """Construct a kernel that finalizes initialisation with the Adams-Bashforth startup status.
+
+    Transitions particles with status ``Status.INITIALISING`` to the appropriate multistep status
+    for the given Adams-Bashforth `order` (``Status.MULTISTEP_2`` for order 3,
+    ``Status.MULTISTEP_1`` for order 2), so they get the correct startup ramp-up. Delegates to
+    :func:`~offline_particles.kernels.status.construct_initialise_status_kernel`.
 
     Parameters
     ----------
@@ -191,20 +223,10 @@ def construct_ab_initialisation_kernel(order: int) -> BoundKernel:
     -------
     BoundKernel
         BoundKernel implementing the AB initialisation.
+
+    Raises
+    ------
+    ValueError
+        If an unsupported Adams-Bashforth order is specified.
     """
-    kernel_function_impl = ab_initialisation_factory(order)
-
-    def kernel_function(
-        particle_properties: ParticlePropertiesType,
-        scalars: ScalarsType,
-        fields: FieldDataType,
-    ) -> None:
-        kernel_function_impl(particle_properties["status"])
-
-    kernel = ParticleKernel(
-        kernel_function,
-        particle_properties=[
-            STATUS_DECLARATION,
-        ],
-    )
-    return BoundKernel(kernel)
+    return construct_initialise_status_kernel(ab_initial_status(order))

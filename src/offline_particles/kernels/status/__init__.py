@@ -1,12 +1,20 @@
 import enum
 from typing import overload
 
+import numba
 import numpy as np
 import numpy.typing as npt
 
+from .._kernels import BoundKernel, FieldDataType, ParticleKernel, ParticlePropertiesType, ScalarsType, kernel_function
+from ..input_declarations import STATUS_DECLARATION
+
 __all__ = [
     "INACTIVE_FLAG",
+    "FieldDataType",
+    "ParticlePropertiesType",
+    "ScalarsType",
     "Status",
+    "construct_initialise_status_kernel",
     "is_active",
     "is_inactive",
 ]
@@ -31,6 +39,9 @@ class Status(enum.IntEnum):
     MULTISTEP_1 = 10
     MULTISTEP_2 = 11
 
+    # recurring initialisation phase (both sim-start and mid-simulation, e.g. timed release)
+    INITIALISING = 19 | INACTIVE
+
     # timed releases and retirements
     PRE_RELEASE = 20 | INACTIVE
     POST_RETIREMENT = 21 | INACTIVE
@@ -38,6 +49,7 @@ class Status(enum.IntEnum):
 
 # explicitly cast python Int to the status array type
 INACTIVE_FLAG = np.uint8(Status.INACTIVE)
+_INITIALISING = np.uint8(Status.INITIALISING)
 
 
 @overload
@@ -78,3 +90,36 @@ def is_active(status: np.uint8 | npt.NDArray[np.uint8]) -> np.bool_ | npt.NDArra
         Whether the particle is active, or boolean array indicating active particles.
     """
     return np.logical_not(is_inactive(status))
+
+
+def construct_initialise_status_kernel(status: Status) -> BoundKernel:
+    """Construct a kernel that finalizes initialisation by setting a target status.
+
+    Transitions particles with status ``Status.INITIALISING`` to the given `status`. Run
+    automatically, last, by every :class:`~offline_particles.timestepping.Timestepper` at the end
+    of its initialisation phase — see :meth:`Timestepper.run_initialisation`. Since
+    initialisation runs every step (not just once at simulation start), this also finalizes
+    particles that transition to ``Status.INITIALISING`` mid-simulation, e.g. via
+    :func:`~offline_particles.kernels.timed_activation.construct_activate_released_particles_kernel`.
+
+    Parameters
+    ----------
+    status : Status
+        The status to transition ``Status.INITIALISING`` particles to.
+
+    Returns
+    -------
+    BoundKernel
+        A bound kernel that finalizes initialising particles to `status`.
+    """
+    target = np.uint8(status)
+
+    @kernel_function(["status"])
+    @numba.njit(parallel=True, nogil=True, fastmath=True)
+    def initialise_status(status_arr: npt.NDArray[np.uint8]) -> None:
+        for i in numba.prange(status_arr.size):  # ty: ignore[not-iterable]
+            if status_arr[i] == _INITIALISING:
+                status_arr[i] = target
+
+    kernel = ParticleKernel(initialise_status, particle_properties=[STATUS_DECLARATION])
+    return BoundKernel(kernel)

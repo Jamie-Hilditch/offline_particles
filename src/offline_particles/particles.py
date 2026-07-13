@@ -6,7 +6,7 @@ from collections.abc import Mapping
 import numpy as np
 import numpy.typing as npt
 
-from .kernels import BoundKernel, ParticlePropertyDeclaration
+from .kernels import BoundKernel, ParticlePropertyDeclaration, Status
 
 _REQUIRED_PARTICLE_PROPERTY_FIELDS = {
     "status": np.dtype(np.uint8),
@@ -109,6 +109,11 @@ class Particles(_FrozenArrayMapping):
             not included in this mapping. If this mapping includes any of
             those required property names, the provided dtypes are only used
             for validation and must exactly match the required dtypes.
+            ``status`` defaults to ``Status.INITIALISING`` rather than the
+            zero-fill default used for other properties, so a
+            :class:`~offline_particles.timestepping.Timestepper`'s initialisation phase picks
+            particles up and finalizes them (to ``Status.NORMAL`` or an appropriate multistep
+            status) before they participate normally.
 
         Raises
         ------
@@ -142,6 +147,11 @@ class Particles(_FrozenArrayMapping):
         # now add the additional fields, checking that they are compatible with any arrays we already created for the required fields
         for binding, dtype in bindings_dtypes.items():
             arrays[binding] = np.zeros((nparticles,), dtype=dtype)
+
+        # particles default to INITIALISING rather than the zero-fill default (Status.NORMAL),
+        # so they're picked up by a Timestepper's initialisation phase before participating
+        # normally; callers wanting delayed release still explicitly set PRE_RELEASE afterward.
+        arrays["status"][:] = np.uint8(Status.INITIALISING)
 
         super().__init__(arrays=arrays)
 

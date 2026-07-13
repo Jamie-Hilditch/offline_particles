@@ -30,6 +30,7 @@ def construct_compute_z_kernel(
     h: str = "h",
     zeta: str = "zeta",
     C: str = "C",
+    only_initialising: bool = False,
 ) -> BoundKernel:
     """Construct a kernel to compute the physical vertical position `z` from ROMS vertical coordinates.
 
@@ -48,13 +49,18 @@ def construct_compute_z_kernel(
         Binding for the sea surface height field
     C : str, optional
         Binding for the vertical stretching function field. Must be strictly increasing.
+    only_initialising : bool, optional
+        If False (default), compute for any active particle.
+        If True, compute only for particles with status ``Status.INITIALISING``
+        — use this when initialising the particles by adding the kernel
+        via :meth:`~offline_particles.timestepping.Timestepper.add_initialisation_kernels`.
 
     Returns
     -------
     BoundKernel
         A bound kernel that computes the physical vertical position `z`.
     """
-    kernel_fn = compute_z_kernel_function_factory(hc, NZ)
+    kernel_fn = compute_z_kernel_function_factory(hc, NZ, only_initialising)
     kernel = ParticleKernel(
         kernel_fn,
         particle_properties=[
@@ -90,6 +96,7 @@ def construct_compute_zidx_kernel(
     h: str = "h",
     zeta: str = "zeta",
     C: str = "C",
+    only_initialising: bool = False,
 ) -> BoundKernel:
     """Construct a kernel to compute the ROMS vertical index `zidx` from physical vertical position `z`.
 
@@ -112,13 +119,18 @@ def construct_compute_zidx_kernel(
         undefined if this precondition does not hold. This is a physical requirement of the ROMS
         S-coordinate system (a valid vertical grid never has degenerate or crossing levels), so
         it should always be satisfied by real ROMS output.
+    only_initialising : bool, optional
+        If False (default), compute for any active particle.
+        If True, compute only for particles with status ``Status.INITIALISING``
+        — use this when initialising i.e. adding the kernel
+        via :meth:`~offline_particles.timestepping.Timestepper.add_initialisation_kernels`.
 
     Returns
     -------
     BoundKernel
         A bound kernel that computes the ROMS vertical index `zidx` from the physical vertical position `z`.
     """
-    kernel_fn = compute_zidx_kernel_function_factory(hc, NZ)
+    kernel_fn = compute_zidx_kernel_function_factory(hc, NZ, only_initialising)
     kernel = ParticleKernel(
         kernel_fn,
         particle_properties=[STATUS_DECLARATION, ZIDX_DECLARATION, YIDX_DECLARATION, XIDX_DECLARATION, z_declaration],
