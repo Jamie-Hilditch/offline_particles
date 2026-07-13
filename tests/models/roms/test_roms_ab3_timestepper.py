@@ -9,7 +9,11 @@ import pytest
 
 import offline_particles.models.roms as roms_models
 import offline_particles.timestepping as timestepping_module
+from offline_particles.fields import StaticField
+from offline_particles.fieldset import Fieldset
 from offline_particles.kernels.status import Status
+from offline_particles.launcher import Launcher
+from offline_particles.particles import Particles
 from offline_particles.timestepping import ABTimestepper
 
 
@@ -478,3 +482,71 @@ def test_roms_ab3_timestepper_buoyancy_rejects_multiple_coefficient_selectors(
 
     with pytest.raises(ValueError, match="Exactly one coefficient"):
         roms_models.roms_ab3_timestepper(hc=5.0, NZ=4, **kwargs)  # type: ignore[call-arg]
+
+
+# --- end-to-end initialisation behaviour (issue #133), exercising the real kernels ---
+
+_HC, _NZ, _Y, _X = 5.0, 4, 4, 4
+_H_VALUE, _ZETA_VALUE = 50.0, 0.5
+# a zidx=1.5, z=-24.75 pair for _HC/_NZ/_H_VALUE/_ZETA_VALUE below, computed with the real
+# compute_z/compute_zidx functions (offline_particles.kernels.roms._vertical_coordinate); this
+# choice of C makes C == sigma, so the S-coordinate transform is exactly invertible.
+_ZIDX, _Z = 1.5, -24.75
+
+
+def _make_vertical_coordinate_fieldset() -> Fieldset:
+    C = (np.arange(_NZ, dtype=np.float64) + 0.5) / _NZ - 1.0
+    fieldset = Fieldset(1, _NZ, _Y, _X)
+    fieldset.add_field(
+        "h", StaticField.from_numpy(np.full((_Y, _X), _H_VALUE), axes=("Y", "X"), staggers=("center", "center"))
+    )
+    fieldset.add_field(
+        "zeta",
+        StaticField.from_numpy(np.full((_Y, _X), _ZETA_VALUE), axes=("Y", "X"), staggers=("center", "center")),
+    )
+    fieldset.add_field("C", StaticField.from_numpy(C, axes=("Z",), staggers=("center",)))
+    return fieldset
+
+
+def test_roms_ab3_timestepper_run_initialisation_computes_zidx_from_z(make_clock) -> None:
+    launcher = Launcher(_make_vertical_coordinate_fieldset(), history_size=1)
+
+    particles = Particles(2, {"z": np.dtype(np.float64)})
+    particles["status"][:] = np.array([Status.INITIALISING, Status.NORMAL], dtype=np.uint8)
+    particles["yidx"][:] = 1.5
+    particles["xidx"][:] = 1.5
+    particles["z"][:] = _Z
+    particles["zidx"][:] = np.array([-999.0, 7.0])  # sentinel vs. an already-correct value
+
+    timestepper = roms_models.roms_ab3_timestepper(hc=_HC, NZ=_NZ)  # initialise_z=False (default)
+    clock = make_clock(np.array([0.0, 1.0, 2.0], dtype=np.float64), 1.0)
+
+    timestepper.run_initialisation(particles, launcher, clock)
+
+    assert particles["zidx"][0] == pytest.approx(_ZIDX)
+    assert particles["status"][0] == np.uint8(Status.MULTISTEP_2)
+    # the already-active particle is untouched by the initialisation kernel
+    assert particles["zidx"][1] == 7.0
+    assert particles["status"][1] == np.uint8(Status.NORMAL)
+
+
+def test_roms_ab3_timestepper_initialise_z_true_computes_z_from_zidx(make_clock) -> None:
+    launcher = Launcher(_make_vertical_coordinate_fieldset(), history_size=1)
+
+    particles = Particles(2, {"z": np.dtype(np.float64)})
+    particles["status"][:] = np.array([Status.INITIALISING, Status.NORMAL], dtype=np.uint8)
+    particles["yidx"][:] = 1.5
+    particles["xidx"][:] = 1.5
+    particles["zidx"][:] = _ZIDX
+    particles["z"][:] = np.array([-999.0, 7.0])  # sentinel vs. an already-correct value
+
+    timestepper = roms_models.roms_ab3_timestepper(hc=_HC, NZ=_NZ, initialise_z=True)
+    clock = make_clock(np.array([0.0, 1.0, 2.0], dtype=np.float64), 1.0)
+
+    timestepper.run_initialisation(particles, launcher, clock)
+
+    assert particles["z"][0] == pytest.approx(_Z)
+    assert particles["status"][0] == np.uint8(Status.MULTISTEP_2)
+    # the already-active particle is untouched by the initialisation kernel
+    assert particles["z"][1] == 7.0
+    assert particles["status"][1] == np.uint8(Status.NORMAL)
