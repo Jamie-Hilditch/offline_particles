@@ -13,7 +13,7 @@ import pytest
 from offline_particles.fields import StaticField
 from offline_particles.kernels.roms import construct_compute_z_kernel
 from offline_particles.kernels.roms._vertical_coordinate import compute_z_kernel_function_factory
-from offline_particles.kernels.status import INACTIVE_FLAG
+from offline_particles.kernels.status import INACTIVE_FLAG, Status
 
 from . import _reference as ref
 
@@ -106,6 +106,29 @@ def test_compute_z_skips_inactive_particles(
 
     assert np.isfinite(particle_properties["z"][0])
     assert particle_properties["z"][1] == pytest.approx(-999.0)
+
+
+def test_compute_z_only_initialising_updates_initialising_particles_only(
+    hc_nz: tuple[float, int],
+    uniform_h_zeta_field_data,
+    nonlinear_C_field_data,
+    make_particle_properties,
+) -> None:
+    hc, NZ = hc_nz
+    particle_properties = make_particle_properties(
+        zidx=[1.5, 1.5, 1.5],
+        yidx=[1.5, 1.5, 1.5],
+        xidx=[1.5, 1.5, 1.5],
+        z=[np.nan, -111.0, -222.0],
+        status=[np.uint8(Status.INITIALISING), np.uint8(Status.NORMAL), np.uint8(Status.INACTIVE)],
+    )
+    field_data = {**uniform_h_zeta_field_data, **nonlinear_C_field_data}
+
+    compute_z_kernel_function_factory(hc, NZ, only_initialising=True)(particle_properties, {}, field_data)
+
+    assert np.isfinite(particle_properties["z"][0])
+    assert particle_properties["z"][1] == pytest.approx(-111.0)
+    assert particle_properties["z"][2] == pytest.approx(-222.0)
 
 
 def test_construct_compute_z_kernel_honours_custom_bindings(

@@ -9,7 +9,7 @@ type T = np.float64 | np.datetime64
 
 # module-level uint8 constants for use inside @numba.njit functions
 _PRE_RELEASE = np.uint8(Status.PRE_RELEASE)
-_NORMAL = np.uint8(Status.NORMAL)
+_INITIALISING = np.uint8(Status.INITIALISING)
 _POST_RETIREMENT = np.uint8(Status.POST_RETIREMENT)
 
 
@@ -24,7 +24,7 @@ def _activate_released_particles(
         if status[i] != _PRE_RELEASE:
             continue
         if (dt > 0 and time >= release_time[i]) or (dt < 0 and time <= release_time[i]):
-            status[i] = _NORMAL
+            status[i] = _INITIALISING
 
 
 @numba.njit(parallel=True, nogil=True, fastmath=True)

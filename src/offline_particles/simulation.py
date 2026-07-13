@@ -456,6 +456,12 @@ class Simulation:
 
     def step(self) -> None:
         """Advance the particle simulation by one timestep."""
+        # run initialisation kernels: this picks up particles that transitioned to
+        # Status.INITIALISING since the last step (e.g. via timed release) and finalizes them.
+        # `run()` also calls this once before the loop starts, for the initial state, so on the
+        # very first iteration this is a harmless no-op repeat (particles are already finalized).
+        for pset_name, particles in self._particles.items():
+            self._timesteppers[pset_name].run_initialisation(particles, self._launcher, self._clock)
         # run validation kernels
         for pset_name, particles in self._particles.items():
             self._timesteppers[pset_name].run_validation(particles, self._launcher, self._clock)

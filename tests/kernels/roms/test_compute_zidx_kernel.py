@@ -13,7 +13,7 @@ import pytest
 from offline_particles.fields import FieldData, StaticField
 from offline_particles.kernels.roms import construct_compute_zidx_kernel
 from offline_particles.kernels.roms._vertical_coordinate import compute_zidx_kernel_function_factory
-from offline_particles.kernels.status import INACTIVE_FLAG
+from offline_particles.kernels.status import INACTIVE_FLAG, Status
 
 from . import _reference as ref
 
@@ -186,6 +186,29 @@ def test_compute_zidx_skips_inactive_particles(
 
     assert np.isfinite(particle_properties["zidx"][0])
     assert particle_properties["zidx"][1] == pytest.approx(-999.0)
+
+
+def test_compute_zidx_only_initialising_updates_initialising_particles_only(
+    hc_nz: tuple[float, int],
+    uniform_h_zeta_field_data,
+    nonlinear_C_field_data,
+    make_particle_properties,
+) -> None:
+    hc, NZ = hc_nz
+    particle_properties = make_particle_properties(
+        zidx=[-111.0, -222.0, np.nan],
+        yidx=[1.5, 1.5, 1.5],
+        xidx=[1.5, 1.5, 1.5],
+        z=[-20.0, -20.0, -20.0],
+        status=[np.uint8(Status.NORMAL), np.uint8(Status.INACTIVE), np.uint8(Status.INITIALISING)],
+    )
+    field_data = {**uniform_h_zeta_field_data, **nonlinear_C_field_data}
+
+    compute_zidx_kernel_function_factory(hc, NZ, only_initialising=True)(particle_properties, {}, field_data)
+
+    assert particle_properties["zidx"][0] == pytest.approx(-111.0)
+    assert particle_properties["zidx"][1] == pytest.approx(-222.0)
+    assert np.isfinite(particle_properties["zidx"][2])
 
 
 def test_construct_compute_zidx_kernel_honours_custom_bindings(

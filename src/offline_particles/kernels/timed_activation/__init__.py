@@ -21,6 +21,9 @@ def construct_activate_released_particles_kernel(
 ) -> BoundKernel:
     """Construct a kernel to activate particles at a given release time.
 
+    Transitions particles with status ``Status.PRE_RELEASE`` to ``Status.INITIALISING`` once the
+    simulation time reaches their `release_time`.
+
     Parameters
     ----------
     release_time : str, optional
@@ -35,6 +38,12 @@ def construct_activate_released_particles_kernel(
     -------
     BoundKernel
         A bound kernel that activates particles at the given release time.
+
+    Notes
+    -----
+    Recommended placement is :meth:`~offline_particles.timestepping.Timestepper.add_post_step_kernels`.
+    Then, the release-time comparison after the clock is advanced and the initialisation phase will
+    occur before the next step runs.
     """
     release_time_declaration = ParticlePropertyDeclaration("release_time", np.dtype(dtype).type)
 

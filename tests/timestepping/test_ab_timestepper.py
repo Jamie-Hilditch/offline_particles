@@ -12,7 +12,7 @@ from offline_particles.timestepping import ABTimestepper
 
 def _make_particles() -> Particles:
     particles = Particles(
-        3,
+        4,
         {
             "status": np.dtype(np.uint8),
             "zidx": np.dtype(np.float64),
@@ -25,6 +25,7 @@ def _make_particles() -> Particles:
             np.uint8(Status.NORMAL),
             np.uint8(Status.INACTIVE),
             np.uint8(Status.NONFINITE),
+            np.uint8(Status.INITIALISING),
         ],
         dtype=np.uint8,
     )
@@ -48,7 +49,8 @@ class TestABTimestepperConstruction:
     def test_adds_initialisation_kernel(self, order: int) -> None:
         timestepper = ABTimestepper(order=order)
 
-        assert len(timestepper.initialisation_kernels) == 1
+        assert len(timestepper.initialisation_kernels) == 0
+        assert timestepper._initialise_status_kernel is not None
 
     def test_stores_index_padding(self) -> None:
         timestepper = ABTimestepper(order=2, index_padding=3)
@@ -125,9 +127,10 @@ class TestABTimestepperExecution:
             particles["status"],
             np.array(
                 [
-                    expected_status,
+                    np.uint8(Status.NORMAL),
                     np.uint8(Status.INACTIVE),
                     np.uint8(Status.NONFINITE),
+                    expected_status,
                 ],
                 dtype=np.uint8,
             ),

@@ -11,11 +11,12 @@ import numpy.typing as npt
 from .fields import FieldData
 from .fieldset import Fieldset
 from .kernels import BoundKernel
-from .kernels.status import INACTIVE_FLAG
+from .kernels.status import INACTIVE_FLAG, Status
 from .particles import Particles
 from .spatial_arrays import BBox
 
 T = TypeVar("T", bound=np.generic)
+_INITIALISING = np.uint8(Status.INITIALISING)
 
 # Named tuple for time information
 Time_info = collections.namedtuple("Time_info", ["time", "tidx", "iteration"])
@@ -260,6 +261,12 @@ def _compute_particle_bounds(
 ) -> tuple[float, float, float, float, float, float]:
     """Compute the bounding box of active particles.
 
+    Particles with status ``Status.INITIALISING`` are included despite carrying the ``INACTIVE``
+    bit: they're processed by initialisation kernels in the same
+    :meth:`~offline_particles.timestepping.Timestepper.run_initialisation` call (e.g. a
+    ROMS consistency-fix kernel interpolating field data at the particle's location), so the
+    bounding box used to gather that field data must cover them.
+
     Parameters
     ----------
     status : npt.NDArray[np.uint8]
@@ -284,7 +291,7 @@ def _compute_particle_bounds(
     xmax = -np.inf
 
     for i in range(status.size):
-        if status[i] & INACTIVE_FLAG:  # inactive
+        if (status[i] & INACTIVE_FLAG) and status[i] != _INITIALISING:  # inactive, but not initialising
             continue
 
         z = zidx[i]

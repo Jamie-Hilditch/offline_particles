@@ -36,8 +36,11 @@ _DENSITY_FIELD_ARRAY_LAYOUT = ArrayLayout(
 
 def roms_ab3_timestepper(
     *,
+    hc: float,
+    NZ: int,
     vertical_velocity: bool = True,
     index_padding: int = 5,
+    initialise_z: bool = False,
     u: str = "u",
     v: str = "v",
     w: str = "w",
@@ -47,8 +50,6 @@ def roms_ab3_timestepper(
     zeta: str = "zeta",
     C: str = "C",
     rho: str = "rho",
-    hc: float,
-    NZ: int,
     constant_linear_damping_coefficient: np.inexact | float | None = None,
     constant_quadratic_damping_coefficient: np.inexact | float | None = None,
     property_linear_damping_coefficient: str | None = None,
@@ -63,11 +64,21 @@ def roms_ab3_timestepper(
 
     Parameters
     ----------
+    hc : float
+        The critical depth. Baked into the compiled vertical-coordinate kernel as a compile-time
+        constant.
+    NZ : int
+        The total number of vertical rho levels. Baked into the compiled vertical-coordinate
+        kernel as a compile-time constant.
     vertical_velocity : bool, optional
         Whether to include vertical velocity advection (default True).
     index_padding : int, optional
         Index padding, i.e. the minimum amount by which the field indices
         exceed the particle indices (default 5).
+    initialise_z : bool, optional
+        Which initialisation kernel to wire up: if False (default), initialise `zidx` from the
+        particle's already-set `z` position; if True, initialise `z` from the particle's
+        already-set `zidx`.
     u : str, optional
         Binding for the u velocity field (default "u").
     v : str, optional
@@ -88,12 +99,6 @@ def roms_ab3_timestepper(
         Binding for the ambient density field (default "rho"). Only used if buoyancy forcing is enabled,
         i.e. one of `constant_buoyancy_coefficient`, `property_buoyancy_coefficient`, or `scalar_buoyancy_coefficient`
         is provided.
-    hc : float
-        The critical depth. Baked into the compiled vertical-coordinate kernel as a compile-time
-        constant.
-    NZ : int
-        The total number of vertical rho levels. Baked into the compiled vertical-coordinate
-        kernel as a compile-time constant.
     constant_linear_damping_coefficient : np.inexact | float | None, optional
         If not None, include linear damping with a constant damping coefficient (default None).
     constant_quadratic_damping_coefficient : np.inexact | float | None, optional
@@ -132,9 +137,10 @@ def roms_ab3_timestepper(
 
     .. warning::
 
-        Both `z` and `zidx` must be initialised before the simulation start. `roms.construct_compute_z_kernel()` can be used to
-        construct a kernel to compute `z` from `zidx` and `roms.construct_compute_zidx_kernel` can be used to construct a kernel
-        to compute `zidx` from `z`.
+        Both `z` and `zidx` must be initialised, in addition to `xidx` and `yidx`.
+        The default behaviour of this function (`initialise_z=False`) is to assume that the particle `z` position
+        is set (using :meth:`simulation.set_particle_property`) and that `zidx` should be computed via an initialisation kernel.
+        If the particle `zidx` is set (via :meth:`simulation.set_indices`) and `z` should be computed instead, set `initialise_z=True`.
 
     Horizontal advection occurs in index space, i.e. in `xidx` and `yidx`.
 
@@ -247,4 +253,14 @@ def roms_ab3_timestepper(
     timestepper.add_tendency_kernels(*tendency_kernels)
     timestepper.add_ab_update_kernels(*ab_kernels)
     timestepper.add_post_step_kernels(*post_step_kernels)
+
+    # initialisation kernel to compute whichever of z/zidx is not already set
+    if initialise_z:
+        timestepper.add_initialisation_kernels(
+            construct_compute_z_kernel(hc=hc, NZ=NZ, h=h, zeta=zeta, C=C, only_initialising=True)
+        )
+    else:
+        timestepper.add_initialisation_kernels(
+            construct_compute_zidx_kernel(hc=hc, NZ=NZ, h=h, zeta=zeta, C=C, only_initialising=True)
+        )
     return timestepper

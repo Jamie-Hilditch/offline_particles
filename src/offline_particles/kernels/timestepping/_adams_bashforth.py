@@ -1,7 +1,5 @@
 """Implementations of Adams-Bashforth time-stepping schemes."""
 
-from collections.abc import Callable
-
 import numba
 import numpy as np
 import numpy.typing as npt
@@ -101,38 +99,3 @@ def ab_bump_status(status: npt.NDArray[np.uint8]) -> None:
         elif status[i] == _MULTISTEP_2:
             # if on second step, set to multistep 1 for next step
             status[i] = _MULTISTEP_1
-
-
-def ab_initialisation_factory(order: int) -> Callable[[npt.NDArray[np.uint8]], None]:
-    """Create an Adams-Bashforth initialisation kernel for a given order.
-
-    Parameters
-    ----------
-    order : int
-        Order of Adams-Bashforth scheme.
-
-    Returns
-    -------
-    Callable[[npt.NDArray[np.uint8]], None]
-        A numba jitted function implementing the initialisation kernel for the specified Adams-Bashforth order.
-
-    Raises
-    ------
-    ValueError
-        If an unsupported Adams-Bashforth order is specified.
-    """
-    if order == 2:
-        value = _MULTISTEP_1
-    elif order == 3:
-        value = _MULTISTEP_2
-    else:
-        raise ValueError(f"Unsupported Adams-Bashforth order: {order}")
-
-    @numba.njit(parallel=True, nogil=True, fastmath=True)
-    def initialisation_kernel_function_impl(status: npt.NDArray[np.uint8]) -> None:
-        for i in numba.prange(status.size):  # ty: ignore[not-iterable]
-            if status[i] & INACTIVE_FLAG:
-                continue
-            status[i] = value
-
-    return initialisation_kernel_function_impl

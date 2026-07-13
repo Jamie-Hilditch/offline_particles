@@ -49,7 +49,7 @@ Performance-critical kernel input/output is implemented as plain Python with `nu
 
 ### Timestepping (`timestepping.py`, `kernels/timestepping/`)
 
-`Timestepper` is the base class (`ABTimestepper` for Adams-Bashforth, `RK2Timestepper` for explicit RK2); each organizes kernels into initialisation/validation/pre-step/step/post-step phases run by `Simulation.step()`. `Clock` tracks simulation time/iteration/dt and direction (forward/backward in time).
+`Timestepper` is the base class (`ABTimestepper` for Adams-Bashforth, `RK2Timestepper` for explicit RK2); each organizes kernels into initialisation/validation/pre-step/step/post-step phases run by `Simulation.step()`. The initialisation phase runs every step (not just once at simulation start): it's gated on `Status.INITIALISING` so particles that transition to that status mid-simulation (e.g. via a timed-release kernel) get the same setup and status finalization as particles present at simulation start — see `Timestepper.run_initialisation`/`set_initial_status`. `Clock` tracks simulation time/iteration/dt and direction (forward/backward in time).
 
 ### Simulation orchestration (`simulation.py`)
 

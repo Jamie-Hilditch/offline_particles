@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 
+from offline_particles.kernels.status import Status
 from offline_particles.particles import Particles, ParticlesView, _FrozenArrayMapping
 
 # ---------------------------------------------------------------------------
@@ -129,6 +130,10 @@ class TestParticles:
     def test_creates_zero_arrays(self) -> None:
         p = Particles(4, {"x": np.dtype(np.float64)})
         np.testing.assert_array_equal(p["x"], np.zeros(4))
+
+    def test_status_defaults_to_initialising(self) -> None:
+        p = Particles(4, {"x": np.dtype(np.float64)})
+        np.testing.assert_array_equal(p["status"], np.full(4, np.uint8(Status.INITIALISING)))
 
     def test_len(self) -> None:
         p = Particles(10, {"x": np.dtype(np.float64)})
