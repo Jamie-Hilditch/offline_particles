@@ -244,21 +244,26 @@ class Launcher:
 
     def launch_kernel(self, bound_kernel: BoundKernel, particles: Particles, tinfo: Tinfo) -> None:
         """Launch a kernel."""
-        # construct kernel inputs
-        bbox = self.construct_bbox(particles)
-        if bbox is None:
-            logger.debug("launch_kernel: skipping %r - no active particles", bound_kernel)
-            return
         particle_properties = {
             name: particles[binding] for name, binding in bound_kernel.particle_property_bindings.items()
         }
         scalars = {
             name: self._scalar_data_sources[binding](tinfo) for name, binding in bound_kernel.scalar_bindings.items()
         }
-        field_data = {
-            name: self.get_field_data(binding, tinfo.tidx, bbox)
-            for name, binding in bound_kernel.field_data_bindings.items()
-        }
+
+        # only construct the bbox and fetch field data if the kernel actually needs it - this
+        # also skips the kernel launch if there are no active particles to build a bbox around
+        field_data: dict[str, FieldData] = {}
+        if bound_kernel.field_data_bindings:
+            bbox = self.construct_bbox(particles)
+            if bbox is None:
+                logger.debug("launch_kernel: skipping %r - no active particles", bound_kernel)
+                return
+            field_data = {
+                name: self.get_field_data(binding, tinfo.tidx, bbox)
+                for name, binding in bound_kernel.field_data_bindings.items()
+            }
+
         # call the kernel
         bound_kernel.kernel(particle_properties, scalars, field_data)
 

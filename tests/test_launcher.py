@@ -5,7 +5,9 @@ import numpy as np
 from offline_particles.fields import StaticField
 from offline_particles.fieldset import Fieldset
 from offline_particles.kernels import BoundKernel, FieldDataDeclaration, ParticleKernel
+from offline_particles.kernels.input_declarations import STATUS_DECLARATION
 from offline_particles.kernels.status import Status
+from offline_particles.kernels.timed_activation import construct_activate_released_particles_kernel
 from offline_particles.launcher import Launcher, _compute_particle_bounds
 from offline_particles.particles import Particles
 from offline_particles.spatial_arrays import BBox
@@ -174,3 +176,75 @@ class TestLaunchKernelSkipsWhenNoActiveParticles:
         launcher.launch_kernel(bound_kernel, particles, clock.tinfo)
 
         assert kernel_called
+
+
+class TestLaunchKernelRunsFieldDataFreeKernelsRegardless:
+    def test_runs_kernel_without_field_data_when_no_active_particles(self, make_clock, monkeypatch) -> None:
+        launcher = Launcher(Fieldset(1, 4, 4, 4), history_size=1)
+
+        kernel_called = False
+
+        def kernel_fn(particle_properties, scalars, field_data) -> None:
+            nonlocal kernel_called
+            kernel_called = True
+
+        bound_kernel = BoundKernel(ParticleKernel(kernel_fn, particle_properties=[STATUS_DECLARATION]))
+
+        def _fail_get_field_data(name, time_index, bbox):
+            raise AssertionError("get_field_data should not be called for a kernel with no field data bindings")
+
+        monkeypatch.setattr(launcher, "get_field_data", _fail_get_field_data)
+
+        particles = Particles(3, {})
+        particles["status"][:] = np.uint8(Status.PRE_RELEASE)
+        clock = make_clock(np.array([0.0, 1.0], dtype=np.float64), 1.0)
+
+        # no active/initialising particles, but the kernel doesn't need field data, so it must still run
+        launcher.launch_kernel(bound_kernel, particles, clock.tinfo)
+
+        assert kernel_called
+
+    def test_activate_released_particles_kernel_activates_when_all_particles_pre_release(self, make_clock) -> None:
+        launcher = Launcher(Fieldset(1, 4, 4, 4), history_size=1)
+        clock = make_clock(np.array([0.0, 1.0, 2.0], dtype=np.float64), 1.0)
+        launcher.register_scalar_data_sources_from_object(clock)
+
+        kernel = construct_activate_released_particles_kernel()
+
+        particles = Particles(3, {"release_time": np.dtype(np.float64)})
+        particles["status"][:] = np.uint8(Status.PRE_RELEASE)
+        particles["release_time"][:] = 0.0
+
+        # with the old unconditional skip this would be a no-op: no active/initialising
+        # particles means construct_bbox returns None, so the kernel would never launch
+        launcher.launch_kernel(kernel, particles, clock.tinfo)
+
+        np.testing.assert_array_equal(particles["status"], np.full(3, np.uint8(Status.INITIALISING)))
+
+    def test_does_not_touch_bbox_history_for_kernel_without_field_data(self, make_clock) -> None:
+        launcher = Launcher(Fieldset(1, 4, 4, 4), history_size=1)
+
+        kernel_fn = lambda particle_properties, scalars, field_data: None
+        bound_kernel = BoundKernel(ParticleKernel(kernel_fn, particle_properties=[STATUS_DECLARATION]))
+
+        particles = Particles(1, {})
+        particles["status"][:] = np.uint8(Status.NORMAL)
+        particles["zidx"][:] = 2.0
+        particles["yidx"][:] = 2.0
+        particles["xidx"][:] = 2.0
+        clock = make_clock(np.array([0.0, 1.0], dtype=np.float64), 1.0)
+
+        launcher.launch_kernel(bound_kernel, particles, clock.tinfo)
+
+        # the kernel never needed a bbox, so construct_bbox should never have run
+        assert list(launcher._zmin_history) == []
+        assert list(launcher._zmax_history) == []
+
+        fieldset = launcher._fieldset
+        fieldset.add_field("h", StaticField.from_numpy(np.ones((4, 4)), axes=("Y", "X"), staggers=("center", "center")))
+        field_kernel = BoundKernel(ParticleKernel(kernel_fn, field_data=[FieldDataDeclaration("h", np.float64)]))
+        launcher.launch_kernel(field_kernel, particles, clock.tinfo)
+
+        # a field-requiring kernel still triggers exactly one bbox computation
+        assert list(launcher._zmin_history) == [2.0]
+        assert list(launcher._zmax_history) == [2.0]
