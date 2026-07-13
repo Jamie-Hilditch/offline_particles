@@ -25,8 +25,8 @@ def _install_constructor_spies(
     patch_linear_damping: bool = True,
     patch_quadratic_damping: bool = True,
     patch_buoyancy: bool = True,
-) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
-    calls: dict[str, dict[str, Any]] = {}
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    calls: dict[str, Any] = {}
     sentinels = {
         "x_adv": object(),
         "y_adv": object(),
@@ -40,12 +40,23 @@ def _install_constructor_spies(
         "ab_update_z": object(),
         "ab_update_w_rel": object(),
         "compute_zidx": object(),
+        "compute_z": object(),
         "ab_bump_status": object(),
     }
 
     def stub(name: str, return_value: object):
         def _call(*args, **kwargs):
             calls[name] = {"args": args, "kwargs": kwargs}
+            return return_value
+
+        return _call
+
+    def call_list_stub(name: str, return_value: object):
+        # construct_compute_zidx_kernel is used both for the post-step recompute and,
+        # depending on `initialise_z`, the initialisation kernel - record every call rather
+        # than just the last one.
+        def _call(*args, **kwargs):
+            calls.setdefault(name, []).append({"args": args, "kwargs": kwargs})
             return return_value
 
         return _call
@@ -100,7 +111,13 @@ def _install_constructor_spies(
         raising=True,
     )
     monkeypatch.setattr(
-        roms_models, "construct_compute_zidx_kernel", stub("compute_zidx", sentinels["compute_zidx"]), raising=True
+        roms_models,
+        "construct_compute_zidx_kernel",
+        call_list_stub("compute_zidx", sentinels["compute_zidx"]),
+        raising=True,
+    )
+    monkeypatch.setattr(
+        roms_models, "construct_compute_z_kernel", stub("compute_z", sentinels["compute_z"]), raising=True
     )
 
     return calls, sentinels
@@ -121,8 +138,8 @@ def test_roms_ab3_timestepper_default_constructor_wires_expected_kernels(monkeyp
     assert calls["y_adv"]["kwargs"] == {"metric": True}
     assert calls["z_adv"]["args"] == ("_dz0", "w")
     assert calls["z_adv"]["kwargs"] == {"accumulate": True}
-    assert calls["compute_zidx"]["args"] == ()
-    assert calls["compute_zidx"]["kwargs"] == {
+    assert calls["compute_zidx"][0]["args"] == ()
+    assert calls["compute_zidx"][0]["kwargs"] == {
         "hc": 5.0,
         "NZ": 4,
         "h": "h",
@@ -135,7 +152,7 @@ def test_roms_ab3_timestepper_default_constructor_wires_expected_kernels(monkeyp
     assert "buoyancy" not in calls
     assert "add_property" not in calls
 
-    assert timestepper.initialisation_kernels == []
+    assert timestepper.initialisation_kernels == [sentinels["compute_zidx"]]
     _assert_initialises_to_multistep_2(timestepper)
     assert timestepper.post_step_kernels == [sentinels["compute_zidx"]]
     assert timestepper._tendency_kernels == [sentinels["x_adv"], sentinels["y_adv"], sentinels["z_adv"]]
@@ -159,14 +176,55 @@ def test_roms_ab3_timestepper_forwards_compute_zidx_kwargs(monkeypatch: pytest.M
     )
 
     assert isinstance(timestepper, ABTimestepper)
-    assert calls["compute_zidx"]["args"] == ()
-    assert calls["compute_zidx"]["kwargs"] == {
+    assert calls["compute_zidx"][0]["args"] == ()
+    assert calls["compute_zidx"][0]["kwargs"] == {
         "hc": 7.5,
         "NZ": 10,
         "h": "bathymetry",
         "zeta": "surface",
         "C": "stretching",
     }
+    assert timestepper.post_step_kernels == [sentinels["compute_zidx"]]
+    assert timestepper.initialisation_kernels == [sentinels["compute_zidx"]]
+
+
+def test_roms_ab3_timestepper_default_initialises_zidx_from_z(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls, sentinels = _install_constructor_spies(monkeypatch)
+
+    timestepper = roms_models.roms_ab3_timestepper(hc=5.0, NZ=4)
+
+    # called once for the post-step recompute and once as the initialisation kernel
+    assert len(calls["compute_zidx"]) == 2
+    assert calls["compute_zidx"][1]["args"] == ()
+    assert calls["compute_zidx"][1]["kwargs"] == {
+        "hc": 5.0,
+        "NZ": 4,
+        "h": "h",
+        "zeta": "zeta",
+        "C": "C",
+        "only_initialising": True,
+    }
+    assert "compute_z" not in calls
+    assert timestepper.initialisation_kernels == [sentinels["compute_zidx"]]
+
+
+def test_roms_ab3_timestepper_initialise_z_true_initialises_z_from_zidx(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls, sentinels = _install_constructor_spies(monkeypatch)
+
+    timestepper = roms_models.roms_ab3_timestepper(hc=5.0, NZ=4, initialise_z=True)
+
+    # only the post-step recompute of zidx; z is initialised instead of zidx
+    assert len(calls["compute_zidx"]) == 1
+    assert calls["compute_z"]["args"] == ()
+    assert calls["compute_z"]["kwargs"] == {
+        "hc": 5.0,
+        "NZ": 4,
+        "h": "h",
+        "zeta": "zeta",
+        "C": "C",
+        "only_initialising": True,
+    }
+    assert timestepper.initialisation_kernels == [sentinels["compute_z"]]
     assert timestepper.post_step_kernels == [sentinels["compute_zidx"]]
 
 
@@ -228,7 +286,7 @@ def test_roms_ab3_timestepper_with_buoyancy_and_damping_wires_optional_kernels(
     assert calls["ab_update"]["args"] == ("w_rel", "_dw_rel0", "_dw_rel1", "_dw_rel2")
     assert calls["ab_bump_status"]["args"] == ()
 
-    assert timestepper.initialisation_kernels == []
+    assert timestepper.initialisation_kernels == [sentinels["compute_zidx"]]
     _assert_initialises_to_multistep_2(timestepper)
     assert timestepper.post_step_kernels == [sentinels["compute_zidx"]]
     assert timestepper._tendency_kernels == [
