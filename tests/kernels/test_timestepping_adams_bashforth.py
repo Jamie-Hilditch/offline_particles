@@ -5,6 +5,7 @@ import pytest
 
 from offline_particles.kernels.status import Status
 from offline_particles.kernels.timestepping import (
+    ab_initial_status,
     construct_ab2_update_kernel,
     construct_ab3_update_kernel,
     construct_ab_bump_status_kernel,
@@ -131,11 +132,14 @@ class TestABStatusKernels:
             (3, np.uint8(Status.MULTISTEP_2)),
         ],
     )
-    def test_initialisation_sets_multistep_status_for_active_only(self, order: int, expected_status: np.uint8) -> None:
+    def test_initialisation_sets_multistep_status_for_initialising_only(
+        self, order: int, expected_status: np.uint8
+    ) -> None:
         kernel = construct_ab_initialisation_kernel(order)
 
         status = np.array(
             [
+                np.uint8(Status.INITIALISING),
                 np.uint8(Status.NORMAL),
                 np.uint8(Status.INACTIVE),
                 np.uint8(Status.NONFINITE),
@@ -150,6 +154,7 @@ class TestABStatusKernels:
             np.array(
                 [
                     expected_status,
+                    np.uint8(Status.NORMAL),
                     np.uint8(Status.INACTIVE),
                     np.uint8(Status.NONFINITE),
                 ],
@@ -160,3 +165,16 @@ class TestABStatusKernels:
     def test_initialisation_rejects_unsupported_order(self) -> None:
         with pytest.raises(ValueError, match="Unsupported Adams-Bashforth order"):
             construct_ab_initialisation_kernel(4)
+
+
+class TestAbInitialStatus:
+    @pytest.mark.parametrize(
+        ("order", "expected"),
+        [(2, Status.MULTISTEP_1), (3, Status.MULTISTEP_2)],
+    )
+    def test_maps_order_to_multistep_status(self, order: int, expected: Status) -> None:
+        assert ab_initial_status(order) == expected
+
+    def test_rejects_unsupported_order(self) -> None:
+        with pytest.raises(ValueError, match="Unsupported Adams-Bashforth order"):
+            ab_initial_status(4)

@@ -4,11 +4,19 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 import pytest
 
 import offline_particles.models.roms as roms_models
 import offline_particles.timestepping as timestepping_module
+from offline_particles.kernels.status import Status
 from offline_particles.timestepping import ABTimestepper
+
+
+def _assert_initialises_to_multistep_2(timestepper: ABTimestepper) -> None:
+    status = np.array([np.uint8(Status.INITIALISING)], dtype=np.uint8)
+    timestepper._initialise_status_kernel.kernel({"status": status}, {}, {})
+    assert status[0] == np.uint8(Status.MULTISTEP_2)
 
 
 def _install_constructor_spies(
@@ -32,7 +40,6 @@ def _install_constructor_spies(
         "ab_update_z": object(),
         "ab_update_w_rel": object(),
         "compute_zidx": object(),
-        "ab_initialisation": object(),
         "ab_bump_status": object(),
     }
 
@@ -88,12 +95,6 @@ def _install_constructor_spies(
     monkeypatch.setattr(roms_models, "construct_ab3_update_kernel", ab3_update_stub, raising=True)
     monkeypatch.setattr(
         timestepping_module,
-        "construct_ab_initialisation_kernel",
-        stub("ab_initialisation", sentinels["ab_initialisation"]),
-        raising=True,
-    )
-    monkeypatch.setattr(
-        timestepping_module,
         "construct_ab_bump_status_kernel",
         stub("ab_bump_status", sentinels["ab_bump_status"]),
         raising=True,
@@ -128,14 +129,14 @@ def test_roms_ab3_timestepper_default_constructor_wires_expected_kernels(monkeyp
         "zeta": "zeta",
         "C": "C",
     }
-    assert calls["ab_initialisation"]["args"] == (3,)
     assert calls["ab_bump_status"]["args"] == ()
     assert "linear_damping" not in calls
     assert "quadratic_damping" not in calls
     assert "buoyancy" not in calls
     assert "add_property" not in calls
 
-    assert timestepper.initialisation_kernels == [sentinels["ab_initialisation"]]
+    assert timestepper.initialisation_kernels == []
+    _assert_initialises_to_multistep_2(timestepper)
     assert timestepper.post_step_kernels == [sentinels["compute_zidx"]]
     assert timestepper._tendency_kernels == [sentinels["x_adv"], sentinels["y_adv"], sentinels["z_adv"]]
     assert timestepper._ab_update_kernels == [
@@ -225,10 +226,10 @@ def test_roms_ab3_timestepper_with_buoyancy_and_damping_wires_optional_kernels(
     assert calls["add_property"]["args"] == ("w_rel", "_dz0")
     assert calls["add_property"]["kwargs"] == {}
     assert calls["ab_update"]["args"] == ("w_rel", "_dw_rel0", "_dw_rel1", "_dw_rel2")
-    assert calls["ab_initialisation"]["args"] == (3,)
     assert calls["ab_bump_status"]["args"] == ()
 
-    assert timestepper.initialisation_kernels == [sentinels["ab_initialisation"]]
+    assert timestepper.initialisation_kernels == []
+    _assert_initialises_to_multistep_2(timestepper)
     assert timestepper.post_step_kernels == [sentinels["compute_zidx"]]
     assert timestepper._tendency_kernels == [
         sentinels["x_adv"],

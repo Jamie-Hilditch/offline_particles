@@ -52,7 +52,7 @@ def _make_builder(
         timestepper,
         include_validation_kernel=include_validation_kernel,
     )
-    return SimulationBuilder(make_clock(np.array([0.0, 1.0], dtype=np.float64), 1.0), fieldset, particle_set)
+    return SimulationBuilder(make_clock(np.array([0.0, 1.0, 2.0], dtype=np.float64), 1.0), fieldset, particle_set)
 
 
 class TestTimestepperValidationKernelStorage:
@@ -73,7 +73,7 @@ class TestTimestepperValidationKernelStorage:
         timestepper.add_validation_kernels(validation_kernel)
         timestepper.add_pre_step_kernels(pre_step_kernel)
 
-        assert list(timestepper.kernels) == [validation_kernel, pre_step_kernel]
+        assert list(timestepper.kernels) == [timestepper._initialise_status_kernel, validation_kernel, pre_step_kernel]
 
     def test_run_validation_launches_each_validation_kernel(
         self, make_clock, make_bound_noop_kernel, noop_timestepper
@@ -92,6 +92,20 @@ class TestTimestepperValidationKernelStorage:
         assert [call[0] for call in launcher.calls] == [kernel_0, kernel_1]
         assert all(call[1] is particles for call in launcher.calls)
         assert all(call[2] == clock.tinfo for call in launcher.calls)
+
+
+class TestSetInitialStatus:
+    def test_set_initial_status_replaces_finalize_kernel(self, noop_timestepper) -> None:
+        timestepper = noop_timestepper
+        default_kernel = timestepper._initialise_status_kernel
+
+        timestepper.set_initial_status(Status.MULTISTEP_1)
+
+        assert timestepper._initialise_status_kernel is not default_kernel
+
+        status = np.array([np.uint8(Status.INITIALISING)], dtype=np.uint8)
+        timestepper._initialise_status_kernel.kernel({"status": status}, {}, {})
+        assert status[0] == np.uint8(Status.MULTISTEP_1)
 
 
 class TestSimulationBuilderValidationInjection:
@@ -146,3 +160,19 @@ class TestSimulationValidationOrder:
         sim.step()
 
         assert timestepper.calls == ["validation", "pre_step", "step", "post_step"]
+
+    def test_step_runs_initialisation_kernel_every_step(self, make_clock, noop_timestepper) -> None:
+        timestepper = noop_timestepper
+        builder = _make_builder(timestepper, make_clock, include_validation_kernel=False)
+        sim = builder.build_simulation()
+        particles = sim._particles["pset"]
+
+        # particles default to INITIALISING; the first step() call finalizes them to NORMAL
+        sim.step()
+        np.testing.assert_array_equal(particles["status"], np.full(3, np.uint8(Status.NORMAL)))
+
+        # a particle transitioning back to INITIALISING mid-simulation (e.g. via timed release)
+        # is picked up and finalized by the *next* step() call too, not just once at sim start
+        particles["status"][1] = np.uint8(Status.INITIALISING)
+        sim.step()
+        np.testing.assert_array_equal(particles["status"], np.full(3, np.uint8(Status.NORMAL)))

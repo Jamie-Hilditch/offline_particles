@@ -27,7 +27,9 @@ import numpy.typing as npt
 
 from .._kernels import KernelFunction, kernel_function
 from ..interpolation import bilinear_interpolation_particle, linear_interpolation_particle
-from ..status import INACTIVE_FLAG
+from ..status import INACTIVE_FLAG, Status
+
+_INITIALISING = np.uint8(Status.INITIALISING)
 
 #############################
 ### computing z from zidx ###
@@ -327,7 +329,7 @@ def compute_zidx(
 
 
 @cache
-def compute_z_kernel_function_factory(hc: float, NZ: int) -> KernelFunction:
+def compute_z_kernel_function_factory(hc: float, NZ: int, only_initialising: bool = False) -> KernelFunction:
     """Construct a kernel function to compute the physical vertical position `z` from ROMS vertical coordinates.
 
     Parameters
@@ -337,12 +339,17 @@ def compute_z_kernel_function_factory(hc: float, NZ: int) -> KernelFunction:
     NZ : int
         The total number of vertical rho levels. Baked into the compiled kernel as a compile-time
         constant.
+    only_initialising : bool, optional
+        If False (default), compute for any active particle.
+        If True, compute only for particles with status ``Status.INITIALISING``
+        — the right choice for use as an initialisation-phase kernel
+        (see :meth:`~offline_particles.timestepping.Timestepper.add_initialisation_kernels`).
 
     Returns
     -------
     KernelFunction
         A kernel function that computes the physical vertical position `z`, specialized for the
-        given `hc` and `NZ`.
+        given `hc`, `NZ`, and `only_initialising`.
 
     Raises
     ------
@@ -351,7 +358,8 @@ def compute_z_kernel_function_factory(hc: float, NZ: int) -> KernelFunction:
 
     Notes
     -----
-    This factory function is cached to avoid recompilation for the same `hc` and `NZ` values.
+    This factory function is cached to avoid recompilation for the same `hc`, `NZ`, and
+    `only_initialising` values.
     """
     if hc <= 0:
         raise ValueError(f"hc must be strictly positive, got {hc}.")
@@ -360,6 +368,7 @@ def compute_z_kernel_function_factory(hc: float, NZ: int) -> KernelFunction:
 
     hc_: np.float64 = np.float64(hc)
     NZ_: np.int64 = np.int64(NZ)
+    only_initialising_: bool = bool(only_initialising)
 
     @kernel_function(
         particle_property_keys=["status", "zidx", "yidx", "xidx", "z"],
@@ -435,8 +444,13 @@ def compute_z_kernel_function_factory(hc: float, NZ: int) -> KernelFunction:
             raise ValueError("C field must have at least 2 points to avoid out-of-bounds memory access.")
 
         for i in numba.prange(status.shape[0]):  # ty: ignore[not-iterable]
-            if status[i] & INACTIVE_FLAG:  # only compute for active particles
-                continue
+            # only_initialising_ is a compile-time constant, so this branch is optimized away at compile time
+            if only_initialising_:
+                if status[i] != _INITIALISING:  # only compute for initialising particles
+                    continue
+            else:
+                if status[i] & INACTIVE_FLAG:  # only compute for active particles
+                    continue
 
             h_value = bilinear_interpolation_particle(
                 h_array, yidx[i] + h_offy, xidx[i] + h_offx, h_max_idx_0, h_max_idx_1
@@ -451,7 +465,7 @@ def compute_z_kernel_function_factory(hc: float, NZ: int) -> KernelFunction:
 
 
 @cache
-def compute_zidx_kernel_function_factory(hc: float, NZ: int) -> KernelFunction:
+def compute_zidx_kernel_function_factory(hc: float, NZ: int, only_initialising: bool = False) -> KernelFunction:
     """Construct a kernel function to compute the vertical index `zidx` from ROMS vertical coordinates.
 
     Parameters
@@ -461,12 +475,17 @@ def compute_zidx_kernel_function_factory(hc: float, NZ: int) -> KernelFunction:
     NZ : int
         The total number of vertical rho levels. Baked into the compiled kernel as a compile-time
         constant.
+    only_initialising : bool, optional
+        If False (default), compute for any active particle.
+        If True, compute only for particles with status ``Status.INITIALISING``
+        — the right choice for use as an initialisation-phase kernel (see
+        :meth:`~offline_particles.timestepping.Timestepper.add_initialisation_kernels`).
 
     Returns
     -------
     KernelFunction
         A kernel function that computes the vertical index `zidx` from the physical vertical
-        position `z`, specialized for the given `hc` and `NZ`.
+        position `z`, specialized for the given `hc`, `NZ`, and `only_initialising`.
 
     Raises
     ------
@@ -475,7 +494,8 @@ def compute_zidx_kernel_function_factory(hc: float, NZ: int) -> KernelFunction:
 
     Notes
     -----
-    This factory function is cached to avoid recompilation for the same `hc` and `NZ` values.
+    This factory function is cached to avoid recompilation for the same `hc`, `NZ`, and
+    `only_initialising` values.
     """
     if hc <= 0:
         raise ValueError(f"hc must be strictly positive, got {hc}.")
@@ -484,6 +504,7 @@ def compute_zidx_kernel_function_factory(hc: float, NZ: int) -> KernelFunction:
 
     hc_: np.float64 = np.float64(hc)
     NZ_: np.int64 = np.int64(NZ)
+    only_initialising_: bool = bool(only_initialising)
 
     @kernel_function(
         particle_property_keys=["status", "zidx", "yidx", "xidx", "z"],
@@ -560,8 +581,13 @@ def compute_zidx_kernel_function_factory(hc: float, NZ: int) -> KernelFunction:
             raise ValueError("C field must have at least 2 points to avoid out-of-bounds memory access.")
 
         for i in numba.prange(status.shape[0]):  # ty: ignore[not-iterable]
-            if status[i] & INACTIVE_FLAG:  # only compute for active particles
-                continue
+            # only_initialising_ is a compile-time constant, so this branch is optimized away at compile time
+            if only_initialising_:
+                if status[i] != _INITIALISING:  # only compute for initialising particles
+                    continue
+            else:
+                if status[i] & INACTIVE_FLAG:  # only compute for active particles
+                    continue
 
             h_value = bilinear_interpolation_particle(
                 h_array, yidx[i] + h_offy, xidx[i] + h_offx, h_max_idx_0, h_max_idx_1

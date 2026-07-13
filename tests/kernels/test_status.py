@@ -1,6 +1,7 @@
 import numpy as np
+import pytest
 
-from offline_particles.kernels.status import Status, is_active, is_inactive
+from offline_particles.kernels.status import Status, construct_initialise_status_kernel, is_active, is_inactive
 
 _ACTIVE_MEMBERS = {Status.NORMAL, Status.MULTISTEP_1, Status.MULTISTEP_2}
 
@@ -27,3 +28,33 @@ def test_status_active_inactive_partition_matches_bit_flag_for_arrays() -> None:
 def test_status_values_fit_in_uint8() -> None:
     for member in Status:
         assert member == np.uint8(member)
+
+
+@pytest.mark.parametrize("target", [Status.NORMAL, Status.MULTISTEP_1, Status.MULTISTEP_2])
+def test_construct_initialise_status_kernel_transitions_initialising_only(target: Status) -> None:
+    kernel = construct_initialise_status_kernel(target)
+
+    status = np.array(
+        [
+            np.uint8(Status.INITIALISING),
+            np.uint8(Status.NORMAL),
+            np.uint8(Status.INACTIVE),
+            np.uint8(Status.PRE_RELEASE),
+        ],
+        dtype=np.uint8,
+    )
+
+    kernel.kernel({"status": status}, {}, {})
+
+    np.testing.assert_array_equal(
+        status,
+        np.array(
+            [
+                np.uint8(target),
+                np.uint8(Status.NORMAL),
+                np.uint8(Status.INACTIVE),
+                np.uint8(Status.PRE_RELEASE),
+            ],
+            dtype=np.uint8,
+        ),
+    )

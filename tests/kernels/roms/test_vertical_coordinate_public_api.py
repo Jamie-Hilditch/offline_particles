@@ -8,8 +8,13 @@ import pytest
 
 from offline_particles.kernels._kernels import BoundKernel
 from offline_particles.kernels.roms import construct_compute_z_kernel, construct_compute_zidx_kernel
+from offline_particles.kernels.roms._vertical_coordinate import (
+    compute_z_kernel_function_factory,
+    compute_zidx_kernel_function_factory,
+)
 
 _CONSTRUCTORS = (construct_compute_z_kernel, construct_compute_zidx_kernel)
+_FACTORIES = (compute_z_kernel_function_factory, compute_zidx_kernel_function_factory)
 
 
 @pytest.mark.parametrize("constructor", _CONSTRUCTORS)
@@ -45,6 +50,27 @@ def test_constructor_declares_the_full_shared_input_set(constructor, hc_nz: tupl
     assert set(bound_kernel.kernel.particle_properties) == {"status", "zidx", "yidx", "xidx", "z"}
     assert set(bound_kernel.kernel.scalars) == set()
     assert set(bound_kernel.kernel.field_data) == {"h", "zeta", "C"}
+
+
+@pytest.mark.parametrize("factory", _FACTORIES)
+def test_only_initialising_is_part_of_the_cache_key(factory, hc_nz: tuple[float, int]) -> None:
+    hc, NZ = hc_nz
+
+    false_fn_a = factory(hc, NZ, only_initialising=False)
+    false_fn_b = factory(hc, NZ, only_initialising=False)
+    true_fn = factory(hc, NZ, only_initialising=True)
+
+    assert false_fn_a is false_fn_b
+    assert false_fn_a is not true_fn
+
+
+@pytest.mark.parametrize("constructor", _CONSTRUCTORS)
+def test_constructor_forwards_only_initialising(constructor, hc_nz: tuple[float, int]) -> None:
+    hc, NZ = hc_nz
+    default_kernel = constructor(hc=hc, NZ=NZ)
+    initialising_kernel = constructor(hc=hc, NZ=NZ, only_initialising=True)
+
+    assert default_kernel.kernel is not initialising_kernel.kernel
 
 
 def test_both_constructors_declare_identical_inputs(hc_nz: tuple[float, int]) -> None:

@@ -26,11 +26,12 @@ import numpy as np
 import numpy.typing as npt
 
 from .kernels import BoundKernel
+from .kernels.status import Status, construct_initialise_status_kernel
 from .kernels.timestepping import (
+    ab_initial_status,
     construct_ab2_update_kernel,
     construct_ab3_update_kernel,
     construct_ab_bump_status_kernel,
-    construct_ab_initialisation_kernel,
 )
 from .launcher import Launcher, ScalarSource, Time_info, Tinfo
 from .particles import Particles
@@ -401,9 +402,26 @@ class Timestepper(abc.ABC):
         self._pre_step_kernels = []
         self._post_step_kernels = []
 
+        # kernel that finalizes initialisation, transitioning INITIALISING particles to their
+        # startup status; always run last in the initialisation phase, see `run_initialisation`
+        self.set_initial_status(Status.NORMAL)
+
     def add_initialisation_kernels(self, *kernels: BoundKernel) -> None:
         """Add kernels to be launched during initialisation."""
         self._initialisation_kernels.extend(kernels)
+
+    def set_initial_status(self, status: Status) -> None:
+        """Replace the status that finalizes initialisation.
+
+        Constructs the kernel that transitions ``Status.INITIALISING`` particles to `status`,
+        run last in the initialisation phase, after `_initialisation_kernels`.
+
+        Parameters
+        ----------
+        status : Status
+            The status to transition ``Status.INITIALISING`` particles to.
+        """
+        self._initialise_status_kernel = construct_initialise_status_kernel(status)
 
     def add_validation_kernels(self, *kernels: BoundKernel) -> None:
         """Add kernels to be launched during validation."""
@@ -447,15 +465,23 @@ class Timestepper(abc.ABC):
         """Get the kernels used by this timestepper."""
         return itertools.chain(
             self._initialisation_kernels,
+            (self._initialise_status_kernel,),
             self._validation_kernels,
             self._pre_step_kernels,
             self._post_step_kernels,
         )
 
     def run_initialisation(self, particles: Particles, launcher: Launcher, clock: Clock) -> None:
-        """Initialize the particles by launching the initialisation kernels."""
+        """Initialize the particles by launching the initialisation kernels, then finalize.
+
+        Called once before the simulation loop starts, and again at the start of every
+        subsequent :meth:`~offline_particles.simulation.Simulation.step`, so that particles
+        transitioning to ``Status.INITIALISING`` mid-simulation (e.g. via timed release) are
+        picked up and finalized identically to particles present at simulation start.
+        """
         for kernel in self._initialisation_kernels:
             launcher.launch_kernel(kernel, particles, clock.tinfo)
+        launcher.launch_kernel(self._initialise_status_kernel, particles, clock.tinfo)
 
     def run_validation(self, particles: Particles, launcher: Launcher, clock: Clock) -> None:
         """Validate the particles by launching the validation kernels."""
@@ -569,8 +595,8 @@ class ABTimestepper(Timestepper):
         if self._order not in (2, 3):
             raise ValueError("Only orders 2 and 3 are currently supported for ABTimestepper.")
 
-        # Add initialisation kernel
-        self.add_initialisation_kernels(construct_ab_initialisation_kernel(order))
+        # override the default initial status with the AB-appropriate multistep status
+        self.set_initial_status(ab_initial_status(order))
 
     def add_tendency_kernels(self, *kernels: BoundKernel) -> None:
         """Add kernels to be launched during tendency accumulation."""
