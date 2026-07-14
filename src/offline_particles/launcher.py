@@ -1,6 +1,7 @@
 """Submodule for particle kernel launchers."""
 
 import collections
+import logging
 from collections.abc import Callable
 from typing import TypeVar
 
@@ -14,6 +15,8 @@ from .kernels import BoundKernel
 from .kernels.status import INACTIVE_FLAG, Status
 from .particles import Particles
 from .spatial_arrays import BBox
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=np.generic)
 _INITIALISING = np.uint8(Status.INITIALISING)
@@ -179,7 +182,7 @@ class Launcher:
     def construct_bbox(
         self,
         particles: Particles,
-    ) -> BBox:
+    ) -> BBox | None:
         """Construct a bounding box around the given particles with index padding.
 
         Parameters
@@ -189,16 +192,21 @@ class Launcher:
 
         Returns
         -------
-        BBox
-            The computed bounding box with index padding applied.
+        BBox | None
+            The computed bounding box with index padding applied, or ``None`` if there
+            are no active or initialising particles. The bbox history is left untouched
+            in that case, since a call with no particles to process shouldn't count
+            against the rolling smoothing window.
         """
-        # compute bounds of active particles
-        zmin, zmax, ymin, ymax, xmin, xmax = _compute_particle_bounds(
+        # compute bounds of active and initialising particles
+        zmin, zmax, ymin, ymax, xmin, xmax, any_active = _compute_particle_bounds(
             particles["status"],
             particles["zidx"],
             particles["yidx"],
             particles["xidx"],
         )
+        if not any_active:
+            return None
 
         # update history
         self._zmin_history.append(zmin)
@@ -236,18 +244,26 @@ class Launcher:
 
     def launch_kernel(self, bound_kernel: BoundKernel, particles: Particles, tinfo: Tinfo) -> None:
         """Launch a kernel."""
-        # construct kernel inputs
-        bbox = self.construct_bbox(particles)
         particle_properties = {
             name: particles[binding] for name, binding in bound_kernel.particle_property_bindings.items()
         }
         scalars = {
             name: self._scalar_data_sources[binding](tinfo) for name, binding in bound_kernel.scalar_bindings.items()
         }
-        field_data = {
-            name: self.get_field_data(binding, tinfo.tidx, bbox)
-            for name, binding in bound_kernel.field_data_bindings.items()
-        }
+
+        # only construct the bbox and fetch field data if the kernel actually needs it - this
+        # also skips the kernel launch if there are no active particles to build a bbox around
+        field_data: dict[str, FieldData] = {}
+        if bound_kernel.field_data_bindings:
+            bbox = self.construct_bbox(particles)
+            if bbox is None:
+                logger.debug("launch_kernel: skipping %r - no active particles", bound_kernel)
+                return
+            field_data = {
+                name: self.get_field_data(binding, tinfo.tidx, bbox)
+                for name, binding in bound_kernel.field_data_bindings.items()
+            }
+
         # call the kernel
         bound_kernel.kernel(particle_properties, scalars, field_data)
 
@@ -258,7 +274,7 @@ def _compute_particle_bounds(
     zidx: npt.NDArray[np.float64],
     yidx: npt.NDArray[np.float64],
     xidx: npt.NDArray[np.float64],
-) -> tuple[float, float, float, float, float, float]:
+) -> tuple[float, float, float, float, float, float, bool]:
     """Compute the bounding box of active particles.
 
     Particles with status ``Status.INITIALISING`` are included despite carrying the ``INACTIVE``
@@ -280,8 +296,10 @@ def _compute_particle_bounds(
 
     Returns
     -------
-    tuple[float, float, float, float, float, float]
-        Bounding box of active particles in the form (zmin, zmax, ymin, ymax, xmin, xmax).
+    tuple[float, float, float, float, float, float, bool]
+        Bounding box of active particles in the form (zmin, zmax, ymin, ymax, xmin, xmax),
+        followed by whether any particle was included in that bounding box. If no particle
+        was included, the bounds are left at their ``+inf``/``-inf`` sentinel values.
     """
     zmin = np.inf
     zmax = -np.inf
@@ -289,11 +307,13 @@ def _compute_particle_bounds(
     ymax = -np.inf
     xmin = np.inf
     xmax = -np.inf
+    any_active = False
 
     for i in range(status.size):
         if (status[i] & INACTIVE_FLAG) and status[i] != _INITIALISING:  # inactive, but not initialising
             continue
 
+        any_active = True
         z = zidx[i]
         y = yidx[i]
         x = xidx[i]
@@ -305,4 +325,4 @@ def _compute_particle_bounds(
         xmin = min(xmin, x)
         xmax = max(xmax, x)
 
-    return zmin, zmax, ymin, ymax, xmin, xmax
+    return zmin, zmax, ymin, ymax, xmin, xmax, any_active
