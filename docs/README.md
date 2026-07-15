@@ -66,8 +66,7 @@ this if something below stops working after a Sphinx upgrade).
   `autodoc_use_legacy_class_based`, not currently enabled here). So this
   monkeypatches the private `_groupwise_order_key` properties on
   `sphinx.ext.autodoc._property_types._FunctionDefProperties` and
-  `_AssignStatementProperties`. **This is the most likely of the three to
-  break on a Sphinx upgrade**, since it reaches into a leading-underscore
+  `_AssignStatementProperties`. This reaches into a leading-underscore
   internal module rather than a documented API. **Failure mode:** an
   `ImportError` on `_property_types` (build fails immediately, easy to spot)
   or, if the module survives but its internals change shape, a silent
@@ -78,3 +77,26 @@ this if something below stops working after a Sphinx upgrade).
   breaks, switching to the legacy autodoc backend (which exposes
   `Documenter.sort_members` as a public override point) is the fallback
   option that was considered and deferred when this was written.
+
+- **`property_types.py`** -- shows a property's return type (e.g. `property
+  data: SpatialArray`) even though `autodoc_typehints = "none"` suppresses
+  type hints everywhere else. A property's return-type annotation is already
+  computed unconditionally by autodoc; it's discarded at render time by a
+  single `autodoc_typehints` gate in `sphinx.ext.autodoc._renderer
+  ._directive_header_lines` that's shared by every object kind (property,
+  attribute, data, method, function) -- there's no public per-object-kind
+  override (the `autodoc-process-signature` event only rewrites a function/
+  method's signature line, it never reaches the property/attribute `:type:`
+  line). So this monkeypatches `_directive_header_lines`, patched at the
+  point of use in `sphinx.ext.autodoc._generate` (which imported the function
+  by name into its own module namespace, rather than the point of definition
+  in `_renderer`, where patching would have no effect). **Failure mode on a
+  Sphinx upgrade:** an `AttributeError`/`ImportError` if `_generate` no longer
+  imports `_directive_header_lines` under that name (build fails
+  immediately), or a silent reversion to no property types (with no error) if
+  the function's keyword arguments change shape but it still imports cleanly
+  -- re-check a property-heavy class like `offline_particles.fields
+  .StaticField` after any Sphinx version bump. Of the four extensions here,
+  this and `member_order.py` are the most likely to break on an upgrade,
+  since both reach into the same leading-underscore internal modules of the
+  "dynamic" autodoc backend rather than a documented API.

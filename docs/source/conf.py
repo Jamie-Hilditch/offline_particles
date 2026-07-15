@@ -19,6 +19,7 @@ extensions = [
     "napoleon_tables",
     "member_labels",
     "member_order",
+    "property_types",
 ]
 
 templates_path = ["_templates"]
