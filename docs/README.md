@@ -29,3 +29,52 @@ uv run sphinx-build docs/source docs/_build
 ```
 
 (PowerShell: `Remove-Item -Recurse -Force docs/_build, docs/source/_api`)
+
+## Custom Sphinx extensions (`docs/source/_ext/`)
+
+All verified against the pinned Sphinx version (9.1.0 at time of writing --
+check `uv run python -c "import sphinx; print(sphinx.__version__)"` against
+this if something below stops working after a Sphinx upgrade).
+
+- **`napoleon_tables.py`** -- renders Napoleon's Parameters/Returns/Raises/etc.
+  sections as tables instead of field lists. Napoleon has no supported hook
+  for changing how a section renders, so this monkeypatches
+  `GoogleDocstring._parse_parameters_section` and its sibling `_parse_*`
+  methods directly (`NumpyDocstring` inherits them unchanged, so patching the
+  base class covers both docstring styles). **Failure mode on a Sphinx
+  upgrade:** if these private method names or signatures change, the patch
+  either raises on import (attribute error at `setup()` time) or silently
+  stops being applied and the affected sections fall back to Napoleon's
+  default field-list rendering -- check that the generated tables still look
+  like tables after upgrading.
+
+- **`member_labels.py`** -- adds a `method`/`attribute` keyword prefix to
+  plain methods/attributes, matching Sphinx's built-in `property`/
+  `classmethod` prefixes. This one only uses **public, documented** Sphinx
+  extension API: `PyMethod`/`PyAttribute` (`sphinx.domains.python`) are
+  subclassed and re-registered via `app.add_directive_to_domain(..., override=True)`.
+  Low risk -- the Python domain's directive classes and `get_signature_prefix`
+  hook have been stable for many Sphinx releases.
+
+- **`member_order.py`** -- reorders `:member-order: groupwise` so a class's
+  members are grouped as attributes/properties, then methods, then
+  staticmethods, then classmethods (each group alphabetical), instead of
+  Sphinx's built-in groupwise order (classmethod, staticmethod, method,
+  attribute/property last). The current ("dynamic") autodoc backend has **no
+  public hook** for customising the groupwise sort key -- that only exists on
+  the legacy `Documenter`-subclass backend (toggled by
+  `autodoc_use_legacy_class_based`, not currently enabled here). So this
+  monkeypatches the private `_groupwise_order_key` properties on
+  `sphinx.ext.autodoc._property_types._FunctionDefProperties` and
+  `_AssignStatementProperties`. **This is the most likely of the three to
+  break on a Sphinx upgrade**, since it reaches into a leading-underscore
+  internal module rather than a documented API. **Failure mode:** an
+  `ImportError` on `_property_types` (build fails immediately, easy to spot)
+  or, if the module survives but its internals change shape, a silent
+  reversion to Sphinx's default groupwise order (classmethods first) with no
+  error -- re-check member ordering on a representative class (e.g.
+  `offline_particles.kernels.ParticleKernel`, which has properties, methods,
+  staticmethods, and a classmethod) after any Sphinx version bump. If this
+  breaks, switching to the legacy autodoc backend (which exposes
+  `Documenter.sort_members` as a public override point) is the fallback
+  option that was considered and deferred when this was written.
