@@ -18,6 +18,7 @@ extensions = [
     "myst_parser",
     "napoleon_tables",
     "member_labels",
+    "member_order",
 ]
 
 templates_path = ["_templates"]
