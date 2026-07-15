@@ -37,7 +37,7 @@ html {
 .bd-article dl.field-list dt.field-odd {
   background-color: transparent;
   border-bottom: 1px solid var(--pst-color-border);
-  margin-top: 1rem;
+  margin-top: 0.35rem;
   margin-bottom: 0.35rem;
   padding-left: 0;
 }
@@ -52,6 +52,30 @@ html {
  * read like lines in a paragraph rather than a padded, boxed table. */
 .bd-article .napoleon-table {
   border: none;
+  margin-bottom: 0;
+}
+
+/* Tighten the vertical rhythm around each rubric title (e.g. "Parameters"),
+ * which is much looser than the field-list-derived headings elsewhere in
+ * this file (0.35rem). The gap *before* a rubric turned out to be governed
+ * entirely by the rubric's own margin-top, not by whatever precedes it:
+ * Sphinx's basic.css sets `p.rubric { margin-top: 30px }`, and margin
+ * collapsing takes the larger of two adjoining margins, so that 30px always
+ * won regardless of the preceding element's margin-bottom. Overriding it
+ * directly here (`.bd-article .rubric` outweighs `p.rubric` on specificity)
+ * is what actually controls that gap; capping whatever comes right before a
+ * rubric -- the previous table's wrapper div, or the docstring's summary
+ * paragraph for the first section -- now decides it instead. */
+.bd-article .rubric {
+  margin-top: 0;
+}
+
+.bd-article :has(+ .rubric) {
+  margin-bottom: 0.35rem;
+}
+
+.bd-article .rubric:has(+ .pst-scrollable-table-container) {
+  margin-bottom: 0.35rem;
 }
 
 .bd-article .napoleon-table td ~ td,
