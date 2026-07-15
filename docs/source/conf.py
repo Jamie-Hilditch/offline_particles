@@ -17,6 +17,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "myst_parser",
     "napoleon_tables",
+    "member_labels",
 ]
 
 templates_path = ["_templates"]
