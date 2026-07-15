@@ -4,6 +4,5 @@
 
 .. autoclass:: {{ objname }}
    :members:
-   :show-inheritance:
    :inherited-members:
    :member-order: groupwise

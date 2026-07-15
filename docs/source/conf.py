@@ -20,6 +20,7 @@ extensions = [
     "member_labels",
     "member_order",
     "property_types",
+    "bases_signature",
 ]
 
 templates_path = ["_templates"]
@@ -32,8 +33,7 @@ source_suffix = {
 # autodoc
 autodoc_default_options = {
     "members": False,
-    "show-inheritance": True,
-    "undoc-members": False,
+    "undoc-members": True,
 }
 # Numpydoc-style docstrings document parameter/return types by hand, so drop
 # type hints from the rendered signature line rather than duplicating them.

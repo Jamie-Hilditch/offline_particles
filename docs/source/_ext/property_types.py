@@ -30,15 +30,18 @@ from sphinx.ext.autodoc._renderer import _directive_header_lines as _original_di
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from typing import Literal
 
     from sphinx.application import Sphinx
 
 
-def _directive_header_lines_with_property_types(*, autodoc_typehints: str, props, **kwargs) -> Iterator[str]:
+def _directive_header_lines_with_property_types(
+    *, autodoc_typehints: Literal["signature", "description", "none", "both"], props, **kwargs
+) -> Iterator[str]:
     if props.obj_type == "property":
         autodoc_typehints = "signature"
     return _original_directive_header_lines(autodoc_typehints=autodoc_typehints, props=props, **kwargs)
 
 
 def setup(app: Sphinx) -> None:
-    _autodoc_generate._directive_header_lines = _directive_header_lines_with_property_types
+    _autodoc_generate._directive_header_lines = _directive_header_lines_with_property_types  # ty: ignore[invalid-assignment]
