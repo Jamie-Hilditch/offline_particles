@@ -67,7 +67,7 @@ class TestRecurringIterationScheduler:
     def test_initially_empty(self) -> None:
         scheduler = RecurringIterationScheduler()
         assert scheduler.next is None
-        assert list(scheduler.events) == []
+        assert list(scheduler.events()) == []
 
     def test_register_event_sets_next(self) -> None:
         scheduler = RecurringIterationScheduler()
@@ -112,13 +112,13 @@ class TestRecurringIterationScheduler:
         result = scheduler(0)
         assert set(result) == {e1, e2}
 
-    def test_events_property_lists_all_registered(self) -> None:
+    def test_events_method_lists_all_registered(self) -> None:
         scheduler = RecurringIterationScheduler()
         e1 = _make_event("e1")
         e2 = _make_event("e2")
         scheduler.register_event(0, 5, e1)
         scheduler.register_event(10, 5, e2)
-        assert set(scheduler.events) == {e1, e2}
+        assert set(scheduler.events()) == {e1, e2}
 
 
 # ---------------------------------------------------------------------------
@@ -130,7 +130,7 @@ class TestAtIterationScheduler:
     def test_initially_empty(self) -> None:
         scheduler = AtIterationScheduler()
         assert scheduler.next is None
-        assert list(scheduler.events) == []
+        assert list(scheduler.events()) == []
 
     def test_register_event_sets_next(self) -> None:
         scheduler = AtIterationScheduler()
@@ -193,15 +193,15 @@ class TestAtIterationScheduler:
         scheduler.register_event(3, event)
         scheduler(3)
         assert scheduler.next is None
-        assert list(scheduler.events) == []
+        assert list(scheduler.events()) == []
 
-    def test_events_property_lists_all_registered(self) -> None:
+    def test_events_method_lists_all_registered(self) -> None:
         scheduler = AtIterationScheduler()
         e1 = _make_event("e1")
         e2 = _make_event("e2")
         scheduler.register_event(2, e1)
         scheduler.register_event(5, e2)
-        assert set(scheduler.events) == {e1, e2}
+        assert set(scheduler.events()) == {e1, e2}
 
 
 # ---------------------------------------------------------------------------
@@ -213,7 +213,7 @@ class TestRecurringTimeScheduler:
     def test_initially_empty(self) -> None:
         scheduler = RecurringTimeScheduler()
         assert scheduler.next_time is None
-        assert list(scheduler.events) == []
+        assert list(scheduler.events()) == []
 
     def test_register_event_sets_next_time(self) -> None:
         scheduler = RecurringTimeScheduler()
@@ -271,7 +271,7 @@ class TestAtTimeScheduler:
     def test_initially_empty(self) -> None:
         scheduler = AtTimeScheduler()
         assert scheduler.next_time is None
-        assert list(scheduler.events) == []
+        assert list(scheduler.events()) == []
 
     def test_register_event_sets_next_time(self) -> None:
         scheduler = AtTimeScheduler()
@@ -333,7 +333,7 @@ class TestAtTimeScheduler:
         scheduler.register_event(np.float64(3.0), event)
         scheduler(np.float64(3.0))
         assert scheduler.next_time is None
-        assert list(scheduler.events) == []
+        assert list(scheduler.events()) == []
 
     def test_backward_in_time_triggers_correctly(self) -> None:
         scheduler = AtTimeScheduler(forward_in_time=False)

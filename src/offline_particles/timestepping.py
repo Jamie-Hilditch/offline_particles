@@ -342,44 +342,12 @@ class Clock:
 
     @property
     def first_time(self) -> T:
-        """The chronological start of the simulation.
-
-        Returns
-        -------
-        T
-            ``time_array[0]`` if forward, ``time_array[-1]`` if backward.
-
-        Examples
-        --------
-            >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=np.float64(0.5))
-            >>> clock.first_time
-            np.float64(0.0)
-
-            >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=np.float64(-0.5))
-            >>> clock.first_time
-            np.float64(3.0)
-        """
+        """The chronological start of the simulation (``time_array[0]`` if forward, ``time_array[-1]`` if backward)."""
         return self._time_array[0] if self._forward_in_time else self._time_array[-1]
 
     @property
     def final_time(self) -> T:
-        """The chronological end of the simulation.
-
-        Returns
-        -------
-        T
-            ``time_array[-1]`` if forward, ``time_array[0]`` if backward.
-
-        Examples
-        --------
-            >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=np.float64(0.5))
-            >>> clock.final_time
-            np.float64(3.0)
-
-            >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=np.float64(-0.5))
-            >>> clock.final_time
-            np.float64(0.0)
-        """
+        """The chronological end of the simulation (``time_array[-1]`` if forward, ``time_array[0]`` if backward)."""
         return self._time_array[-1] if self._forward_in_time else self._time_array[0]
 
     def advance_time(self) -> None:

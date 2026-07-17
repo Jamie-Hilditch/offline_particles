@@ -16,3 +16,10 @@ repos:
       entry: uv run --frozen ruff format
       types_or: [python, pyi]
       files: ^(src|tests|docs/source)/
+    # Enforce one-line @property docstrings.
+    - id: property-docstrings
+      name: property docstrings
+      language: system
+      entry: uv run --frozen pytest tests/docstring_conventions/test_property_docstrings.py -q
+      pass_filenames: false
+      files: ^src/

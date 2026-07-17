@@ -106,7 +106,7 @@ class Simulation:
         for timestepper in self._timesteppers.values():
             self._launcher.register_scalar_data_sources_from_object(timestepper)
             self._launcher.set_index_padding(timestepper.index_padding)
-        for event in self.events:
+        for event in self.events():
             self._launcher.register_scalar_data_sources_from_object(event)
 
         # stopping conditions
@@ -123,146 +123,68 @@ class Simulation:
 
     @property
     def fieldset(self) -> Fieldset:
-        """Get the fieldset used in the simulation.
-
-        Returns
-        -------
-        Fieldset
-            The fieldset instance.
-        """
+        """The fieldset used in the simulation."""
         return self._fieldset
 
     @property
     def time(self) -> T:
-        """Get the current simulation time.
-
-        Returns
-        -------
-        T
-            The current time of the simulation.
-        """
+        """The current simulation time."""
         return self._clock.time
 
     @property
     def iteration(self) -> int:
-        """Get the current simulation iteration.
-
-        Returns
-        -------
-        int
-            The current iteration of the simulation.
-        """
+        """The current simulation iteration."""
         return self._clock.iteration
 
     @property
     def dt(self) -> D:
-        """Get the timestep size.
-
-        Returns
-        -------
-        D
-            The size of each timestep in the simulation.
-        """
+        """The timestep size."""
         return self._clock.dt
 
     @property
     def tidx(self) -> np.float64:
-        """Get the current timestep index.
-
-        Returns
-        -------
-        np.float64
-            The index of the current timestep.
-        """
+        """The current timestep index."""
         return self._clock.tidx
 
     @property
     def time_unit(self) -> D:
-        """Get the time unit used by the timestepper.
-
-        Returns
-        -------
-        D
-            The time unit.
-        """
+        """The time unit used by the timestepper."""
         return self._clock.time_unit
 
     @property
     def tinfo(self) -> Tinfo:
-        """Get the current time information.
-
-        Returns
-        -------
-        Tinfo
-            The current time information named tuple.
-        """
+        """The current time information."""
         return self._clock.tinfo
 
     @property
     def wall_time(self) -> np.timedelta64:
-        """Get the elapsed wall time since the start of the simulation.
-
-        Returns
-        -------
-        np.timedelta64
-            The elapsed wall time.
-        """
+        """The elapsed wall time since the start of the simulation."""
         nanoseconds = time.perf_counter_ns() - self._wall_time_start
         return np.timedelta64(nanoseconds, "ns")
 
     @property
     def index_padding(self) -> int:
-        """Get the current index padding used by the launcher.
-
-        Returns
-        -------
-        int
-            The index padding.
-        """
+        """The current index padding used by the launcher."""
         return self._launcher.index_padding
 
     @property
     def forward_in_time(self) -> bool:
-        """Check if the simulation is running forward in time.
-
-        Returns
-        -------
-        bool
-            True if the simulation is running forward in time, False otherwise.
-        """
+        """Whether the simulation is running forward in time."""
         return self._clock.forward_in_time
 
     @property
     def iteration_stop(self) -> int | None:
-        """Get the iteration stopping condition.
-
-        Returns
-        -------
-        int | None
-            The iteration stopping condition, or None if not set.
-        """
+        """The iteration stopping condition, or None if not set."""
         return self._iteration_stop
 
     @property
     def time_stop(self) -> T | None:
-        """Get the time stopping condition.
-
-        Returns
-        -------
-        T | None
-            The time stopping condition, or None if not set.
-        """
+        """The time stopping condition, or None if not set."""
         return self._time_stop
 
     @property
     def wall_time_stop(self) -> np.timedelta64 | None:
-        """Get the wall time stopping condition.
-
-        Returns
-        -------
-        np.timedelta64 | None
-            The wall time stopping condition, or None if not set.
-        """
+        """The wall time stopping condition, or None if not set."""
         return self._wall_time_stop
 
     # setters
@@ -371,78 +293,47 @@ class Simulation:
 
     @property
     def particles(self) -> Mapping[str, ParticlesView]:
-        """A view into the current particle data.
-
-        Returns
-        -------
-        Mapping[str, ParticlesView]
-            The current state of the particles in the simulation.
-        """
+        """A view into the current particle data."""
         return types.MappingProxyType(self._particles_view)
 
     @property
     def recurring_iteration_scheduler(self) -> RecurringIterationScheduler:
-        """Get the recurring iteration scheduler used in the simulation.
-
-        Returns
-        -------
-        RecurringIterationScheduler
-            The recurring iteration scheduler instance.
-        """
+        """The recurring iteration scheduler used in the simulation."""
         return self._recurring_iteration_scheduler
 
     @property
     def recurring_time_scheduler(self) -> RecurringTimeScheduler:
-        """Get the recurring time scheduler used in the simulation.
-
-        Returns
-        -------
-        RecurringTimeScheduler
-            The recurring time scheduler instance.
-        """
+        """The recurring time scheduler used in the simulation."""
         return self._recurring_time_scheduler
 
     @property
     def at_iteration_scheduler(self) -> AtIterationScheduler:
-        """Get the one-shot iteration scheduler used in the simulation.
-
-        Returns
-        -------
-        AtIterationScheduler
-            The one-shot iteration scheduler instance.
-        """
+        """The one-shot iteration scheduler used in the simulation."""
         return self._at_iteration_scheduler
 
     @property
     def at_time_scheduler(self) -> AtTimeScheduler:
-        """Get the one-shot time scheduler used in the simulation.
+        """The one-shot time scheduler used in the simulation."""
+        return self._at_time_scheduler
+
+    def events(self) -> Iterable[Event]:
+        """Return all events registered across all schedulers.
 
         Returns
         -------
-        AtTimeScheduler
-            The one-shot time scheduler instance.
+        Iterable[Event]
+            All events registered across the recurring and one-shot, iteration and time schedulers.
         """
-        return self._at_time_scheduler
-
-    @property
-    def events(self) -> Iterable[Event]:
-        """All events registered across all schedulers."""
         return itertools.chain(
-            self._recurring_iteration_scheduler.events,
-            self._at_iteration_scheduler.events,
-            self._recurring_time_scheduler.events,
-            self._at_time_scheduler.events,
+            self._recurring_iteration_scheduler.events(),
+            self._at_iteration_scheduler.events(),
+            self._recurring_time_scheduler.events(),
+            self._at_time_scheduler.events(),
         )
 
     @property
     def state(self) -> SimulationState:
-        """Get the current simulation state.
-
-        Returns
-        -------
-        SimulationState
-            A class containing time information and views into the particle data.
-        """
+        """The current simulation state."""
         return SimulationState(
             time=self.time,
             dt=self.dt,
@@ -715,20 +606,25 @@ class SimulationBuilder:
         """
         outputs_by_particle_set: dict[str, list[Output]] = {pset.name: [] for pset in self._particle_sets}
         for writer_builder in self._output_writer_builders.values():
-            for (pset_name, _), output in writer_builder.outputs:
+            for (pset_name, _), output in writer_builder.outputs():
                 outputs_by_particle_set[pset_name].append(output)
-            for (pset_name, _), output in writer_builder.static_outputs:
+            for (pset_name, _), output in writer_builder.static_outputs():
                 outputs_by_particle_set[pset_name].append(output)
         return types.MappingProxyType(outputs_by_particle_set)
 
-    @property
     def events(self) -> Iterable[Event]:
-        """All events registered across all schedulers."""
+        """Return all events registered across all schedulers.
+
+        Returns
+        -------
+        Iterable[Event]
+            All events registered across the recurring and one-shot, iteration and time schedulers.
+        """
         return itertools.chain(
-            self._recurring_iteration_scheduler.events,
-            self._at_iteration_scheduler.events,
-            self._recurring_time_scheduler.events,
-            self._at_time_scheduler.events,
+            self._recurring_iteration_scheduler.events(),
+            self._at_iteration_scheduler.events(),
+            self._recurring_time_scheduler.events(),
+            self._at_time_scheduler.events(),
         )
 
     def every_n(self, n: int, event: Event, *, first: int | None = None) -> None:
@@ -967,7 +863,7 @@ class SimulationBuilder:
             # gather kernels from timesteppers
             kernels = list(self._timesteppers[name].kernels)
             # then gather kernels from events
-            for event in self.events:
+            for event in self.events():
                 kernels.extend(event.kernels.get(name, ()))
             # finally from outputs
             for output in outputs.get(name, ()):
