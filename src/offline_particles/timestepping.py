@@ -472,14 +472,20 @@ class Timestepper(abc.ABC):
 
 
 class RK2Timestepper(Timestepper):
-    """Timestepper implements RK2 particle kernels.
+    r"""Timestepper implements RK2 particle kernels.
 
     Implements two-stage second order explicit Runge-Kutta integration for particle advection.
-    Explicit second-order RK2 schemes are defined by a single parameter alpha and have Butcher tableau:
-        0   |
-      alpha |       alpha
-    -----------------------------------------
-            |  1 - 1 / 2 alpha    1 / 2 alpha
+    Explicit second-order RK2 schemes are defined by a single parameter alpha and have Butcher
+    tableau:
+
+    .. math::
+
+        \begin{array}{c|cc}
+            0      &                        &                    \\
+            \alpha & \alpha                 &                    \\
+            \hline
+                   & 1 - \frac{1}{2\alpha}   & \frac{1}{2\alpha}
+        \end{array}
     """
 
     def __init__(

@@ -127,8 +127,8 @@ def roms_ab3_timestepper(
     ------
     ValueError
         If more than one of the linear damping, quadratic damping, or buoyancy coefficient arguments are provided
-        for a given tendency. From :function:`construct_linear_damping_kernel`, :function:`construct_quadratic_damping_kernel`,
-        or :function:`construct_buoyancy_force_kernel`.
+        for a given tendency. From :py:func:`construct_linear_damping_kernel`, :py:func:`construct_quadratic_damping_kernel`,
+        or :py:func:`construct_buoyancy_force_kernel`.
 
     Notes
     -----
@@ -162,8 +162,8 @@ def roms_ab3_timestepper(
     `constant_linear_damping_coefficient`, `property_linear_damping_coefficient`, `scalar_linear_damping_coefficient`.
     Similar for quadratic damping at most one of `constant_quadratic_damping_coefficient`, `property_quadratic_damping_coefficient`,
     `scalar_quadratic_damping_coefficient` may be provided.
-    These arguments are passed onto :function:`construct_linear_damping_kernel`, :function:`construct_quadratic_damping_kernel`,
-    and :function:`construct_buoyancy_force_kernel` respectively.
+    These arguments are passed onto :py:func:`construct_linear_damping_kernel`, :py:func:`construct_quadratic_damping_kernel`,
+    and :py:func:`construct_buoyancy_force_kernel` respectively.
     """
     # construct the tendency kernels based on the options
     tendency_kernels = []
