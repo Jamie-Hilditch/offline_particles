@@ -107,3 +107,18 @@ html {
 .bd-main .bd-content .bd-article-container {
   max-width: 75em;
 }
+
+/* pydata-sphinx-theme wraps display equations (`.. math::` blocks) so
+ * oversized ones scroll/clip instead of blowing out the page: the outer
+ * `.math` flex box gets `overflow: hidden`, and the inner `mjx-container`
+ * (MathJax's rendered output) gets `overflow: auto` -- auto only shows a
+ * scrollbar once content exceeds the box, which is what produces the
+ * (here, vertical) scrollbar on our array. We'd rather always show the
+ * whole equation than get a scrollbar. */
+.math {
+  overflow: visible;
+}
+
+div.math mjx-container {
+  overflow: visible !important;
+}
