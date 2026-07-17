@@ -62,10 +62,12 @@ class KernelInputDeclaration:
 
     @property
     def summary(self) -> str:
+        """A one-line summary of the declaration, including its name and dtype constraints."""
         return f"{self.name} : {self._constraint_str}"
 
     @property
     def description(self) -> str:
+        """A detailed description of the declaration, falling back to the summary if none was provided."""
         if not self._description:
             return self.summary
         return self.summary + "\n\t" + self._description
@@ -158,6 +160,7 @@ class FieldDataDeclaration(KernelInputDeclaration):
 
     @property
     def summary(self) -> str:
+        """A one-line summary of the declaration, including its name, dtype constraints, and layout validator count."""
         return f"{self.name} : {self._constraint_str} with {len(self._layout_validators)} layout validators"
 
 
@@ -291,6 +294,7 @@ class ParticleKernel:
 
     @property
     def summary(self) -> str:
+        """A one-line summary of the kernel, including its name and function names."""
         name_part = f"{self.name} : " if self.name else "Particle Kernel : "
         return name_part + " → ".join(self.func_name(fn) for fn in self._funcs)
 

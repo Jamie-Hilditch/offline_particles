@@ -57,10 +57,12 @@ class Stagger(enum.StrEnum):
 
     @property
     def on_face(self) -> bool:
+        """Whether this staggering places values on a cell face rather than at the center."""
         return self in {Stagger.LEFT, Stagger.RIGHT, Stagger.INNER, Stagger.OUTER}
 
     @property
     def at_center(self) -> bool:
+        """Whether this staggering places values at the cell center."""
         return self is Stagger.CENTER
 
 
