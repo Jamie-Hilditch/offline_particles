@@ -3,6 +3,8 @@
 import os
 import sys
 
+from sphinx.ext.autodoc._sentinels import ALL
+
 sys.path.insert(0, os.path.abspath("_ext"))
 
 # -- Project information
@@ -148,7 +150,36 @@ def apply_output_module_overrides(app):
         _obj.__module__ = _module
 
 
+# -- suppress stdlib-inherited members on Status's docs page
+#
+# Status(enum.IntEnum) inherits a pile of int/IntEnum members (bit_length,
+# from_bytes, numerator, ...) that :inherited-members: pulls in but that are pure
+# stdlib noise. Status defines its own members directly (INACTIVE, NORMAL, ...),
+# so dropping inherited members just for this one class leaves a complete page
+# rather than an empty one -- unlike classes whose entire API is inherited.
+def suppress_status_inherited_members(app, what, name, obj, options, lines):
+    # This event also fires for an unrelated internal call (used to extract
+    # the one-line autosummary blurb) where options.inherited_members is None
+    # rather than the directive's resolved {"object"} -- only touch the real
+    # per-page autoclass directive's options, since that other call path
+    # breaks if options.members is forced away from its own default.
+    if (
+        what == "class"
+        and name == "offline_particles.kernels.status.Status"
+        and options.inherited_members == {"object"}
+    ):
+        # document_members() only documents everything (want_all) if
+        # options.members is the ALL sentinel or options.inherited_members is
+        # truthy; clearing inherited_members without forcing members = ALL
+        # would make it fall back to "document nothing" instead of "document
+        # Status's own members".
+        options.members = ALL
+        options.inherited_members = set()
+        options.member_order = "bysource"  # keep Status's own members in source order
+
+
 def setup(app):
     app.connect("builder-inited", apply_events_module_overrides, priority=0)
     app.connect("builder-inited", apply_kernels_module_overrides, priority=0)
     app.connect("builder-inited", apply_output_module_overrides, priority=0)
+    app.connect("autodoc-process-docstring", suppress_status_inherited_members)
