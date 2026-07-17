@@ -78,9 +78,10 @@ small and specific to one or a few classes.
 
 ## Custom Sphinx extensions (`docs/source/_ext/`)
 
-All verified against the pinned Sphinx version (9.1.0 at time of writing --
-check `uv run python -c "import sphinx; print(sphinx.__version__)"` against
-this if something below stops working after a Sphinx upgrade).
+All verified against Sphinx 9.1.0, which `pyproject.toml` pins exactly
+(`sphinx==9.1.0`), since these patches reach into
+leading-underscore private modules with no cross-version compatibility
+guarantee.
 
 - **`napoleon_tables.py`** -- renders Napoleon's Parameters/Returns/Raises/etc.
   sections as tables instead of field lists. Napoleon has no supported hook

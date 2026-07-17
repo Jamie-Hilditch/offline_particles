@@ -674,7 +674,7 @@ dev = [
     { name = "pre-commit", specifier = ">=4.5.1" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "ruff", specifier = "==0.15.13" },
-    { name = "sphinx", specifier = ">=9.1.0" },
+    { name = "sphinx", specifier = "==9.1.0" },
     { name = "sphinx-autoapi", specifier = ">=3.8.0" },
     { name = "sphinx-book-theme", specifier = ">=1.1.4" },
     { name = "ty", specifier = ">=0.0.8" },
