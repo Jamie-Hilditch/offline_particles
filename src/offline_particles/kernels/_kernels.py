@@ -26,10 +26,14 @@ type LayoutValidator = Callable[[ArrayLayout], None]
 
 @dataclasses.dataclass(frozen=True, slots=True, init=False)
 class KernelInputDeclaration:
-    """Declaration of a kernel input."""
+    """Declaration of a kernel input.
 
-    name: str
-    dtype_constraints: tuple[type[np.generic], ...]
+    The parent class of :class:`ParticlePropertyDeclaration`, :class:`ScalarDeclaration`,
+    and :class:`FieldDataDeclaration`. It is never used directly.
+    """
+
+    name: str  #: The name of the kernel input.
+    dtype_constraints: tuple[type[np.generic], ...]  #: A tuple of allowed data types for the kernel input.
     _description: str = dataclasses.field(compare=False)
 
     def __init__(

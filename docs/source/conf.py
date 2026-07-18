@@ -44,6 +44,12 @@ autosummary_generate = True
 autosummary_ignore_module_all = False
 autosummary_imported_members = True
 autosummary_template_dir = "_templates/autosummary"
+# Windows' filesystem is case-insensitive, so the reexported class
+# offline_particles.kernels.Status and the submodule offline_particles.kernels.status
+# would otherwise generate colliding stub filenames, silently dropping one page.
+autosummary_filename_map = {
+    "offline_particles.kernels.Status": "offline_particles.kernels.Status_class",
+}
 
 # Nice formatting
 add_module_names = False
@@ -79,17 +85,17 @@ html_css_files = ["custom.css"]
 # stdlib noise. Status defines its own members directly (INACTIVE, NORMAL, ...),
 # so dropping inherited members just for this one class leaves a complete page
 # rather than an empty one -- unlike classes whose entire API is inherited.
+
+_STATUS_NAME = "offline_particles.kernels.status.Status"
+
+
 def suppress_status_inherited_members(app, what, name, obj, options, lines):
     # This event also fires for an unrelated internal call (used to extract
     # the one-line autosummary blurb) where options.inherited_members is None
     # rather than the directive's resolved {"object"} -- only touch the real
     # per-page autoclass directive's options, since that other call path
     # breaks if options.members is forced away from its own default.
-    if (
-        what == "class"
-        and name == "offline_particles.kernels.status.Status"
-        and options.inherited_members == {"object"}
-    ):
+    if what == "class" and name == _STATUS_NAME and options.inherited_members == {"object"}:
         # document_members() only documents everything (want_all) if
         # options.members is the ALL sentinel or options.inherited_members is
         # truthy; clearing inherited_members without forcing members = ALL

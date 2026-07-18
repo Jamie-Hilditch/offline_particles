@@ -23,6 +23,7 @@ from ._kernels import (
     FieldDataDeclaration,
     FieldDataType,
     KernelFunction,
+    KernelInputDeclaration,
     ParticleKernel,
     ParticlePropertiesType,
     ParticlePropertyDeclaration,
@@ -30,24 +31,22 @@ from ._kernels import (
     ScalarsType,
     kernel_function,
 )
-from .status import Status, is_active, is_inactive
-from .validation import construct_validation_kernel_from_bbox
+
+# from .status import Status, is_active, is_inactive
+# from .validation import construct_validation_kernel_from_bbox
 
 __all__ = [
     "BoundKernel",
     "FieldDataDeclaration",
     "FieldDataType",
     "KernelFunction",
+    "KernelInputDeclaration",
     "ParticleKernel",
     "ParticlePropertiesType",
     "ParticlePropertyDeclaration",
     "ScalarDeclaration",
     "ScalarsType",
-    "Status",
-    "construct_validation_kernel_from_bbox",
     "input_declarations",
-    "is_active",
-    "is_inactive",
     "kernel_function",
     "layout_validators",
     "roms",

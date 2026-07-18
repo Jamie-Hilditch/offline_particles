@@ -48,7 +48,8 @@ from . import kernels, output
 from .events import Event, SimulationState
 from .fields import StaticField, TimeDependentField
 from .fieldset import Fieldset
-from .kernels import BoundKernel, ParticleKernel, Status
+from .kernels import BoundKernel, ParticleKernel
+from .kernels.status import Status
 from .models import roms
 from .output import Output, ZarrOutputBuilder
 from .simulation import ParticleSet, Simulation, SimulationBuilder

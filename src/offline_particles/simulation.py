@@ -19,7 +19,8 @@ from .events import (
     SimulationState,
 )
 from .fieldset import Fieldset
-from .kernels import BoundKernel, construct_validation_kernel_from_bbox
+from .kernels import BoundKernel
+from .kernels.validation import construct_validation_kernel_from_bbox
 from .launcher import Launcher, Tinfo
 from .output import AbstractOutputWriter, AbstractOutputWriterBuilder, Output
 from .particles import Particles, ParticlesView
