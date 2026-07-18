@@ -32,20 +32,7 @@ uv run sphinx-build docs/source docs/_build
 
 ## Event hooks in `conf.py`
 
-Two unrelated bits of docs-generation logic live directly in `conf.py`
-(connected via `setup(app)`) rather than as `_ext/` extensions, since each is
-small and specific to one or a few classes.
-
-- **`apply_events_module_overrides` / `apply_kernels_module_overrides` /
-  `apply_output_module_overrides`** -- rewrite `__module__` on a handful of
-  classes/functions that are actually defined in a private implementation
-  module (e.g. `offline_particles.kernels._kernels`) so their docs pages read
-  as if they live in the public module (`offline_particles.kernels`) instead.
-  Connected to `builder-inited` rather than applied at import time, because
-  Sphinx imports modules multiple times during a build and import order
-  isn't guaranteed -- `builder-inited` runs once, after all extensions are
-  loaded but before any reading/writing, so it's a safe single point to apply
-  the override before autodoc ever inspects these objects.
+Unrelated bits of docs-generation logic, specific to one or a few classes, live directly in `conf.py` (connected via `setup(app)`) rather than as `_ext/` extensions.
 
 - **`suppress_status_inherited_members`** -- hides the `int`/`IntEnum` stdlib
   members (`bit_length`, `from_bytes`, `numerator`, ...) that
