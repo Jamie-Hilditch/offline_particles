@@ -18,6 +18,19 @@ Submodules
 {% endfor %}
 {% endif %}
 
+{% if attributes %}
+Types and Constants
+-------------------
+
+.. autosummary::
+   :toctree:
+   :template: autosummary/attributes.rst
+
+{% for item in attributes %}
+   {{ item }}
+{% endfor %}
+{% endif %}
+
 {% if classes %}
 Classes
 -------

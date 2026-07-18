@@ -1,7 +1,9 @@
 # Configuration file for the Sphinx documentation builder.
 
+import importlib
 import os
 import sys
+import typing
 
 from sphinx.ext.autodoc._sentinels import ALL
 
@@ -50,6 +52,7 @@ autosummary_template_dir = "_templates/autosummary"
 autosummary_filename_map = {
     "offline_particles.kernels.Status": "offline_particles.kernels.Status_class",
 }
+# autosummary_context is set below
 
 # Nice formatting
 add_module_names = False
@@ -76,35 +79,51 @@ html_css_files = ["custom.css"]
 
 # -- warnings
 # suppress_warnings = ["docutils"]
+suppress_warnings = ["config.cache"]
+
+# -- Extract the value of a type alias for display in the docs
+# Type aliases by default only show the alias name (returned by repr) in the docs, their value.
 
 
-# -- suppress stdlib-inherited members on Status's docs page
+def type_alias_value(fullname: str) -> str | None:
+    modname, _, name = fullname.rpartition(".")
+    obj = getattr(importlib.import_module(modname), name)
+    if isinstance(obj, typing.TypeAliasType):
+        return repr(obj.__value__)
+    return None  # not a type alias — let autodata render normally
+
+
+autosummary_context = {"type_alias_value": type_alias_value}
+
+# -- suppress stdlib-inherited members on enum's docs page
 #
-# Status(enum.IntEnum) inherits a pile of int/IntEnum members (bit_length,
+# Enum classes inherit a pile of int/IntEnum members (bit_length,
 # from_bytes, numerator, ...) that :inherited-members: pulls in but that are pure
-# stdlib noise. Status defines its own members directly (INACTIVE, NORMAL, ...),
-# so dropping inherited members just for this one class leaves a complete page
-# rather than an empty one -- unlike classes whose entire API is inherited.
+# stdlib noise.
 
-_STATUS_NAME = "offline_particles.kernels.status.Status"
+_ENUM_NAMES = {
+    "offline_particles.kernels.status.Status",
+    "offline_particles.spatial_arrays.ArrayAxis",
+    "offline_particles.spatial_arrays.Stagger",
+}
 
 
-def suppress_status_inherited_members(app, what, name, obj, options, lines):
+def suppress_enum_inherited_members(app, what, name, obj, options, lines):
     # This event also fires for an unrelated internal call (used to extract
     # the one-line autosummary blurb) where options.inherited_members is None
     # rather than the directive's resolved {"object"} -- only touch the real
     # per-page autoclass directive's options, since that other call path
     # breaks if options.members is forced away from its own default.
-    if what == "class" and name == _STATUS_NAME and options.inherited_members == {"object"}:
+    if what == "class" and name in _ENUM_NAMES and options.inherited_members == {"object"}:
         # document_members() only documents everything (want_all) if
         # options.members is the ALL sentinel or options.inherited_members is
         # truthy; clearing inherited_members without forcing members = ALL
         # would make it fall back to "document nothing" instead of "document
-        # Status's own members".
+        # the enum's own members".
         options.members = ALL
         options.inherited_members = set()
-        options.member_order = "bysource"  # keep Status's own members in source order
+        options.member_order = "bysource"  # keep enum's own members in source order
 
 
 def setup(app):
-    app.connect("autodoc-process-docstring", suppress_status_inherited_members)
+    app.connect("autodoc-process-docstring", suppress_enum_inherited_members)

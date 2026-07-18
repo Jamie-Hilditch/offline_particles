@@ -30,15 +30,16 @@ uv run sphinx-build docs/source docs/_build
 
 (PowerShell: `Remove-Item -Recurse -Force docs/_build, docs/source/_api`)
 
-## Event hooks in `conf.py`
+## Manual overrides in `conf.py`
 
 Unrelated bits of docs-generation logic, specific to one or a few classes, live directly in `conf.py` (connected via `setup(app)`) rather than as `_ext/` extensions.
 
-- **`suppress_status_inherited_members`** -- hides the `int`/`IntEnum` stdlib
+- **`type_alias_value`** -- extracts the value of `Type` aliases to added to the docs as an `:annotation:` in `_templates/autosummary/attributes.rst`.
+- **`suppress_enum_inherited_members`** -- hides the `int`/`IntEnum` and `str`/`StrEnum` stdlib
   members (`bit_length`, `from_bytes`, `numerator`, ...) that
   `:inherited-members:` in `_templates/autosummary/class.rst` pulls onto
-  `Status`'s docs page, while leaving `:inherited-members:` in place
-  globally. Implemented via  the `autodoc-process-docstring` event, which hands over the *same* `options` object autodoc later reads when deciding which members to render. We set `options.inherited_members = set()` and `options.members = ALL`. Unrelatedly, we also set `options.member_order = "bysource"` to keep `Status`'s members in declaration order (rather than alphabetical). Two things to know before touching this:
+  `enum`'s docs page, while leaving `:inherited-members:` in place
+  globally. Implemented via  the `autodoc-process-docstring` event, which hands over the *same* `options` object autodoc later reads when deciding which members to render. We set `options.inherited_members = set()` and `options.members = ALL`. Unrelatedly, we also set `options.member_order = "bysource"` to keep the `enum`'s members in declaration order (rather than alphabetical). Two things to know before touching this:
   - **This event also fires for an unrelated internal call** (autosummary's
     own one-line blurb extraction for the parent module's class-listing
     table), where `options.inherited_members` is `None` rather than the
@@ -59,9 +60,9 @@ Unrelated bits of docs-generation logic, specific to one or a few classes, live 
     not just fewer. **Failure mode on a Sphinx upgrade:** if `_sentinels.ALL`
     moves or the two sentinels get unified, either an `ImportError` (easy to
     spot) or the page reverting to showing every stdlib member again (or
-    going blank) with no error -- re-check
-    `offline_particles.kernels.status.Status`'s docs page after any Sphinx
-    version bump.
+    going blank) with no error -- re-check the relevant docs pages (e.g.
+    `offline_particles.kernels.status.Status`) after any Sphinx version bump.
+
 
 ## Custom Sphinx extensions (`docs/source/_ext/`)
 

@@ -1,22 +1,4 @@
-"""Submodule for timestepping classes.
-
-Types
-~~~~~
-
-.. list-table::
-   :header-rows: 0
-   :widths: 10 45 45
-
-   * - :py:data:`T`
-     - ``np.floating | np.datetime64``
-     - Supported time types.
-   * - :py:data:`D`
-     - ``np.floating | np.timedelta64``
-     - Supported time increment types.
-   * - :py:data:`DLike`
-     - ``np.floating | np.timedelta64 | float | int``
-     - Accepted time increment input types. Converted to :py:data:`D` internally.
-"""
+"""Submodule for timestepping classes."""
 
 import abc
 import itertools
@@ -48,8 +30,11 @@ __all__ = [
 
 # Supported time and time increment types
 # We need to ensure these are kept up to date in the module docstring.
+#: Supported time types.
 type T = np.floating | np.datetime64
+#: Supported duration / time increment types.
 type D = np.floating | np.timedelta64
+#: Accepted duration / time increment input types.
 type DLike = np.floating | np.timedelta64 | float | int
 
 

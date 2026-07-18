@@ -14,13 +14,12 @@ import numpy.typing as npt
 from ..fields import Field, FieldData
 from ..spatial_arrays import ArrayLayout
 
-# these type aliases are manually documented in the module docstring for better formatting in the docs,
-# if they are updated here, also update the docstring at the top of the __init__.py file
+# these type aliases are documented in the kernels module __init__.py
 type ParticlePropertiesType = Mapping[str, npt.NDArray]
 type ScalarsType = Mapping[str, np.generic]
 type FieldDataType = Mapping[str, FieldData]
-type KernelFunction = Callable[[ParticlePropertiesType, ScalarsType, FieldDataType], None]
 
+type KernelFunction = Callable[[ParticlePropertiesType, ScalarsType, FieldDataType], None]
 type LayoutValidator = Callable[[ArrayLayout], None]
 
 

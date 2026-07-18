@@ -15,19 +15,23 @@ __all__ = [
 ]
 
 # particle properties
+#: The :class:`ParticlePropertyDeclaration` for the particle status.
 STATUS_DECLARATION = ParticlePropertyDeclaration(
     "status", np.uint8, description="The particle status. Possible values are defined by the `Status` enum."
 )
+#: The :class:`ParticlePropertyDeclaration` for the particle's index along the z-axis.
 ZIDX_DECLARATION = ParticlePropertyDeclaration(
     "zidx",
     np.float64,
     description="The fractional index of the particle along the z-axis with respect to the centred grid.",
 )
+#: The :class:`ParticlePropertyDeclaration` for the particle's index along the y-axis.
 YIDX_DECLARATION = ParticlePropertyDeclaration(
     "yidx",
     np.float64,
     description="The fractional index of the particle along the y-axis with respect to the centred grid.",
 )
+#: The :class:`ParticlePropertyDeclaration` for the particle's index along the x-axis.
 XIDX_DECLARATION = ParticlePropertyDeclaration(
     "xidx",
     np.float64,
@@ -35,6 +39,7 @@ XIDX_DECLARATION = ParticlePropertyDeclaration(
 )
 
 # scalars
+#: The :class:`ScalarDeclaration` for the (non-dimensional) simulation time step.
 DT_DECLARATION = ScalarDeclaration("_dt", np.float64, description="The current (non-dimensional) simulation time step.")
 
 

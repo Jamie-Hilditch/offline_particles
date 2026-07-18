@@ -15,15 +15,12 @@ from ...kernels.roms import (
     construct_compute_zidx_kernel,
 )
 from ...kernels.timestepping import construct_ab3_update_kernel
-from ...kernels.validation import construct_validation_kernel
-from ...spatial_arrays import ArrayAxis, ArrayLayout, BBox, Stagger
+from ...spatial_arrays import ArrayAxis, ArrayLayout, Stagger
 from ...timestepping import ABTimestepper
 
 __all__ = [
-    "BBox",
     "construct_compute_z_kernel",
     "construct_compute_zidx_kernel",
-    "construct_validation_kernel",
     "roms_ab3_timestepper",
 ]
 
