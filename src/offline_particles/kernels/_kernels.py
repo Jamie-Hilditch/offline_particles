@@ -14,22 +14,25 @@ import numpy.typing as npt
 from ..fields import Field, FieldData
 from ..spatial_arrays import ArrayLayout
 
-# these type aliases are manually documented in the module docstring for better formatting in the docs,
-# if they are updated here, also update the docstring at the top of the __init__.py file
+# these type aliases are documented in the kernels module __init__.py
 type ParticlePropertiesType = Mapping[str, npt.NDArray]
 type ScalarsType = Mapping[str, np.generic]
 type FieldDataType = Mapping[str, FieldData]
-type KernelFunction = Callable[[ParticlePropertiesType, ScalarsType, FieldDataType], None]
 
+type KernelFunction = Callable[[ParticlePropertiesType, ScalarsType, FieldDataType], None]
 type LayoutValidator = Callable[[ArrayLayout], None]
 
 
 @dataclasses.dataclass(frozen=True, slots=True, init=False)
 class KernelInputDeclaration:
-    """Declaration of a kernel input."""
+    """Declaration of a kernel input.
 
-    name: str
-    dtype_constraints: tuple[type[np.generic], ...]
+    The parent class of :class:`ParticlePropertyDeclaration`, :class:`ScalarDeclaration`,
+    and :class:`FieldDataDeclaration`. It is never used directly.
+    """
+
+    name: str  #: The name of the kernel input.
+    dtype_constraints: tuple[type[np.generic], ...]  #: A tuple of allowed data types for the kernel input.
     _description: str = dataclasses.field(compare=False)
 
     def __init__(
@@ -62,10 +65,12 @@ class KernelInputDeclaration:
 
     @property
     def summary(self) -> str:
+        """A one-line summary of the declaration, including its name and dtype constraints."""
         return f"{self.name} : {self._constraint_str}"
 
     @property
     def description(self) -> str:
+        """A detailed description of the declaration, falling back to the summary if none was provided."""
         if not self._description:
             return self.summary
         return self.summary + "\n\t" + self._description
@@ -158,6 +163,7 @@ class FieldDataDeclaration(KernelInputDeclaration):
 
     @property
     def summary(self) -> str:
+        """A one-line summary of the declaration, including its name, dtype constraints, and layout validator count."""
         return f"{self.name} : {self._constraint_str} with {len(self._layout_validators)} layout validators"
 
 
@@ -291,18 +297,13 @@ class ParticleKernel:
 
     @property
     def summary(self) -> str:
+        """A one-line summary of the kernel, including its name and function names."""
         name_part = f"{self.name} : " if self.name else "Particle Kernel : "
         return name_part + " → ".join(self.func_name(fn) for fn in self._funcs)
 
     @property
     def description(self) -> str:
-        """A detailed description of the kernel.
-
-        Returns
-        -------
-        str
-            A multi-line string describing the kernel's functions and required inputs.
-        """
+        """A detailed, multi-line description of the kernel's functions and required inputs."""
         description_lines = [f"Particle Kernel: {self.name}"] if self.name else ["Particle Kernel"]
 
         # functions
@@ -474,34 +475,22 @@ class BoundKernel:
 
     @property
     def particle_property_bindings(self) -> Mapping[str, str]:
-        """The particle property bindings.
-
-        A mapping from declared names to bound names.
-        """
+        """A mapping from declared particle property names to bound names."""
         return types.MappingProxyType(self._particle_property_bindings)
 
     @property
     def scalar_bindings(self) -> Mapping[str, str]:
-        """The scalar bindings.
-
-        A mapping from declared names to bound names.
-        """
+        """A mapping from declared scalar names to bound names."""
         return types.MappingProxyType(self._scalar_bindings)
 
     @property
     def field_data_bindings(self) -> Mapping[str, str]:
-        """The field data bindings.
-
-        A mapping from declared names to bound names.
-        """
+        """A mapping from declared field data names to bound names."""
         return types.MappingProxyType(self._field_data_bindings)
 
     @property
     def particle_property_declarations(self) -> dict[str, ParticlePropertyDeclaration]:
-        """The particle property declarations.
-
-        A mapping from bound names to declarations.
-        """
+        """A mapping from bound particle property names to their declarations."""
         return {
             bound_name: self.kernel.particle_properties[declared_name]
             for declared_name, bound_name in self.particle_property_bindings.items()
@@ -509,20 +498,14 @@ class BoundKernel:
 
     @property
     def scalar_declarations(self) -> dict[str, ScalarDeclaration]:
-        """The scalar declarations.
-
-        A mapping from bound names to declarations.
-        """
+        """A mapping from bound scalar names to their declarations."""
         return {
             bound_name: self.kernel.scalars[declared_name] for declared_name, bound_name in self.scalar_bindings.items()
         }
 
     @property
     def field_data_declarations(self) -> dict[str, FieldDataDeclaration]:
-        """The field data declarations.
-
-        A mapping from bound names to declarations.
-        """
+        """A mapping from bound field data names to their declarations."""
         return {
             bound_name: self.kernel.field_data[declared_name]
             for declared_name, bound_name in self.field_data_bindings.items()
@@ -594,24 +577,12 @@ class BoundKernel:
 
     @property
     def summary(self) -> str:
-        """A summary of the bound kernel.
-
-        Returns
-        -------
-        str
-            A one-line string summarizing the bound kernel.
-        """
+        """A one-line summary of the bound kernel."""
         return f"Binding for {self.kernel.summary}"
 
     @property
     def description(self) -> str:
-        """A detailed description of the bound kernel, including the underlying kernel's description and the bindings.
-
-        Returns
-        -------
-        str
-            A multi-line string describing the bound kernel.
-        """
+        """A detailed, multi-line description of the bound kernel, including the underlying kernel's description and bindings."""
         description_lines = [f"Bound Kernel: {self.kernel.name}"] if self.kernel.name else ["Bound Kernel"]
 
         # particle property bindings

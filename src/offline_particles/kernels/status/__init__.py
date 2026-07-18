@@ -5,14 +5,11 @@ import numba
 import numpy as np
 import numpy.typing as npt
 
-from .._kernels import BoundKernel, FieldDataType, ParticleKernel, ParticlePropertiesType, ScalarsType, kernel_function
+from .._kernels import BoundKernel, ParticleKernel, kernel_function
 from ..input_declarations import STATUS_DECLARATION
 
 __all__ = [
     "INACTIVE_FLAG",
-    "FieldDataType",
-    "ParticlePropertiesType",
-    "ScalarsType",
     "Status",
     "construct_initialise_status_kernel",
     "is_active",
@@ -23,27 +20,36 @@ __all__ = [
 class Status(enum.IntEnum):
     """Enumeration of particle status codes."""
 
-    # bit flag for active/inactive particles; reserve the final bit for the inactive flag
+    #: Bit flag for active/inactive particles
     INACTIVE = 1 << 7
 
-    # normal state
+    #: The standard state for an active particle
     NORMAL = 0
 
-    # error states
+    # Error states
+    #: Error state for particles with a non-finite index
     NONFINITE = 1 | INACTIVE
+    #: Error state for particles that have moved outside the domain in the X or Y dimension
     OUT_OF_DOMAIN = 2 | INACTIVE
+    #: Error state for particles that have moved below the bottom of the domain
     BELOW_BOTTOM = 3 | INACTIVE
+    #: Error state for particles that have moved above the surface of the domain
     ABOVE_SURFACE = 4 | INACTIVE
 
     # reserved for multistep initialization
+    #: The state used by multistep timesteppers when 1 tendency history step is unavailable
     MULTISTEP_1 = 10
+    #: The state used by multistep timesteppers when 2 tendency history steps are unavailable
     MULTISTEP_2 = 11
 
     # recurring initialisation phase (both sim-start and mid-simulation, e.g. timed release)
+    #: The state of a particle being initialised
     INITIALISING = 19 | INACTIVE
 
     # timed releases and retirements
+    #: The state of a particle that is waiting to be released (e.g. via a timed release kernel)
     PRE_RELEASE = 20 | INACTIVE
+    #: The state of a particle that has been retired (e.g. via a timed retirement kernel)
     POST_RETIREMENT = 21 | INACTIVE
 
 

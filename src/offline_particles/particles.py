@@ -6,7 +6,10 @@ from collections.abc import Mapping
 import numpy as np
 import numpy.typing as npt
 
-from .kernels import BoundKernel, ParticlePropertyDeclaration, Status
+from .kernels import BoundKernel, ParticlePropertyDeclaration
+from .kernels.status import Status
+
+__all__ = ["ParticlesView", "_FrozenArrayMapping"]
 
 _REQUIRED_PARTICLE_PROPERTY_FIELDS = {
     "status": np.dtype(np.uint8),

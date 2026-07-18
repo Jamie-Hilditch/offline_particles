@@ -67,15 +67,15 @@ class TestZarrOutputBuilderStaticOutputs:
     def test_static_outputs_empty_initially(self, zarr_store, make_output_builder) -> None:
         store = zarr_store
         builder = make_output_builder(store)
-        assert list(builder.static_outputs) == []
+        assert list(builder.static_outputs()) == []
 
     def test_add_static_output(self, zarr_store, make_output_builder) -> None:
         store = zarr_store
         builder = make_output_builder(store)
         output = _make_output("density")
         builder.add_static_output("particles", "density", output)
-        assert ("particles", "density") in dict(builder.static_outputs)
-        assert dict(builder.static_outputs)[("particles", "density")] is output
+        assert ("particles", "density") in dict(builder.static_outputs())
+        assert dict(builder.static_outputs())[("particles", "density")] is output
 
     def test_add_static_output_duplicate_raises(self, zarr_store, make_output_builder) -> None:
         store = zarr_store
@@ -91,7 +91,7 @@ class TestZarrOutputBuilderStaticOutputs:
         output = _make_output("density")
         builder.add_static_output("particles", "density", output)
         builder.remove_static_output("particles", "density")
-        assert ("particles", "density") not in dict(builder.static_outputs)
+        assert ("particles", "density") not in dict(builder.static_outputs())
 
     def test_remove_static_output_missing_raises(self, zarr_store, make_output_builder) -> None:
         store = zarr_store
@@ -105,8 +105,8 @@ class TestZarrOutputBuilderStaticOutputs:
         output = _make_output("density")
         builder.add_output("particles", "x", _make_output("xidx"))
         builder.add_static_output("particles", "density", output)
-        assert ("particles", "density") not in dict(builder.outputs)
-        assert ("particles", "x") not in dict(builder.static_outputs)
+        assert ("particles", "density") not in dict(builder.outputs())
+        assert ("particles", "x") not in dict(builder.static_outputs())
 
     def test_add_output_clashes_with_static_raises(self, zarr_store, make_output_builder) -> None:
         store = zarr_store
@@ -158,7 +158,7 @@ class TestZarrOutputWriterStaticOutputArrays:
         assert arr.shape == (0, 5)
         assert arr.ndim == 2
 
-    def test_static_outputs_property(self, zarr_store, make_output_builder, make_particles_view) -> None:
+    def test_static_outputs_method(self, zarr_store, make_output_builder, make_particles_view) -> None:
         store = zarr_store
         builder = make_output_builder(store)
         output = _make_output("xidx")
@@ -166,8 +166,8 @@ class TestZarrOutputWriterStaticOutputArrays:
 
         writer = builder.build({"particles": make_particles_view(5)})
 
-        assert ("particles", "density") in dict(writer.static_outputs)
-        assert dict(writer.static_outputs)[("particles", "density")] is output
+        assert ("particles", "density") in dict(writer.static_outputs())
+        assert dict(writer.static_outputs())[("particles", "density")] is output
 
     def test_static_outputs_not_in_outputs(self, zarr_store, make_output_builder, make_particles_view) -> None:
         store = zarr_store
@@ -176,7 +176,7 @@ class TestZarrOutputWriterStaticOutputArrays:
 
         writer = builder.build({"particles": make_particles_view(5)})
 
-        assert ("particles", "density") not in dict(writer.outputs)
+        assert ("particles", "density") not in dict(writer.outputs())
 
 
 # ---------------------------------------------------------------------------

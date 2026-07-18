@@ -1,4 +1,4 @@
-{{ fullname | escape | underline }}
+{{ fullname.split('.')[-1] | escape | underline }}
 
 .. automodule:: {{ fullname }}
 
@@ -14,6 +14,19 @@ Submodules
    :template: autosummary/module.rst
 
 {% for item in modules %}
+   {{ item }}
+{% endfor %}
+{% endif %}
+
+{% if attributes %}
+Types and Constants
+-------------------
+
+.. autosummary::
+   :toctree:
+   :template: autosummary/attributes.rst
+
+{% for item in attributes %}
    {{ item }}
 {% endfor %}
 {% endif %}
@@ -39,6 +52,7 @@ Functions
 .. autosummary::
    :toctree:
    :nosignatures:
+   :template: autosummary/function.rst
 
 {% for item in functions %}
    {{ item }}

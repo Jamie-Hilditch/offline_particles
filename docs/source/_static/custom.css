@@ -1,0 +1,124 @@
+/* Tone down heading sizes and vertical spacing from the pydata-sphinx-theme
+ * defaults (--pst-font-size-h1..h6, and the base h1-h6 rule that sets
+ * margin: 2.75rem 0 1.05rem), plus the large gap autodoc's `dl` members
+ * (methods, properties, attributes, functions) get between each other. */
+
+html {
+  --pst-font-size-h1: 1.875rem;
+  --pst-font-size-h2: 1.5rem;
+  --pst-font-size-h3: 1.25rem;
+  --pst-font-size-h4: 1.125rem;
+  --pst-font-size-h5: 1rem;
+  --pst-font-size-h6: 0.875rem;
+}
+
+.bd-article h1,
+.bd-article h2,
+.bd-article h3,
+.bd-article h4,
+.bd-article h5,
+.bd-article h6 {
+  margin: 1.25rem 0 0.5rem;
+}
+
+.bd-article h1 {
+  margin-top: 0;
+}
+
+.bd-article dl[class]:not(.option-list, .field-list, .footnote, .glossary, .simple) {
+  margin-bottom: 0.5rem;
+}
+
+/* Numpydoc's Parameters/Returns/Raises render as field lists, which the theme
+ * shades with a background chip behind the field name. Restyle them to match
+ * the plain bold-title + underline look that `.rubric` (e.g. Notes) already
+ * has, instead of the boxed chip. */
+.bd-article dl.field-list dt.field-even,
+.bd-article dl.field-list dt.field-odd {
+  background-color: transparent;
+  border-bottom: 1px solid var(--pst-color-border);
+  margin-top: 0.35rem;
+  margin-bottom: 0.35rem;
+  padding-left: 0;
+}
+
+.bd-article dl.field-list dt.field-even .colon,
+.bd-article dl.field-list dt.field-odd .colon {
+  display: none;
+}
+
+/* Parameters/Returns/Raises/... tables (napoleon_tables extension): drop the
+ * theme's gridlines and zebra striping, and tighten row padding so entries
+ * read like lines in a paragraph rather than a padded, boxed table. */
+.bd-article .napoleon-table {
+  border: none;
+  margin-bottom: 0;
+}
+
+/* Tighten the vertical rhythm around each rubric title (e.g. "Parameters"),
+ * which is much looser than the field-list-derived headings elsewhere in
+ * this file (0.35rem). The gap *before* a rubric turned out to be governed
+ * entirely by the rubric's own margin-top, not by whatever precedes it:
+ * Sphinx's basic.css sets `p.rubric { margin-top: 30px }`, and margin
+ * collapsing takes the larger of two adjoining margins, so that 30px always
+ * won regardless of the preceding element's margin-bottom. Overriding it
+ * directly here (`.bd-article .rubric` outweighs `p.rubric` on specificity)
+ * is what actually controls that gap; capping whatever comes right before a
+ * rubric -- the previous table's wrapper div, or the docstring's summary
+ * paragraph for the first section -- now decides it instead. */
+.bd-article .rubric {
+  margin-top: 0;
+}
+
+.bd-article :has(+ .rubric) {
+  margin-bottom: 0.35rem;
+}
+
+.bd-article .rubric:has(+ .pst-scrollable-table-container) {
+  margin-bottom: 0.35rem;
+}
+
+.bd-article .napoleon-table td ~ td,
+.bd-article .napoleon-table td ~ th,
+.bd-article .napoleon-table th ~ td,
+.bd-article .napoleon-table th ~ th {
+  border-left: none;
+}
+
+.bd-article .napoleon-table > :not(caption) > * > * {
+  border-bottom-width: 0;
+  padding: 0.15rem 0.75rem 0.15rem 0;
+}
+
+.bd-article .napoleon-table tbody tr:nth-child(odd),
+.bd-article .napoleon-table tbody tr:nth-child(2n),
+.bd-article .napoleon-table tbody tr:hover {
+  background-color: transparent;
+}
+
+.bd-article .napoleon-table td > p {
+  margin-bottom: 0;
+}
+
+/* With the secondary sidebar removed, `.bd-main` reclaims the ~17rem it used
+ * to take, but the article container's own `max-width: 60em` still centers
+ * content in a narrower box, leaving that reclaimed width as empty margin.
+ * Widen the cap by roughly the same 17rem to use the space instead. */
+.bd-main .bd-content .bd-article-container {
+  max-width: 75em;
+}
+
+/* pydata-sphinx-theme wraps display equations (`.. math::` blocks) so
+ * oversized ones scroll/clip instead of blowing out the page: the outer
+ * `.math` flex box gets `overflow: hidden`, and the inner `mjx-container`
+ * (MathJax's rendered output) gets `overflow: auto` -- auto only shows a
+ * scrollbar once content exceeds the box, which is what produces the
+ * (here, vertical) scrollbar on our array. We'd rather always show the
+ * whole equation than get a scrollbar. */
+.math {
+  overflow: visible;
+}
+
+div.math mjx-container {
+  overflow: visible !important;
+}

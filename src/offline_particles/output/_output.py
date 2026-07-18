@@ -128,24 +128,28 @@ class AbstractOutputWriter(abc.ABC):
     def name(self) -> str:
         """The name of the output writer."""
 
-    @property
     @abc.abstractmethod
     def outputs(self) -> Iterable[tuple[tuple[str, str], Output]]:
-        """The outputs declared for this writer."""
+        """Yield the outputs declared for this writer.
 
-    @property
+        Yields
+        ------
+        key : tuple[str, str]
+            The key (particle_set, name)
+        output : Output
+            The corresponding Output object.
+        """
+
     @abc.abstractmethod
     def static_outputs(self) -> Iterable[tuple[tuple[str, str], Output]]:
-        """The static (time-independent) outputs declared for this writer.
+        """Yield the static (time-independent) outputs declared for this writer.
 
-        Returns
-        -------
-        Iterable[tuple[tuple[str, str], Output]]
-            An iterable of tuples containing the key (particle_set, name) and the corresponding Output object.
-
-        Notes
-        -----
-        Static outputs are written once at iteration 0, after particle initialisation.
+        Yields
+        ------
+        key : tuple[str, str]
+            The key (particle_set, name)
+        output : Output
+            The corresponding Output object.
         """
 
     @abc.abstractmethod
@@ -224,7 +228,7 @@ class AbstractOutputWriter(abc.ABC):
         events.append(time_event)
 
         # write outputs
-        for (particle_set, name), output in self.outputs:
+        for (particle_set, name), output in self.outputs():
             event_func = functools.partial(self.write_output, particle_set, name)
             event = Event(self.event_name(particle_set, name), event_func, **{particle_set: output.kernels})
             events.append(event)
@@ -247,7 +251,7 @@ class AbstractOutputWriter(abc.ABC):
             A list of one-shot events for writing static outputs.
         """
         events = []
-        for (particle_set, name), output in self.static_outputs:
+        for (particle_set, name), output in self.static_outputs():
             event_func = functools.partial(self.write_static_output, particle_set, name)
             event = Event(self.event_name(particle_set, name), event_func, **{particle_set: output.kernels})
             events.append(event)
@@ -262,24 +266,28 @@ class AbstractOutputWriterBuilder(abc.ABC):
     def name(self) -> str:
         """The name of the output writer."""
 
-    @property
     @abc.abstractmethod
     def outputs(self) -> Iterable[tuple[tuple[str, str], Output]]:
-        """The outputs declared for this writer."""
+        """Yield the outputs declared for this writer.
 
-    @property
+        Yields
+        ------
+        key : tuple[str, str]
+            The key (particle_set, name)
+        output : Output
+            The corresponding Output object.
+        """
+
     @abc.abstractmethod
     def static_outputs(self) -> Iterable[tuple[tuple[str, str], Output]]:
-        """The static (time-independent) outputs declared for this writer.
+        """Yield the static (time-independent) outputs declared for this writer.
 
-        Returns
-        -------
-        Iterable[tuple[tuple[str, str], Output]]
-            An iterable of tuples containing the key (particle_set, name) and the corresponding Output object.
-
-        Notes
-        -----
-        Static outputs are written once at iteration 0, after particle initialisation.
+        Yields
+        ------
+        key : tuple[str, str]
+            The key (particle_set, name)
+        output : Output
+            The corresponding Output object.
         """
 
     @abc.abstractmethod

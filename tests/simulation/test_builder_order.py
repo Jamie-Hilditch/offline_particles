@@ -16,11 +16,9 @@ class _RecordingWriter(AbstractOutputWriter):
     def name(self) -> str:
         return "recording"
 
-    @property
     def outputs(self):
         return ()
 
-    @property
     def static_outputs(self):
         return ()
 
@@ -46,11 +44,9 @@ class _RecordingBuilder(AbstractOutputWriterBuilder):
     def name(self) -> str:
         return "recording"
 
-    @property
     def outputs(self):
         return ()
 
-    @property
     def static_outputs(self):
         return ()
 

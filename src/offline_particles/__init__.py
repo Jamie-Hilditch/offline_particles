@@ -1,48 +1,65 @@
 """Offline line particle advection.
 
+Top level exports
+=================
+
 The following classes and submodules are reexported at the top level of the package:
+
 
 Submodules
 ~~~~~~~~~~
 
-- :py:mod:`~offline_particles.kernels`: Kernels for implementing particle behaviour.
-- :py:mod:`~offline_particles.output`: Output tools for saving simulation results.
-- :py:mod:`~offline_particles.models.roms`: Tools for working with ROMS output.
+.. autosummary::
+   :nosignatures:
+
+   kernels
+   output
+   ~models.roms
 
 Classes
 ~~~~~~~
 
-- :py:class:`~offline_particles.events.Event`: Class for defining an event that occurs during a simulation.
-- :py:class:`~offline_particles.events.SimulationState`: The state of a simulation at a given time.
-- :py:class:`~offline_particles.fields.StaticField`: A field that does not change over time.
-- :py:class:`~offline_particles.fields.TimeDependentField`: A field that changes over time.
-- :py:class:`~offline_particles.fieldset.Fieldset`: A collection of fields and constants for use in a simulation.
-- :py:class:`~offline_particles.kernels.BoundKernel`: A kernel with name bindings.
-- :py:class:`~offline_particles.kernels.ParticleKernel`: A kernel implementing particle behaviour.
-- :py:class:`~offline_particles.kernels.status.Status`: An enumeration of possible particle statuses.
-- :py:class:`~offline_particles.output.Output`: Class for defining an output variable.
-- :py:class:`~offline_particles.output.ZarrOutputBuilder`: An output builder for writing simulation results to a Zarr store.
-- :py:class:`~offline_particles.simulation.ParticleSet`: A collection of particles.
-- :py:class:`~offline_particles.simulation.Simulation`: Central class for managing a particle advection simulation.
-- :py:class:`~offline_particles.simulation.SimulationBuilder`: A builder for constructing a Simulation.
-- :py:class:`~offline_particles.timestepping.ABTimestepper`: A timestepper implementing an Adams-Bashforth method.
-- :py:class:`~offline_particles.timestepping.Clock`: A clock for keeping track of simulation time.
-- :py:class:`~offline_particles.timestepping.RK2Timestepper`: A timestepper implementing an explicit second-order Runge-Kutta method.
-- :py:class:`~offline_particles.timestepping.Timestepper`: Base class for defining timesteppers.
+.. autosummary::
+   :nosignatures:
+
+   ~events.Event
+   ~events.SimulationState
+   ~fields.StaticField
+   ~fields.TimeDependentField
+   ~fieldset.Fieldset
+   ~kernels.BoundKernel
+   ~kernels.ParticleKernel
+   ~kernels.status.Status
+   ~output.Output
+   ~output.ZarrOutputBuilder
+   ~simulation.ParticleSet
+   ~simulation.Simulation
+   ~simulation.SimulationBuilder
+   ~spatial_arrays.ArrayAxis
+   ~spatial_arrays.ArrayLayout
+   ~spatial_arrays.Stagger
+   ~timestepping.ABTimestepper
+   ~timestepping.Clock
+   ~timestepping.RK2Timestepper
+   ~timestepping.Timestepper
 """
 
 from . import kernels, output
 from .events import Event, SimulationState
 from .fields import StaticField, TimeDependentField
 from .fieldset import Fieldset
-from .kernels import BoundKernel, ParticleKernel, Status
+from .kernels import BoundKernel, ParticleKernel
+from .kernels.status import Status
 from .models import roms
 from .output import Output, ZarrOutputBuilder
 from .simulation import ParticleSet, Simulation, SimulationBuilder
+from .spatial_arrays import ArrayAxis, ArrayLayout, Stagger
 from .timestepping import ABTimestepper, Clock, RK2Timestepper, Timestepper
 
 __all__ = [
     "ABTimestepper",
+    "ArrayAxis",
+    "ArrayLayout",
     "BoundKernel",
     "Clock",
     "Event",
@@ -54,6 +71,7 @@ __all__ = [
     "Simulation",
     "SimulationBuilder",
     "SimulationState",
+    "Stagger",
     "StaticField",
     "Status",
     "TimeDependentField",

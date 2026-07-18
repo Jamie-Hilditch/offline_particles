@@ -12,6 +12,14 @@ from ._base import (
     subtract_property,
 )
 
+__all__ = [
+    "construct_add_property_kernel",
+    "construct_copy_property_kernel",
+    "construct_divide_property_kernel",
+    "construct_multiply_property_kernel",
+    "construct_subtract_property_kernel",
+]
+
 type SupportedDTypes = type[np.float32 | np.float64 | np.integer]
 
 

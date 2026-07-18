@@ -20,7 +20,7 @@ All commands run through `uv` (uses `uv.lock`, Python >=3.12).
 - Type check: `uv run ty check`
 - Lint: `uv run ruff check --fix .`
 - Format: `uv run ruff format .`
-- Build docs: `uv run sphinx-build docs/source docs/build`
+- Build docs: `uv run sphinx-build docs/source docs/_build`. `docs/source/_api` and `docs/_build` are autosummary/build artifacts (gitignored) that are only regenerated for files that changed, so a stale `_api` stub left over from a module rename can reference a module that no longer exists and break the build with an `ImportExceptionGroup`. If the build fails after renaming/moving modules, delete both directories first: `rm -rf docs/_build docs/source/_api` (or `Remove-Item -Recurse -Force docs/_build, docs/source/_api` in PowerShell), then rebuild.
 - Pre-commit runs ruff-check and ruff-format on `src|tests|docs/source` — install with `uv run pre-commit install`.
 
 CI (`.github/workflows/ci.yml`) runs `ty check`, `ruff check`/`format`, and `pytest` as separate jobs — match these locally before pushing.
@@ -65,6 +65,7 @@ Apply these when reviewing or authoring changes to `src` or `tests`:
 
 - Docstrings of any modified function/method/class must stay accurate and follow **NumPy style** strictly (see `pydocstyle.convention = "numpy"` in `pyproject.toml`), and must render correctly with Sphinx + napoleon.
 - The docstring `Raises` section must document every exception raised directly *or* indirectly (via another function/method/class in this codebase); exceptions from external libraries may optionally be documented.
+- `@property` docstrings are a **one-line summary only** — no `Parameters`/`Returns`/`Yields`/`Raises`/extended description. If a property's behavior needs more explanation than a sentence, it should be a method instead (enforced by `tests/docstring_conventions/test_property_docstrings.py`). This includes generator-bodied getters: a property that needs a `Yields` section (ruff's `DOC402`, which — unlike `DOC201` for `Returns` — is not exempted for `@property`) should be a zero-arg method instead, e.g. `Scheduler.events()`, `AbstractOutputWriter.outputs()`/`.static_outputs()`.
 - Any modified behaviour must be tested — write tests for new behaviour and fill gaps in existing coverage, not just for the lines touched.
 - Classes should implement `__str__` and `__repr__` unless there's a good reason not to (see `ParticleKernel`, `BoundKernel`, `KernelInputDeclaration` for the established pattern).
 - Consider adding a `description`/`summary` property to a class when a more detailed, end-user-facing description of an instance would be useful; this is in addition to, not a replacement for, a proper class-level docstring.

@@ -77,9 +77,8 @@ class ZarrOutputWriter(AbstractOutputWriter):
         """The Zarr store."""
         return self._store
 
-    @property
     def outputs(self) -> Iterable[tuple[tuple[str, str], Output]]:
-        """The outputs declared for this writer.
+        """Yield the outputs declared for this writer.
 
         Yields
         ------
@@ -91,9 +90,8 @@ class ZarrOutputWriter(AbstractOutputWriter):
         for key, zarr_output_array in self._outputs.items():
             yield key, zarr_output_array.output
 
-    @property
     def static_outputs(self) -> Iterable[tuple[tuple[str, str], Output]]:
-        """The static (time-independent) outputs declared for this writer.
+        """Yield the static (time-independent) outputs declared for this writer.
 
         Yields
         ------
@@ -267,29 +265,27 @@ class ZarrOutputBuilder(AbstractOutputWriterBuilder):
         """The name of the output writer."""
         return self._name
 
-    @property
     def outputs(self) -> Iterable[tuple[tuple[str, str], Output]]:
-        """The outputs declared for this writer.
+        """Yield the outputs declared for this writer.
 
         Yields
         ------
-        tuple[str, str]
+        key : tuple[str, str]
             The key (particle_set, name)
-        Output
+        output : Output
             The corresponding Output object.
         """
         for key, zarr_output_def in self._outputs.items():
             yield key, zarr_output_def.output
 
-    @property
     def static_outputs(self) -> Iterable[tuple[tuple[str, str], Output]]:
-        """The static (time-independent) outputs declared for this writer.
+        """Yield the static (time-independent) outputs declared for this writer.
 
         Yields
         ------
-        tuple[str, str]
+        key : tuple[str, str]
             The key (particle_set, name)
-        Output
+        output : Output
             The corresponding Output object.
         """
         for key, zarr_output_def in self._static_outputs.items():

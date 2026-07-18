@@ -1,22 +1,4 @@
-"""Submodule for timestepping classes.
-
-Types
-~~~~~
-
-.. list-table::
-   :header-rows: 0
-   :widths: 10 45 45
-
-   * - :py:data:`T`
-     - ``np.floating | np.datetime64``
-     - Supported time types.
-   * - :py:data:`D`
-     - ``np.floating | np.timedelta64``
-     - Supported time increment types.
-   * - :py:data:`DLike`
-     - ``np.floating | np.timedelta64 | float | int``
-     - Accepted time increment input types. Converted to :py:data:`D` internally.
-"""
+"""Submodule for timestepping classes."""
 
 import abc
 import itertools
@@ -48,8 +30,11 @@ __all__ = [
 
 # Supported time and time increment types
 # We need to ensure these are kept up to date in the module docstring.
+#: Supported time types.
 type T = np.floating | np.datetime64
+#: Supported duration / time increment types.
 type D = np.floating | np.timedelta64
+#: Accepted duration / time increment input types.
 type DLike = np.floating | np.timedelta64 | float | int
 
 
@@ -342,44 +327,12 @@ class Clock:
 
     @property
     def first_time(self) -> T:
-        """The chronological start of the simulation.
-
-        Returns
-        -------
-        T
-            ``time_array[0]`` if forward, ``time_array[-1]`` if backward.
-
-        Examples
-        --------
-            >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=np.float64(0.5))
-            >>> clock.first_time
-            np.float64(0.0)
-
-            >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=np.float64(-0.5))
-            >>> clock.first_time
-            np.float64(3.0)
-        """
+        """The chronological start of the simulation (``time_array[0]`` if forward, ``time_array[-1]`` if backward)."""
         return self._time_array[0] if self._forward_in_time else self._time_array[-1]
 
     @property
     def final_time(self) -> T:
-        """The chronological end of the simulation.
-
-        Returns
-        -------
-        T
-            ``time_array[-1]`` if forward, ``time_array[0]`` if backward.
-
-        Examples
-        --------
-            >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=np.float64(0.5))
-            >>> clock.final_time
-            np.float64(3.0)
-
-            >>> clock = Clock(np.array([0.0, 1.0, 2.0, 3.0]), dt=np.float64(-0.5))
-            >>> clock.final_time
-            np.float64(0.0)
-        """
+        """The chronological end of the simulation (``time_array[-1]`` if forward, ``time_array[0]`` if backward)."""
         return self._time_array[-1] if self._forward_in_time else self._time_array[0]
 
     def advance_time(self) -> None:
@@ -504,14 +457,20 @@ class Timestepper(abc.ABC):
 
 
 class RK2Timestepper(Timestepper):
-    """Timestepper implements RK2 particle kernels.
+    r"""Timestepper implements RK2 particle kernels.
 
     Implements two-stage second order explicit Runge-Kutta integration for particle advection.
-    Explicit second-order RK2 schemes are defined by a single parameter alpha and have Butcher tableau:
-        0   |
-      alpha |       alpha
-    -----------------------------------------
-            |  1 - 1 / 2 alpha    1 / 2 alpha
+    Explicit second-order RK2 schemes are defined by a single parameter alpha and have Butcher
+    tableau:
+
+    .. math::
+
+        \begin{array}{c|cc}
+            0      &                        &                    \\
+            \alpha & \alpha                 &                    \\
+            \hline
+                   & 1 - \frac{1}{2\alpha}   & \frac{1}{2\alpha}
+        \end{array}
     """
 
     def __init__(

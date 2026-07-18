@@ -177,7 +177,7 @@ class TestZarrOutputBuilderBuild:
         builder = make_output_builder(store)
         builder.add_output("particles", "x", Output("xidx"))
         builder.remove_output("particles", "x")
-        assert ("particles", "x") not in dict(builder.outputs)
+        assert ("particles", "x") not in dict(builder.outputs())
 
     def test_remove_output_missing_raises(self, zarr_store, make_output_builder, make_particles_view) -> None:
         store = zarr_store

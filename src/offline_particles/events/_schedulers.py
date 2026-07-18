@@ -11,9 +11,14 @@ from ._events import Event
 class IterationSchedulerProtocol(Protocol):
     """Protocol for iteration-based event schedulers."""
 
-    @property
     def events(self) -> Iterable[Event]:
-        """All registered events."""
+        """Yield all registered events.
+
+        Yields
+        ------
+        event : Event
+            The next registered event.
+        """
         ...
 
     def __call__(self, iteration: int) -> list[Event]:
@@ -25,9 +30,14 @@ class IterationSchedulerProtocol(Protocol):
 class TimeSchedulerProtocol(Protocol):
     """Protocol for time-based event schedulers."""
 
-    @property
     def events(self) -> Iterable[Event]:
-        """All registered events."""
+        """Yield all registered events.
+
+        Yields
+        ------
+        event : Event
+            The next registered event.
+        """
         ...
 
     def __call__(self, time: T) -> list[Event]:
@@ -52,9 +62,8 @@ class RecurringIterationScheduler:
         """The next iteration at which an event is scheduled."""
         return self._next
 
-    @property
     def events(self) -> Iterable[Event]:
-        """All registered events.
+        """Yield all registered events.
 
         Yields
         ------
@@ -125,9 +134,8 @@ class RecurringTimeScheduler:
         """The next time at which an event is scheduled."""
         return self._next_time
 
-    @property
     def events(self) -> Iterable[Event]:
-        """All registered events.
+        """Yield all registered events.
 
         Yields
         ------
@@ -226,9 +234,8 @@ class AtIterationScheduler:
         """The next iteration at which an event is scheduled."""
         return self._next
 
-    @property
     def events(self) -> Iterable[Event]:
-        """All registered events.
+        """Yield all registered events.
 
         Yields
         ------
@@ -296,9 +303,8 @@ class AtTimeScheduler:
         """The next time at which an event is scheduled."""
         return self._next_time
 
-    @property
     def events(self) -> Iterable[Event]:
-        """All registered events.
+        """Yield all registered events.
 
         Yields
         ------

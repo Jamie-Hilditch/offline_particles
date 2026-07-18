@@ -7,6 +7,8 @@ from ...spatial_arrays import ArrayLayout
 from .._kernels import BoundKernel
 from ..relaxation import construct_linear_relaxation_kernel
 
+__all__ = ["construct_buoyancy_force_kernel"]
+
 
 def construct_buoyancy_force_kernel(
     rhs: str,
@@ -23,7 +25,7 @@ def construct_buoyancy_force_kernel(
     r"""Construct a kernel to compute buoyancy force on particles.
 
     This is a special case of linear relaxation where the particle feels a restoring force
-    towards the it's level of neutral buoyancy. For density based models, the coefficient
+    towards the its level of neutral buoyancy. For density based models, the coefficient
     is :math:`g/\rho_0`.
 
     Parameters

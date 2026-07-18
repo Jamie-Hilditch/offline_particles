@@ -1,12 +1,12 @@
-# API Reference
+# Offline Particles Public API
 
-## Offline Particles
 
 ```{eval-rst}
 .. automodule:: offline_particles
+   :no-index-entry:
 ```
 
-## Submodules
+## Package Submodules
 
 ```{eval-rst}
 .. autosummary::
@@ -17,9 +17,12 @@
    events
    fields
    fieldset
+   launcher
    kernels
    models
    output
+   particles
    simulation
+   spatial_arrays
    timestepping
 ```

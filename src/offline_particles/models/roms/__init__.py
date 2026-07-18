@@ -15,15 +15,12 @@ from ...kernels.roms import (
     construct_compute_zidx_kernel,
 )
 from ...kernels.timestepping import construct_ab3_update_kernel
-from ...kernels.validation import construct_validation_kernel
-from ...spatial_arrays import ArrayAxis, ArrayLayout, BBox, Stagger
+from ...spatial_arrays import ArrayAxis, ArrayLayout, Stagger
 from ...timestepping import ABTimestepper
 
 __all__ = [
-    "BBox",
     "construct_compute_z_kernel",
     "construct_compute_zidx_kernel",
-    "construct_validation_kernel",
     "roms_ab3_timestepper",
 ]
 
@@ -127,8 +124,8 @@ def roms_ab3_timestepper(
     ------
     ValueError
         If more than one of the linear damping, quadratic damping, or buoyancy coefficient arguments are provided
-        for a given tendency. From :function:`construct_linear_damping_kernel`, :function:`construct_quadratic_damping_kernel`,
-        or :function:`construct_buoyancy_force_kernel`.
+        for a given tendency. From :py:func:`construct_linear_damping_kernel`, :py:func:`construct_quadratic_damping_kernel`,
+        or :py:func:`construct_buoyancy_force_kernel`.
 
     Notes
     -----
@@ -162,8 +159,8 @@ def roms_ab3_timestepper(
     `constant_linear_damping_coefficient`, `property_linear_damping_coefficient`, `scalar_linear_damping_coefficient`.
     Similar for quadratic damping at most one of `constant_quadratic_damping_coefficient`, `property_quadratic_damping_coefficient`,
     `scalar_quadratic_damping_coefficient` may be provided.
-    These arguments are passed onto :function:`construct_linear_damping_kernel`, :function:`construct_quadratic_damping_kernel`,
-    and :function:`construct_buoyancy_force_kernel` respectively.
+    These arguments are passed onto :py:func:`construct_linear_damping_kernel`, :py:func:`construct_quadratic_damping_kernel`,
+    and :py:func:`construct_buoyancy_force_kernel` respectively.
     """
     # construct the tendency kernels based on the options
     tendency_kernels = []
