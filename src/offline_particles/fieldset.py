@@ -10,6 +10,10 @@ import xarray as xr
 from .fields import Field, SimulationSize, StaticField, TimeDependentField
 from .spatial_arrays import ArrayAxis, BBox, Stagger
 
+__all__ = [
+    "Fieldset",
+]
+
 
 class Fieldset:
     """Class representing a collection of fields from a simulation.

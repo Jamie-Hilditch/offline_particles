@@ -25,6 +25,12 @@ from .output import AbstractOutputWriter, AbstractOutputWriterBuilder, Output
 from .particles import Particles, ParticlesView
 from .timestepping import Clock, D, T, Timestepper
 
+__all__ = [
+    "ParticleSet",
+    "Simulation",
+    "SimulationBuilder",
+]
+
 DEFAULT_BBOX_HISTORY_SIZE = 256
 
 

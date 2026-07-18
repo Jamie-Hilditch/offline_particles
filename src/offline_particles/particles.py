@@ -8,6 +8,8 @@ import numpy.typing as npt
 
 from .kernels import BoundKernel, ParticlePropertyDeclaration, Status
 
+__all__ = ["ParticlesView", "_FrozenArrayMapping"]
+
 _REQUIRED_PARTICLE_PROPERTY_FIELDS = {
     "status": np.dtype(np.uint8),
     "zidx": np.dtype(np.float64),

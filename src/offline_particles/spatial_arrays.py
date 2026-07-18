@@ -12,6 +12,8 @@ import numpy.typing as npt
 
 logger = logging.getLogger(__name__)
 
+__all__ = ["ArrayAxis", "ArrayLayout", "Stagger"]
+
 
 @enum.unique
 class Stagger(enum.StrEnum):

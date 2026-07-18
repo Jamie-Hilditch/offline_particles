@@ -5,6 +5,15 @@ import numpy.typing as npt
 
 from ._kernels import ParticlePropertyDeclaration, ScalarDeclaration
 
+__all__ = [
+    "DT_DECLARATION",
+    "STATUS_DECLARATION",
+    "XIDX_DECLARATION",
+    "YIDX_DECLARATION",
+    "ZIDX_DECLARATION",
+    "construct_time_declaration",
+]
+
 # particle properties
 STATUS_DECLARATION = ParticlePropertyDeclaration(
     "status", np.uint8, description="The particle status. Possible values are defined by the `Status` enum."

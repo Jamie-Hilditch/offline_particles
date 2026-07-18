@@ -41,7 +41,8 @@ autodoc_default_options = {
 # type hints from the rendered signature line rather than duplicating them.
 autodoc_typehints = "none"
 autosummary_generate = True
-autosummary_imported_members = False
+autosummary_ignore_module_all = False
+autosummary_imported_members = True
 autosummary_template_dir = "_templates/autosummary"
 
 # Nice formatting
@@ -179,7 +180,7 @@ def suppress_status_inherited_members(app, what, name, obj, options, lines):
 
 
 def setup(app):
-    app.connect("builder-inited", apply_events_module_overrides, priority=0)
-    app.connect("builder-inited", apply_kernels_module_overrides, priority=0)
-    app.connect("builder-inited", apply_output_module_overrides, priority=0)
+    # app.connect("builder-inited", apply_events_module_overrides, priority=0)
+    # app.connect("builder-inited", apply_kernels_module_overrides, priority=0)
+    # app.connect("builder-inited", apply_output_module_overrides, priority=0)
     app.connect("autodoc-process-docstring", suppress_status_inherited_members)

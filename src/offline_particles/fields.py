@@ -15,6 +15,14 @@ import xarray as xr
 
 from .spatial_arrays import ArrayAxis, ArrayLayout, BBox, ChunkedDaskArray, NumpyArray, SpatialArray, Stagger
 
+__all__ = [
+    "Field",
+    "FieldData",
+    "SimulationSize",
+    "StaticField",
+    "TimeDependentField",
+]
+
 logger = logging.getLogger(__name__)
 
 

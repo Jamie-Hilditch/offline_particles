@@ -5,14 +5,11 @@ import numba
 import numpy as np
 import numpy.typing as npt
 
-from .._kernels import BoundKernel, FieldDataType, ParticleKernel, ParticlePropertiesType, ScalarsType, kernel_function
+from .._kernels import BoundKernel, ParticleKernel, kernel_function
 from ..input_declarations import STATUS_DECLARATION
 
 __all__ = [
     "INACTIVE_FLAG",
-    "FieldDataType",
-    "ParticlePropertiesType",
-    "ScalarsType",
     "Status",
     "construct_initialise_status_kernel",
     "is_active",

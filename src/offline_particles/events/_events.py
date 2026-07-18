@@ -16,11 +16,12 @@ class SimulationState:
     """Dataclass representing the current state of the simulation."""
 
     time: T
-    dt: D
-    tidx: np.float64
-    iteration: int
-    wall_time: np.timedelta64
-    particles: Mapping[str, ParticlesView]
+    """The current simulation time."""
+    dt: D  #: The current time step.
+    tidx: np.float64  #: The current time index.
+    iteration: int  #: The current iteration number.
+    wall_time: np.timedelta64  #: The elapsed wall time.
+    particles: Mapping[str, ParticlesView]  #: A mapping from particle set names to their corresponding particle views.
 
 
 type EventFunction = Callable[[SimulationState], None]
