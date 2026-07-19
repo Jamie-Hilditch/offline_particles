@@ -30,6 +30,10 @@ dev = [
   "sphinx-autoapi>=3.8.0",
   "sphinx-book-theme>=1.1.4",
   "ty>=0.0.8",
+  {include-group = "examples"},
+]
+examples = [
+  "matplotlib>=3.9",
 ]
 
 [tool.ruff]
