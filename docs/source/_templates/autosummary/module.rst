@@ -1,3 +1,5 @@
+:html_theme.sidebar_secondary.remove:
+
 {{ fullname.split('.')[-1] | escape | underline }}
 
 .. automodule:: {{ fullname }}

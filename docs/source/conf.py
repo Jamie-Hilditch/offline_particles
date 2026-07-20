@@ -85,7 +85,9 @@ html_theme_options = {
         },
     ],
     "navbar_persistent": ["search-button-field"],
-    "secondary_sidebar_items": [],
+    "secondary_sidebar_items": {
+        "_generated/api/*": ["page-toc"],
+    },
 }
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
