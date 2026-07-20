@@ -4,6 +4,6 @@
 :maxdepth: 1
 :hidden:
 
-Examples <examples>
+Examples <_generated/gallery/index>
 API <api>
 ```
