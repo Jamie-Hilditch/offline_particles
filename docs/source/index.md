@@ -5,6 +5,6 @@
 :hidden:
 
 User Guide <user_guide>
-Examples <_generated/gallery/index>
+Examples <examples/index>
 API <api>
 ```

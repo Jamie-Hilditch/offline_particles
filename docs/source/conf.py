@@ -29,7 +29,7 @@ extensions = [
 ]
 
 templates_path = ["_templates"]
-exclude_patterns = ["_generated/README.md"]
+exclude_patterns = ["api/README.md", "examples/README.md"]
 source_suffix = {
     ".rst": "restructuredtext",
     ".md": "markdown",
@@ -69,7 +69,7 @@ napoleon_use_rtype = False
 # -- Gallery - examples
 sphinx_gallery_conf = {
     "examples_dirs": "../../examples",
-    "gallery_dirs": "_generated/gallery",
+    "gallery_dirs": "examples",
     "filename_pattern": r"^((?!GALLERY_HEADER).)*$",
     "write_computation_times": False,
 }
@@ -86,7 +86,7 @@ html_theme_options = {
     ],
     "navbar_persistent": ["search-button-field"],
     "secondary_sidebar_items": {
-        "_generated/api/*": ["page-toc"],
+        "api/*": ["page-toc"],
     },
 }
 html_static_path = ["_static"]

@@ -16,21 +16,26 @@ Open `http://localhost:8080` in a browser.
 
 ## Rebuilding after moving/renaming modules
 
-`docs/source/_generated` and `docs/_build` are gitignored, generated
-artifacts. `_generated/api` holds autosummary stubs and `_generated/gallery`
-holds sphinx-gallery output; both tools only regenerate files they detect as
+`docs/source/api`, `docs/source/examples`, and `docs/_build` are gitignored,
+generated artifacts (except for a tracked `README.md` in each of `api/` and
+`examples/`). `api/` holds autosummary stubs and `examples/` holds
+sphinx-gallery output; both tools only regenerate files they detect as
 changed, so a stale stub left over from a module rename/removal, or a stale
 gallery page left over from renaming/removing an example script, can point at
 something that no longer exists and break the build (e.g. an
 `ImportExceptionGroup`/`ModuleNotFoundError` from autosummary). If the build
-fails after restructuring `src/` or `examples/`, do a clean rebuild:
+fails after restructuring `src/` or `examples/`, do a clean rebuild,
+restoring the two READMEs afterward (a plain `rm -rf`/`Remove-Item` deletes
+them too):
 
 ```
-rm -rf docs/_build docs/source/_generated
+rm -rf docs/_build docs/source/api docs/source/examples
+git checkout -- docs/source/api/README.md docs/source/examples/README.md
 uv run sphinx-build docs/source docs/_build
 ```
 
-(PowerShell: `Remove-Item -Recurse -Force docs/_build, docs/source/_generated`)
+(PowerShell: `Remove-Item -Recurse -Force docs/_build, docs/source/api, docs/source/examples`
+then `git checkout -- docs/source/api/README.md, docs/source/examples/README.md`)
 
 ## Manual overrides in `conf.py`
 
