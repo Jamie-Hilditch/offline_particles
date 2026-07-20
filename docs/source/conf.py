@@ -75,12 +75,16 @@ sphinx_gallery_conf = {
 }
 
 # -- HTML output
-html_theme = "sphinx_book_theme"
+html_theme = "pydata_sphinx_theme"
 html_theme_options = {
-    "repository_url": "https://github.com/Jamie-Hilditch/ROMS_particles",
-    "use_repository_button": True,
-    "use_issues_button": True,
-    "path_to_docs": "docs/source",
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/Jamie-Hilditch/ROMS_particles",
+            "icon": "fa-brands fa-github",
+        },
+    ],
+    "navbar_persistent": ["search-button-field"],
     "secondary_sidebar_items": [],
 }
 html_static_path = ["_static"]
