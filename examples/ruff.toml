@@ -1,0 +1,6 @@
+extend = "../pyproject.toml"
+
+[lint]
+# sphinx-gallery requires a title/underline docstring header, which the
+# numpy pydocstyle convention's D205/D400 (summary-line format) can't allow.
+extend-ignore = ["D205", "D400"]
