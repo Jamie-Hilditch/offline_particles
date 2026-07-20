@@ -104,7 +104,7 @@ cython_debug/
 
 # Optional: documentation build output
 docs/_build/
-docs/source/_api/
+docs/source/_generated/*/
 site/
 
 # Optional: compiled wheels for testing

@@ -19,6 +19,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
+    "sphinx_gallery.gen_gallery",
     "myst_parser",
     "napoleon_tables",
     "member_labels",
@@ -28,7 +29,7 @@ extensions = [
 ]
 
 templates_path = ["_templates"]
-exclude_patterns = []
+exclude_patterns = ["_generated/README.md"]
 source_suffix = {
     ".rst": "restructuredtext",
     ".md": "markdown",
@@ -64,6 +65,14 @@ napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 napoleon_use_param = False
 napoleon_use_rtype = False
+
+# -- Gallery - examples
+sphinx_gallery_conf = {
+    "examples_dirs": "../../examples",
+    "gallery_dirs": "_generated/gallery",
+    "filename_pattern": r"^((?!GALLERY_HEADER).)*$",
+    "write_computation_times": False,
+}
 
 # -- HTML output
 html_theme = "sphinx_book_theme"

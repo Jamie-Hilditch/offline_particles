@@ -10,7 +10,7 @@
 
 ```{eval-rst}
 .. autosummary::
-   :toctree: _api
+   :toctree: _generated/api
    :recursive:
    :template: autosummary/module.rst
 
