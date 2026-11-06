@@ -19,6 +19,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
+    "sphinx.ext.mathjax",
     "sphinx_gallery.gen_gallery",
     "myst_parser",
     "napoleon_tables",
@@ -54,6 +55,12 @@ autosummary_filename_map = {
     "offline_particles.kernels.Status": "offline_particles.kernels.Status_class",
 }
 # autosummary_context is set below
+
+# Enable dollar signs for math formatting
+myst_enable_extensions = [
+    "dollarmath",
+    "amsmath",  # Adds direct LaTeX environments like \begin{align}
+]
 
 # Nice formatting
 add_module_names = False

@@ -122,3 +122,23 @@ html {
 div.math mjx-container {
   overflow: visible !important;
 }
+
+/* MathJax's own CHTML stylesheet puts `margin: .7em 0` on every
+ * mjx-container[display], meant to give display equations breathing room.
+ * But the theme's `.math` wrapper around it is `display: flex`, which makes
+ * that margin a flex-item margin -- it never collapses with the surrounding
+ * paragraphs' margins the way two ordinary block elements would, so it just
+ * stacks on top of them. Above an equation that reads as an extra
+ * blank-line-sized gap (prior <p>'s 1rem margin-bottom + this .7em, with
+ * nothing to collapse them); below, bootstrap's `p { margin-top: 0 }` means
+ * it's the *only* gap, so the space is small and asymmetric with the gap
+ * above. Zero it out and put the spacing on `div.math` itself instead, which
+ * -- not being a flex item -- collapses normally with the paragraphs before
+ * and after it, giving the same rhythm as paragraph-to-paragraph spacing. */
+div.math mjx-container[display] {
+  margin: 0 !important;
+}
+
+div.math {
+  margin: 1rem 0;
+}
