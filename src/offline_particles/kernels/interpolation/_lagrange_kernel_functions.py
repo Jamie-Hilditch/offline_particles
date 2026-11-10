@@ -21,25 +21,31 @@ def _lagrange_1D_kernel_function_factory(
     D: int = 0,
     accumulate: bool = False,
 ) -> KernelFunction:
-    """Create a function implementing 1D Lagrange polynomial interpolation.
+    """Create a kernel function implementing 1D Lagrange polynomial interpolation.
 
     Parameters
     ----------
     N : int
         The number of points on either side of the particles to use for interpolation. The total number of points used for interpolation will be 2N.
-    D : int
+    D : int, optional
         The derivative order. (Default 0)
     accumulate : bool, optional
         Whether to accumulate the interpolated value to the output array instead of overwriting it. Default is False.
 
     Returns
     -------
-    Callable
-        A JIT compiled function implementing 1D Lagrange polynomial interpolation.
+    KernelFunction
+        A kernel function implementing 1D Lagrange polynomial interpolation.
+
+    Raises
+    ------
+    ValueError
+        If `N` is not a positive integer.
+        If `D` is not a non-negative integer.
 
     Notes
     -----
-    This factory function is cached such that the same function will be returned for the same values of N and accumulate.
+    This factory function is cached such that the same function will be returned for the same values of `N`, `D` and `accumulate`.
     This saves recompiling the function if reused.
     """
     single_particle_interpolator = lagrange_1D_particle_factory(N, D)
@@ -100,7 +106,7 @@ def _lagrange_2D_kernel_function_factory(
     D1: int = 0,
     accumulate: bool = False,
 ) -> KernelFunction:
-    """Create a function implementing 2D Lagrange polynomial interpolation on a 2N point stencil.
+    """Create a kernel function implementing 2D Lagrange polynomial interpolation.
 
     Parameters
     ----------
@@ -108,21 +114,27 @@ def _lagrange_2D_kernel_function_factory(
         The number of points on either side of the particle to use for interpolation in dimension 0. The total number of points used for interpolation will be 2 * N0.
     N1 : int
         The number of points on either side of the particle to use for interpolation in dimension 1. The total number of points used for interpolation will be 2 * N1.
-    D0 : int
+    D0 : int, optional
         The derivative order in dimension 0. (Default 0)
-    D1 : int
+    D1 : int, optional
         The derivative order in dimension 1. (Default 0)
     accumulate : bool, optional
         Whether to accumulate the interpolated value to the output array instead of overwriting it. Default is False.
 
     Returns
     -------
-    Callable
-        A JIT compiled function implementing the 2D Lagrange polynomial interpolation.
+    KernelFunction
+        A kernel function implementing 2D Lagrange polynomial interpolation.
+
+    Raises
+    ------
+    ValueError
+        If either `N0` or `N1` is not a positive integer.
+        If either `D0` or `D1` is not a non-negative integer.
 
     Notes
     -----
-    This factory function is cached such that the same function will be returned for the same values of N and accumulate.
+    This factory function is cached such that the same function will be returned for the same inputs.
     This saves recompiling the function if reused.
     """
     single_particle_interpolator = lagrange_2D_particle_factory(N0, N1, D0, D1)
@@ -138,7 +150,7 @@ def _lagrange_2D_kernel_function_factory(
         offset0: float,
         offset1: float,
     ) -> None:
-        """Implement a 2N point Lagrange interpolating polynomial in 2D.
+        """Implement Lagrange polynomial interpolation in 2D.
 
         Parameters
         ----------
@@ -160,7 +172,7 @@ def _lagrange_2D_kernel_function_factory(
         Raises
         ------
         ValueError
-            If the field array has in sufficient points in each dimension to avoid out-of-bounds memory access.
+            If the field array has insufficient points in each dimension to avoid out-of-bounds memory access.
         """
         max_idx_0 = field_array.shape[0] - 2 * N0  # max index for the lower index to avoid out-of-bounds
         max_idx_1 = field_array.shape[1] - 2 * N1  # max index for the lower index to avoid out-of-bounds
@@ -195,7 +207,7 @@ def _lagrange_3D_kernel_function_factory(
     D2: int = 0,
     accumulate: bool = False,
 ) -> KernelFunction:
-    """Create a function implementing 3D Lagrange polynomial interpolation on a 2N point stencil.
+    """Create a kernel function implementing 3D Lagrange polynomial interpolation.
 
     Parameters
     ----------
@@ -203,25 +215,31 @@ def _lagrange_3D_kernel_function_factory(
         The number of points on either side of the particle to use for interpolation in dimension 0. The total number of points used for interpolation will be 2 * N0.
     N1 : int
         The number of points on either side of the particle to use for interpolation in dimension 1. The total number of points used for interpolation will be 2 * N1.
-    N2: int
+    N2 : int
         The number of points on either side of the particle to use for interpolation in dimension 2. The total number of points used for interpolation will be 2 * N2.
-    D0 : int
-        The derivative order in dimension 0.
-    D1 : int
-        The derivative order in dimension 1.
-    D2: int
-        The derivative order in dimension 2.
+    D0 : int, optional
+        The derivative order in dimension 0. (Default 0)
+    D1 : int, optional
+        The derivative order in dimension 1. (Default 0)
+    D2 : int, optional
+        The derivative order in dimension 2. (Default 0)
     accumulate : bool, optional
         Whether to accumulate the interpolated value to the output array instead of overwriting it. Default is False.
 
     Returns
     -------
-    Callable
-        A JIT compiled function implementing 3D Lagrange polynomial interpolation.
+    KernelFunction
+        A kernel function implementing 3D Lagrange polynomial interpolation.
+
+    Raises
+    ------
+    ValueError
+        If any of `N0`, `N1`, or `N2` is not a positive integer.
+        If any of `D0`, `D1`, or `D2` is not a non-negative integer.
 
     Notes
     -----
-    This factory function is cached such that the same function will be returned for the same values of N and accumulate.
+    This factory function is cached such that the same function will be returned for the same inputs.
     This saves recompiling the function if reused.
     """
     single_particle_interpolator = lagrange_3D_particle_factory(N0, N1, N2, D0, D1, D2)
@@ -239,7 +257,7 @@ def _lagrange_3D_kernel_function_factory(
         offset1: float,
         offset2: float,
     ) -> None:
-        """Implement 2N point Lagrange interpolating polynomial in 3D.
+        """Implement Lagrange polynomial interpolation in 3D.
 
         Parameters
         ----------

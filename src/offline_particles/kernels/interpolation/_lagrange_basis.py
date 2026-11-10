@@ -27,7 +27,7 @@ def _tuplify_basis_evaluation(basis_j: Callable[[int, float], float], N: int) ->
 
     Notes
     -----
-    We use code generation with :func:exec here in order to return a tuple of length 2N. This avoids an array allocation
+    We use code generation with :func:`exec` here in order to return a tuple of length 2N. This avoids an array allocation
     that numba cannot otherwise optimise away.
     """
     n = 2 * N
@@ -59,8 +59,8 @@ def _lagrange_basis(N: int) -> Callable[[float], tuple[float, ...]]:
     Returns
     -------
     Callable[[float], tuple[float, ...]]
-        A numba jitted function taking the coorindinate x ∈ [0, 2N-1) and returning
-        a tuple of the 2N basis values at t.
+        A numba jitted function taking the coordinate x ∈ [0, 2N-1) and returning
+        a tuple of the 2N basis values at x.
     """
     n = 2 * N
     weights = [np.prod([j - k for k in range(n) if k != j]) for j in range(n)]
@@ -134,7 +134,7 @@ def _inverse_vandermonde(N: int) -> sympy.ImmutableMatrix:
 
     Returns
     -------
-    A : sympy.ImmutableMatrix
+    sympy.ImmutableMatrix
         The inverse of the Vandermonde matrix.
     """
     A, S = _factored_vandermonde(N)
@@ -146,16 +146,16 @@ def _inverse_vandermonde(N: int) -> sympy.ImmutableMatrix:
 def _lagrange_derivative_basis_coefficients(N: int, derivative_order: int) -> npt.NDArray[np.float64]:
     """Monomial coefficients of the Lagrange basis on the 2N centred nodes.
 
-    With V = A S from :func:_factored_vandermonde, the coefficients are C = V^{-T} = A^{-T} S^{-1},
+    With V = A S from :func:`_factored_vandermonde`, the coefficients are C = V^{-T} = A^{-T} S^{-1},
     so that the basis values are l(t) = C phi(t) in the centred variable t = x - (N - 1/2).
-    The d-th derivative coefficients are C D^d, with D from :func:_monomial_derivative. All
+    The d-th derivative coefficients are C D^d, with D from :func:`_monomial_derivative`. All
     arithmetic is exact; the result is rounded to float64 once.
 
     Parameters
     ----------
     N : int
         The half width of the stencil. The basis has 2N functions of degree 2N - 1.
-    derivative_order : int, optional
+    derivative_order : int
         The order d of the derivative with respect to t (or equivalently x).
 
     Returns
@@ -181,7 +181,7 @@ def _lagrange_derivative_basis(N: int, derivative_order: int) -> Callable[[float
     ----------
     N : int
         The half width of the stencil. The basis has 2N functions of degree 2N - 1.
-    derivative_order : int, optional
+    derivative_order : int
         The order d of the derivative with respect to x.
 
     Returns
@@ -206,7 +206,7 @@ def _lagrange_derivative_basis(N: int, derivative_order: int) -> Callable[[float
 
 @functools.cache
 def lagrange_basis(N: int, derivative_order: int = 0) -> Callable[[float], tuple[float, ...]]:
-    """Create a function evaluating the 2N Lagrange  basis polynomials or their derivatives at x.
+    """Create a function evaluating the 2N Lagrange basis polynomials or their derivatives at x.
 
     Parameters
     ----------

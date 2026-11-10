@@ -1,4 +1,4 @@
-"""Constructors for 2N-point Lagrange interpolation kernels."""
+"""Constructors for Lagrange polynomial interpolation kernels."""
 
 import functools
 
@@ -79,6 +79,13 @@ def construct_1D_interpolation_kernel(
     -------
     BoundKernel
         A BoundKernel for performing interpolation along the specified axis.
+
+    Raises
+    ------
+    ValueError
+        If `axis` is not a valid :class:`ArrayAxis`.
+        If `N` is not a positive integer.
+        If `D` is not a non-negative integer.
     """
     axis = ArrayAxis.parse(axis)  # parse the axis argument to an ArrayAxis enum member
     idx_name = axis.particle_index_name
@@ -161,8 +168,11 @@ def construct_2D_interpolation_kernel(
     Raises
     ------
     ValueError
-        If the axes, N or D tuples do not contain exactly two elements.
+        If the `axes`, `N` or `D` tuples do not contain exactly two elements.
         If the two axes are not different.
+        If either axis is not a valid :class:`ArrayAxis`.
+        If either element of `N` is not a positive integer.
+        If either element of `D` is not a non-negative integer.
     """
     if len(axes) != 2:
         raise ValueError("axes must be a tuple of two elements.")
@@ -245,9 +255,9 @@ def construct_3D_interpolation_kernel(
         Data type of the input field, by default np.float64.
     output_dtype : npt.DTypeLike | None, optional
         Data type of the output particle property, if None (default) equal to the field dtype.
-    N : tuple[int, int], optional
+    N : tuple[int, int, int], optional
         Stencil half width in the three dimensions for the interpolation polynomial, by default (1, 1, 1) corresponding to trilinear interpolation.
-    D : tuple[int, int], optional
+    D : tuple[int, int, int], optional
         Derivative order of the Lagrange interpolating polynomial in the three dimensions. Default is (0, 0, 0), which corresponds to value interpolation.
         Higher values correspond to derivatives with respect to index space.
     accumulate : bool, optional
@@ -256,13 +266,16 @@ def construct_3D_interpolation_kernel(
     Returns
     -------
     BoundKernel
-        A BoundKernel for performing trilinear interpolation.
+        A BoundKernel for performing 3D interpolation along the specified axes.
 
     Raises
     ------
     ValueError
         If the axes, N or D tuples do not contain exactly three elements.
         If any of the axes are the same.
+        If any axis is not a valid :class:`ArrayAxis`.
+        If any element of `N` is not a positive integer.
+        If any element of `D` is not a non-negative integer.
     """
     if len(axes) != 3:
         raise ValueError("axes must be a tuple of three elements.")

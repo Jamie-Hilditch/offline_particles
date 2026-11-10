@@ -56,13 +56,19 @@ def lagrange_1D_particle_factory(
     ----------
     N : int
         The number of points on either side of the particle to use for interpolation. The total number of points used for interpolation will be `2N`.
-    D : int
+    D : int, optional
         The derivative order. (Default 0)
 
     Returns
     -------
     Callable
         A JIT compiled function implementing the 1D Lagrange polynomial interpolation for a single particle.
+
+    Raises
+    ------
+    ValueError
+        If `N` is not a positive integer.
+        If `D` is not a non-negative integer.
 
     Notes
     -----
@@ -72,7 +78,7 @@ def lagrange_1D_particle_factory(
     -------
     This function is intended to be used in hot loops and thus does not check if max_idx is compatible with the field array size.
     I.e. 0 <= max_idx <= field.shape[0] - 1 must hold to avoid out-of-bounds memory access.
-    It is the caller's responsibility to ensure that the field array has at least 2N points to avoid out-of-bounds memory access.
+    It is the caller's responsibility to ensure that the field array has at least `2N` points to avoid out-of-bounds memory access.
     """
     basis = lagrange_basis(N, D)
 
@@ -82,7 +88,7 @@ def lagrange_1D_particle_factory(
         offset_idx: np.float64,
         max_idx: int,  # max index for the lower index to avoid out-of-bounds
     ) -> np.inexact:
-        """Implement a 2N point Lagrange interpolating polynomial in 1D for a single particle.
+        """Implement Lagrange polynomial interpolation in 1D for a single particle.
 
         Parameters
         ----------
@@ -133,15 +139,21 @@ def lagrange_2D_particle_factory(
         The number of points on either side of the particle to use for interpolation in dimension 0. The total number of points used for interpolation will be 2 * N0.
     N1 : int
         The number of points on either side of the particle to use for interpolation in dimension 1. The total number of points used for interpolation will be 2 * N1.
-    D0 : int
+    D0 : int, optional
         The derivative order in dimension 0. (Default 0)
-    D1 : int
+    D1 : int, optional
         The derivative order in dimension 1. (Default 0)
 
     Returns
     -------
     Callable
         A JIT compiled function implementing 2D Lagrange polynomial interpolation for a single particle.
+
+    Raises
+    ------
+    ValueError
+        If either `N0` or `N1` is not a positive integer.
+        If either `D0` or `D1` is not a non-negative integer.
 
     Notes
     -----
@@ -151,7 +163,7 @@ def lagrange_2D_particle_factory(
     -------
     This function is intended to be used in hot loops and thus does not check if max_idx_{i} is compatible with the field array size.
     I.e. 0 <= max_idx_{i} <= field.shape[i] - 1 must hold to avoid out-of-bounds memory access.
-    It is the caller's responsibility to ensure that the field array has at least 2N points in each dimension to avoid out-of-bounds memory access.
+    It is the caller's responsibility to ensure that the field array has at least (`2 N0`) x (`2 N1`) points to avoid out-of-bounds memory access.
     """
     basis_0 = lagrange_basis(N0, D0)
     basis_1 = lagrange_basis(N1, D1)
@@ -164,7 +176,7 @@ def lagrange_2D_particle_factory(
         max_idx_0: int,
         max_idx_1: int,
     ) -> np.inexact:
-        """Implement a 2N point Lagrange interpolating polynomial in 2D for a single particle.
+        """Implement a Lagrange interpolating polynomial in 2D for a single particle.
 
         Parameters
         ----------
@@ -221,7 +233,7 @@ def lagrange_3D_particle_factory(
     D1: int = 0,
     D2: int = 0,
 ) -> Callable[[npt.NDArray[np.inexact], np.float64, np.float64, np.float64, int, int, int], np.inexact]:
-    """Create a function for 3D Lagrange polynomial interpolation of a single particle on a 2N point stencil.
+    """Create a function for 3D Lagrange polynomial interpolation of a single particle.
 
     Parameters
     ----------
@@ -231,11 +243,11 @@ def lagrange_3D_particle_factory(
         The number of points on either side of the particle to use for interpolation in dimension 1. The total number of points used for interpolation will be 2 * N1.
     N2 : int
         The number of points on either side of the particle to use for interpolation in dimension 2. The total number of points used for interpolation will be 2 * N2.
-    D0 : int
+    D0 : int, optional
         The derivative order in dimension 0. (Default 0)
-    D1 : int
+    D1 : int, optional
         The derivative order in dimension 1. (Default 0)
-    D2 : int
+    D2 : int, optional
         The derivative order in dimension 2. (Default 0)
 
     Returns
@@ -243,15 +255,21 @@ def lagrange_3D_particle_factory(
     Callable
         A JIT compiled function implementing 3D Lagrange polynomial interpolation for a single particle.
 
+    Raises
+    ------
+    ValueError
+        If any of `N0`, `N1`, or `N2` is not a positive integer.
+        If any of `D0`, `D1`, or `D2` is not a non-negative integer.
+
     Notes
     -----
-    This factory function is cached such that the same function will be returned for the same value of N. This saves recompiling the function if reused.
+    This factory function is cached such that the same function will be returned for the same inputs. This saves recompiling the function if reused.
 
     Warning
     -------
     This function is intended to be used in hot loops and thus does not check if max_idx_{i} is compatible with the field array size.
     I.e. 0 <= max_idx_{i} <= field.shape[i] - 1 must hold to avoid out-of-bounds memory access.
-    It is the caller's responsibility to ensure that the field array has at least 2N points in each dimension to avoid out-of-bounds memory access.
+    It is the caller's responsibility to ensure that the field array has at least (`2 N0`) x (`2 N1`) x (`2 N2`) points to avoid out-of-bounds memory access.
     """
     basis_0 = lagrange_basis(N0, D0)
     basis_1 = lagrange_basis(N1, D1)
@@ -267,7 +285,7 @@ def lagrange_3D_particle_factory(
         max_idx_1: int,
         max_idx_2: int,
     ) -> np.inexact:
-        """Implement a 2N point Lagrange interpolating polynomial in 3D for a single particle.
+        """Implement Lagrange polynomial interpolation in 3D for a single particle.
 
         Parameters
         ----------
@@ -342,6 +360,12 @@ def _lagrange_1D_mapped_particle_factory(axis_index: int, N: int, D: int) -> Cal
     -------
     Callable
         A 1D field interpolator.
+
+    Raises
+    ------
+    ValueError
+        If `N` is not a positive integer.
+        If `D` is not a non-negative integer.
     """
     interpolator = lagrange_1D_particle_factory(N, D)
 
@@ -364,7 +388,7 @@ def _lagrange_1D_mapped_particle_factory(axis_index: int, N: int, D: int) -> Cal
 def _lagrange_2D_mapped_particle_factory(
     axis_index_0: int, axis_index_1: int, N0: int, N1: int, D0: int, D1: int
 ) -> Callable:
-    """Create a 2D field interpolator for the given axes and interpolation stencil size.
+    """Create a 2D field interpolator for the given axes and interpolation stencil sizes.
 
     Parameters
     ----------
@@ -381,11 +405,16 @@ def _lagrange_2D_mapped_particle_factory(
     D1 : int
         The derivative order in dimension 1.
 
-
     Returns
     -------
     Callable
         A 2D field interpolator.
+
+    Raises
+    ------
+    ValueError
+        If either `N0` or `N1` is not a positive integer.
+        If either `D0` or `D1` is not a non-negative integer.
     """
     interpolator = lagrange_2D_particle_factory(N0, N1, D0, D1)
 
@@ -411,7 +440,7 @@ def _lagrange_2D_mapped_particle_factory(
 def _lagrange_3D_mapped_particle_factory(
     axis_index_0: int, axis_index_1: int, axis_index_2: int, N0: int, N1: int, N2: int, D0: int, D1: int, D2: int
 ) -> Callable:
-    """Create a 3D field interpolator for the given interpolation stencil size.
+    """Create a 3D field interpolator for the given axes and interpolation stencil sizes.
 
     Parameters
     ----------
@@ -438,6 +467,12 @@ def _lagrange_3D_mapped_particle_factory(
     -------
     Callable
         A 3D field interpolator.
+
+    Raises
+    ------
+    ValueError
+        If any of `N0`, `N1`, or `N2` is not a positive integer.
+        If any of `D0`, `D1`, or `D2` is not a non-negative integer.
     """
     interpolator = lagrange_3D_particle_factory(N0, N1, N2, D0, D1, D2)
 
@@ -476,7 +511,7 @@ def lagrange_mapped_particle_factory(
         The ordering of dimensions in the field array.
     N : tuple[int, ...]
         The half-width of the interpolation stencil in each dimension.
-    D : tuple[int, ...] | None
+    D : tuple[int, ...] | None, optional
         The derivative order in each dimension. If None defaults to a tuple of 0s.
 
     Returns
@@ -489,6 +524,8 @@ def lagrange_mapped_particle_factory(
     ValueError
         If there are duplicate dimensions in `dim_ordering`.
         If the number of dimensions in the field array is not supported.
+        If any element of `N` is not a positive integer.
+        If any element of `D` is not a non-negative integer.
     """
     # check the dim_ordering is unique
     if len(set(dim_ordering)) != len(dim_ordering):
