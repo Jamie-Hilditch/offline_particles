@@ -1,7 +1,7 @@
 """Implementations of Lagrange polynomial interpolation for single particles.
 
 This submodule provides both 1D, 2D, 3D interpolation for single particles and also mapped interpolation.
-The mapped functions accept all three particle indices in the order (zidx, yidx, xidx) and then map them
+The mapped functions accept all three particle indices in the order (`zidx`, `yidx`, `xidx`) and then map them
 to the correct order for interpolation based on the field array layout, calling the 1D, 2D, or 3D implementation.
 This allows us to use the same interpolation functions for different field array layouts
 without needing to write separate interpolation functions for each layout.
@@ -35,7 +35,7 @@ def _truncate_index(idx: float, max_idx: int) -> int:
     Returns
     -------
     int
-        The truncated index, which will be in the range [0, max_idx].
+        The truncated index, which will be in the range [0, `max_idx`].
     """
     idx = int(idx)  # floor the index to get the lower index
     if idx < 0:
@@ -76,8 +76,8 @@ def lagrange_1D_particle_factory(
 
     Warning
     -------
-    This function is intended to be used in hot loops and thus does not check if max_idx is compatible with the field array size.
-    I.e. 0 <= max_idx <= field.shape[0] - 1 must hold to avoid out-of-bounds memory access.
+    This function is intended to be used in hot loops and thus does not check if `max_idx` is compatible with the field array size.
+    I.e. 0 <= `max_idx` <= `field.shape[0] - 1` must hold to avoid out-of-bounds memory access.
     It is the caller's responsibility to ensure that the field array has at least `2N` points to avoid out-of-bounds memory access.
     """
     basis = lagrange_basis(N, D)
@@ -161,8 +161,8 @@ def lagrange_2D_particle_factory(
 
     Warning
     -------
-    This function is intended to be used in hot loops and thus does not check if max_idx_{i} is compatible with the field array size.
-    I.e. 0 <= max_idx_{i} <= field.shape[i] - 1 must hold to avoid out-of-bounds memory access.
+    This function is intended to be used in hot loops and thus does not check if `max_idx_{i}` is compatible with the field array size.
+    I.e. 0 <= `max_idx_{i}` <= `field.shape[i] - 1` must hold to avoid out-of-bounds memory access.
     It is the caller's responsibility to ensure that the field array has at least (`2 N0`) x (`2 N1`) points to avoid out-of-bounds memory access.
     """
     basis_0 = lagrange_basis(N0, D0)
@@ -267,8 +267,8 @@ def lagrange_3D_particle_factory(
 
     Warning
     -------
-    This function is intended to be used in hot loops and thus does not check if max_idx_{i} is compatible with the field array size.
-    I.e. 0 <= max_idx_{i} <= field.shape[i] - 1 must hold to avoid out-of-bounds memory access.
+    This function is intended to be used in hot loops and thus does not check if `max_idx_{i}` is compatible with the field array size.
+    I.e. 0 <= `max_idx_{i}` <= `field.shape[i] - 1` must hold to avoid out-of-bounds memory access.
     It is the caller's responsibility to ensure that the field array has at least (`2 N0`) x (`2 N1`) x (`2 N2`) points to avoid out-of-bounds memory access.
     """
     basis_0 = lagrange_basis(N0, D0)
@@ -350,7 +350,7 @@ def _lagrange_1D_mapped_particle_factory(axis_index: int, N: int, D: int) -> Cal
     Parameters
     ----------
     axis_index : int
-        The index of the axis in (zidx, yidx, xidx).
+        The index of the axis in (`zidx`, `yidx`, `xidx`).
     N : int
         The half-width of the interpolation stencil.
     D : int
@@ -393,9 +393,9 @@ def _lagrange_2D_mapped_particle_factory(
     Parameters
     ----------
     axis_index_0 : int
-        The index of the first axis in (zidx, yidx, xidx).
+        The index of the first axis in (`zidx`, `yidx`, `xidx`).
     axis_index_1 : int
-        The index of the second axis in (zidx, yidx, xidx).
+        The index of the second axis in (`zidx`, `yidx`, `xidx`).
     N0 : int
         The half-width of the interpolation stencil in dimension 0.
     N1 : int
@@ -445,11 +445,11 @@ def _lagrange_3D_mapped_particle_factory(
     Parameters
     ----------
     axis_index_0 : int
-        The index of the first axis in (zidx, yidx, xidx).
+        The index of the first axis in (`zidx`, `yidx`, `xidx`).
     axis_index_1 : int
-        The index of the second axis in (zidx, yidx, xidx).
+        The index of the second axis in (`zidx`, `yidx`, `xidx`).
     axis_index_2 : int
-        The index of the third axis in (zidx, yidx, xidx).
+        The index of the third axis in (`zidx`, `yidx`, `xidx`).
     N0 : int
         The half-width of the interpolation stencil in dimension 0.
     N1 : int
@@ -512,7 +512,7 @@ def lagrange_mapped_particle_factory(
     N : tuple[int, ...]
         The half-width of the interpolation stencil in each dimension.
     D : tuple[int, ...] | None, optional
-        The derivative order in each dimension. If None defaults to a tuple of 0s.
+        The derivative order in each dimension. If `None` defaults to a tuple of 0s.
 
     Returns
     -------

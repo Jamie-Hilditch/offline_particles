@@ -224,7 +224,7 @@ def lagrange_basis(N: int, derivative_order: int = 0) -> Callable[[float], tuple
     Raises
     ------
     ValueError
-        If N is not positive or derivative order is not a non-negative integer.
+        If `N` is not positive or `derivative_order` is not a non-negative integer.
     """
     if N <= 0:
         raise ValueError("N must be a positive integer.")

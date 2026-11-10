@@ -65,10 +65,10 @@ def construct_1D_interpolation_kernel(
     field_dtype : npt.DTypeLike, optional
         Data type of the input field, by default np.float64.
     output_dtype : npt.DTypeLike | None, optional
-        Data type of the output particle property, if None (default), field_dtype is used.
+        Data type of the output particle property, if `None` (default), `field_dtype` is used.
     N : int, optional
         Stencil size parameter for the Lagrange interpolation kernel. Must be a positive integer.
-        Default is 1, which corresponds to linear interpolation. Higher values of N correspond to higher-order Lagrange polynomial interpolation.
+        Default is 1, which corresponds to linear interpolation. Higher values of `N` correspond to higher-order Lagrange polynomial interpolation.
     D : int, optional
         Derivative order of the Lagrange interpolation kernel. Must be a non-negative integer.
         Default is 0, which corresponds to value interpolation. Higher values correspond to derivatives with respect to index space.
@@ -151,7 +151,7 @@ def construct_2D_interpolation_kernel(
     field_dtype : npt.DTypeLike, optional
         Data type of the input field, by default np.float64.
     output_dtype : npt.DTypeLike | None, optional
-        Data type of the output particle property, if None (default) equal to the field_dtype.
+        Data type of the output particle property, if `None` (default) equal to the `field_dtype`.
     N : tuple[int, int], optional
         Stencil half width in the two dimensions for the interpolation polynomial, by default (1, 1) corresponding to bilinear interpolation.
     D : tuple[int, int], optional
@@ -254,7 +254,7 @@ def construct_3D_interpolation_kernel(
     field_dtype : npt.DTypeLike, optional
         Data type of the input field, by default np.float64.
     output_dtype : npt.DTypeLike | None, optional
-        Data type of the output particle property, if None (default) equal to the field dtype.
+        Data type of the output particle property, if `None` (default) equal to `field_dtype`.
     N : tuple[int, int, int], optional
         Stencil half width in the three dimensions for the interpolation polynomial, by default (1, 1, 1) corresponding to trilinear interpolation.
     D : tuple[int, int, int], optional
@@ -271,7 +271,7 @@ def construct_3D_interpolation_kernel(
     Raises
     ------
     ValueError
-        If the axes, N or D tuples do not contain exactly three elements.
+        If the `axes`, `N` or `D` tuples do not contain exactly three elements.
         If any of the axes are the same.
         If any axis is not a valid :class:`ArrayAxis`.
         If any element of `N` is not a positive integer.
