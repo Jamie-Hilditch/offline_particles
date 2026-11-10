@@ -118,4 +118,4 @@ class TestInterpolateFields:
 
         interpolate_fields(fs, ["u", "v", "w"], N=N)
 
-        assert calls == [N, N, N]
+        assert calls == [N, (N, N), (N, N, N)]

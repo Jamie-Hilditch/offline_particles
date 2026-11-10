@@ -201,7 +201,7 @@ def test_construct_advection_kernel_binds_and_matches_affine_fields(
     [
         ((ArrayAxis.X, ArrayAxis.X), (ArrayAxis.Z,), "Duplicate dimensions in dim_ordering"),
         ((ArrayAxis.Z,), (ArrayAxis.Y, ArrayAxis.Y), "Duplicate dimensions in dim_ordering"),
-        ((), (ArrayAxis.Z,), "Unsupported number of dimensions"),
+        ((), (ArrayAxis.Z,), "Unsupported or inconsistent number of dimensions"),
     ],
 )
 def test_advection_constructors_reject_invalid_dim_orderings(
