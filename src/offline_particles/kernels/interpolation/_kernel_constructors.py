@@ -1,4 +1,4 @@
-"""Constructors for 2N-point Lagrange interpolation kernels."""
+"""Constructors for Lagrange polynomial interpolation kernels."""
 
 import functools
 
@@ -9,15 +9,16 @@ from ...spatial_arrays import ArrayAxis
 from .._kernels import (
     BoundKernel,
     FieldDataDeclaration,
-    FieldDataType,
     ParticleKernel,
-    ParticlePropertiesType,
     ParticlePropertyDeclaration,
-    ScalarsType,
 )
 from ..input_declarations import STATUS_DECLARATION
 from ..layout_validators import ordering_validator_factory
-from ._lagrange import lagrange2N_1D_factory, lagrange2N_2D_factory, lagrange2N_3D_factory
+from ._lagrange_kernel_functions import (
+    _lagrange_1D_kernel_function_factory,
+    _lagrange_2D_kernel_function_factory,
+    _lagrange_3D_kernel_function_factory,
+)
 
 __all__ = [
     "construct_1D_interpolation_kernel",
@@ -48,6 +49,7 @@ def construct_1D_interpolation_kernel(
     field_dtype: npt.DTypeLike = np.float64,
     output_dtype: npt.DTypeLike | None = None,
     N: int = 1,
+    D: int = 0,
     accumulate: bool = False,
 ) -> BoundKernel:
     """Construct a 1D interpolation kernel for the specified axis.
@@ -63,10 +65,13 @@ def construct_1D_interpolation_kernel(
     field_dtype : npt.DTypeLike, optional
         Data type of the input field, by default np.float64.
     output_dtype : npt.DTypeLike | None, optional
-        Data type of the output particle property, if None (default), field_dtype is used.
+        Data type of the output particle property, if `None` (default), `field_dtype` is used.
     N : int, optional
         Stencil size parameter for the Lagrange interpolation kernel. Must be a positive integer.
-        Default is 1, which corresponds to linear interpolation. Higher values of N correspond to higher-order Lagrange polynomial interpolation.
+        Default is 1, which corresponds to linear interpolation. Higher values of `N` correspond to higher-order Lagrange polynomial interpolation.
+    D : int, optional
+        Derivative order of the Lagrange interpolation kernel. Must be a non-negative integer.
+        Default is 0, which corresponds to value interpolation. Higher values correspond to derivatives with respect to index space.
     accumulate : bool, optional
         Whether the kernel accumulates to or overwrites the output property, by default False.
 
@@ -74,6 +79,13 @@ def construct_1D_interpolation_kernel(
     -------
     BoundKernel
         A BoundKernel for performing interpolation along the specified axis.
+
+    Raises
+    ------
+    ValueError
+        If `axis` is not a valid :class:`ArrayAxis`.
+        If `N` is not a positive integer.
+        If `D` is not a non-negative integer.
     """
     axis = ArrayAxis.parse(axis)  # parse the axis argument to an ArrayAxis enum member
     idx_name = axis.particle_index_name
@@ -87,22 +99,7 @@ def construct_1D_interpolation_kernel(
         output_dtype = np.dtype(output_dtype).type
 
     # select kernel function implementation based on accumulate flag
-    kernel_function_impl = lagrange2N_1D_factory(N, accumulate)
-
-    # wrap the kernel function implementation into the standard kernel function signature expected by ParticleKernel
-    def kernel_function(
-        particle_properties: ParticlePropertiesType,
-        scalars: ScalarsType,
-        fields: FieldDataType,
-    ) -> None:
-        field_data = fields["field"]
-        kernel_function_impl(
-            particle_properties["status"],
-            particle_properties["idx"],
-            particle_properties["output"],
-            field_data.array,
-            field_data.offsets[0],
-        )
+    kernel_function = _lagrange_1D_kernel_function_factory(N, D, accumulate)
 
     # construct the ParticleKernel and then bind the particle properties and field data
     particle_kernel = ParticleKernel(
@@ -137,7 +134,8 @@ def construct_2D_interpolation_kernel(
     field: str,
     field_dtype: npt.DTypeLike = np.float64,
     output_dtype: npt.DTypeLike | None = None,
-    N: int = 1,
+    N: tuple[int, int] = (1, 1),
+    D: tuple[int, int] = (0, 0),
     accumulate: bool = False,
 ) -> BoundKernel:
     """Construct a 2D interpolation kernel for the specified axes.
@@ -153,9 +151,12 @@ def construct_2D_interpolation_kernel(
     field_dtype : npt.DTypeLike, optional
         Data type of the input field, by default np.float64.
     output_dtype : npt.DTypeLike | None, optional
-        Data type of the output particle property, if None (default) equal to the field_dtype.
-    N : int, optional
-        Stencil half width for the interpolation polynomial, by default 1 corresponding to linear interpolation.
+        Data type of the output particle property, if `None` (default) equal to the `field_dtype`.
+    N : tuple[int, int], optional
+        Stencil half width in the two dimensions for the interpolation polynomial, by default (1, 1) corresponding to bilinear interpolation.
+    D : tuple[int, int], optional
+        Derivative order of the Lagrange interpolating polynomial in the two dimensions. Default is (0, 0), which corresponds to value interpolation.
+        Higher values correspond to derivatives with respect to index space.
     accumulate : bool, optional
         Whether the kernel accumulates to or overwrites the output property, by default False.
 
@@ -167,10 +168,18 @@ def construct_2D_interpolation_kernel(
     Raises
     ------
     ValueError
-        If the axes tuple does not contain exactly two elements or if the two axes are not different.
+        If the `axes`, `N` or `D` tuples do not contain exactly two elements.
+        If the two axes are not different.
+        If either axis is not a valid :class:`ArrayAxis`.
+        If either element of `N` is not a positive integer.
+        If either element of `D` is not a non-negative integer.
     """
     if len(axes) != 2:
         raise ValueError("axes must be a tuple of two elements.")
+    if len(N) != 2:
+        raise ValueError("N must be a tuple of two integers.")
+    if len(D) != 2:
+        raise ValueError("D must be a tuple of two integers.")
 
     axis_0 = ArrayAxis.parse(axes[0])
     axis_1 = ArrayAxis.parse(axes[1])
@@ -191,24 +200,7 @@ def construct_2D_interpolation_kernel(
         output_dtype = np.dtype(output_dtype).type
 
     # select kernel function implementation
-    kernel_function_impl = lagrange2N_2D_factory(N, accumulate)
-
-    # wrap the kernel function implementation into the standard kernel function signature expected by ParticleKernel
-    def kernel_function(
-        particle_properties: ParticlePropertiesType,
-        scalars: ScalarsType,
-        fields: FieldDataType,
-    ) -> None:
-        field_data = fields["field"]
-        kernel_function_impl(
-            particle_properties["status"],
-            particle_properties["idx_0"],
-            particle_properties["idx_1"],
-            particle_properties["output"],
-            field_data.array,
-            field_data.offsets[0],
-            field_data.offsets[1],
-        )
+    kernel_function = _lagrange_2D_kernel_function_factory(*N, *D, accumulate)
 
     # construct the ParticleKernel and then bind the particle properties and field data
     particle_kernel = ParticleKernel(
@@ -245,7 +237,8 @@ def construct_3D_interpolation_kernel(
     field: str,
     field_dtype: npt.DTypeLike = np.float64,
     output_dtype: npt.DTypeLike | None = None,
-    N: int = 1,
+    N: tuple[int, int, int] = (1, 1, 1),
+    D: tuple[int, int, int] = (0, 0, 0),
     accumulate: bool = False,
 ) -> BoundKernel:
     """Construct a 3D interpolation kernel.
@@ -261,24 +254,35 @@ def construct_3D_interpolation_kernel(
     field_dtype : npt.DTypeLike, optional
         Data type of the input field, by default np.float64.
     output_dtype : npt.DTypeLike | None, optional
-        Data type of the output particle property, if None (default) equal to the field dtype.
-    N : int, optional
-        Stencil half width for the interpolation polynomial, by default 1 corresponding to linear interpolation.
+        Data type of the output particle property, if `None` (default) equal to `field_dtype`.
+    N : tuple[int, int, int], optional
+        Stencil half width in the three dimensions for the interpolation polynomial, by default (1, 1, 1) corresponding to trilinear interpolation.
+    D : tuple[int, int, int], optional
+        Derivative order of the Lagrange interpolating polynomial in the three dimensions. Default is (0, 0, 0), which corresponds to value interpolation.
+        Higher values correspond to derivatives with respect to index space.
     accumulate : bool, optional
         Whether the kernel accumulates to or overwrites the output property, by default False.
 
     Returns
     -------
     BoundKernel
-        A BoundKernel for performing trilinear interpolation.
+        A BoundKernel for performing 3D interpolation along the specified axes.
 
     Raises
     ------
     ValueError
-        If the axes tuple does not contain exactly three elements or if any of the axes are the same.
+        If the `axes`, `N` or `D` tuples do not contain exactly three elements.
+        If any of the axes are the same.
+        If any axis is not a valid :class:`ArrayAxis`.
+        If any element of `N` is not a positive integer.
+        If any element of `D` is not a non-negative integer.
     """
     if len(axes) != 3:
         raise ValueError("axes must be a tuple of three elements.")
+    if len(N) != 3:
+        raise ValueError("N must be a tuple of three integers.")
+    if len(D) != 3:
+        raise ValueError("D must be a tuple of three integers.")
 
     axis_0 = ArrayAxis.parse(axes[0])
     axis_1 = ArrayAxis.parse(axes[1])
@@ -301,26 +305,7 @@ def construct_3D_interpolation_kernel(
         output_dtype = np.dtype(output_dtype).type
 
     # select kernel function implementation
-    kernel_function_impl = lagrange2N_3D_factory(N, accumulate)
-
-    # wrap the kernel function implementation into the standard kernel function signature expected by ParticleKernel
-    def kernel_function(
-        particle_properties: ParticlePropertiesType,
-        scalars: ScalarsType,
-        fields: FieldDataType,
-    ) -> None:
-        field_data = fields["field"]
-        kernel_function_impl(
-            particle_properties["status"],
-            particle_properties["idx_0"],
-            particle_properties["idx_1"],
-            particle_properties["idx_2"],
-            particle_properties["output"],
-            field_data.array,
-            field_data.offsets[0],
-            field_data.offsets[1],
-            field_data.offsets[2],
-        )
+    kernel_function = _lagrange_3D_kernel_function_factory(*N, *D, accumulate)
 
     # construct the ParticleKernel and then bind the particle properties and field data
     particle_kernel = ParticleKernel(

@@ -25,7 +25,7 @@ from .._kernels import (
     ScalarsType,
 )
 from ..input_declarations import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
-from ..interpolation import lagrange2N_mapped_particle_factory
+from ..interpolation import lagrange_mapped_particle_factory
 from ..layout_validators import ordering_validator_factory
 from ..status import INACTIVE_FLAG
 
@@ -775,8 +775,10 @@ def advection_particle_kernel_factory(
         If the dimensionality of the velocity or spatial fields is not supported.
         If either dim_ordering is an invalid argument to :func:`lagrange2N_mapped_particle_factory`.
     """
-    velocity_interpolator = lagrange2N_mapped_particle_factory(velocity_dim_ordering, N)
-    scaling_interpolator = lagrange2N_mapped_particle_factory(scaling_dim_ordering, N)
+    velocity_N = tuple(N for _ in velocity_dim_ordering)
+    scaling_N = tuple(N for _ in scaling_dim_ordering)
+    velocity_interpolator = lagrange_mapped_particle_factory(velocity_dim_ordering, velocity_N)
+    scaling_interpolator = lagrange_mapped_particle_factory(scaling_dim_ordering, scaling_N)
 
     match len(velocity_dim_ordering), len(scaling_dim_ordering):
         case 1, 1:

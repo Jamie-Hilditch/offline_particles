@@ -78,7 +78,7 @@ def interpolate_fields(
                     field=var,
                     field_dtype=dtype,
                     output_dtype=dtype,
-                    N=N,
+                    N=(N, N),
                 )
             case (axis0, axis1, axis2):
                 kernel = construct_3D_interpolation_kernel(
@@ -87,7 +87,7 @@ def interpolate_fields(
                     field=var,
                     field_dtype=dtype,
                     output_dtype=dtype,
-                    N=N,
+                    N=(N, N, N),
                 )
             case _:
                 raise ValueError(f"Field '{var}' has unsupported number of axes: {len(field.axes)}")

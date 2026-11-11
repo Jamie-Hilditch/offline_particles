@@ -9,9 +9,9 @@ import numpy.typing as npt
 
 from .._kernels import KernelFunction, kernel_function
 from ..interpolation import (
-    lagrange2N_1D_particle_factory,
-    lagrange2N_2D_particle_factory,
-    lagrange2N_3D_particle_factory,
+    lagrange_1D_particle_factory,
+    lagrange_2D_particle_factory,
+    lagrange_3D_particle_factory,
 )
 from ..status import INACTIVE_FLAG
 
@@ -205,7 +205,7 @@ def _linear_relaxation_constant_coefficient_1D_field_target_impl(
     -----
     This factory function is cached to avoid recompilation for the same relaxation coefficient and interpolation half-width.
     """
-    interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
+    interpolator = lagrange_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def linear_relaxation(
@@ -272,7 +272,7 @@ def _linear_relaxation_constant_coefficient_2D_field_target_impl(
     -----
     This factory function is cached to avoid recompilation for the same relaxation coefficient and interpolation half-width.
     """
-    interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
+    interpolator = lagrange_2D_particle_factory(interpolation_half_width, interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def linear_relaxation(
@@ -345,7 +345,9 @@ def _linear_relaxation_constant_coefficient_3D_field_target_impl(
     -----
     This factory function is cached to avoid recompilation for the same relaxation coefficient and interpolation half-width.
     """
-    interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
+    interpolator = lagrange_3D_particle_factory(
+        interpolation_half_width, interpolation_half_width, interpolation_half_width
+    )
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def linear_relaxation(
@@ -525,7 +527,7 @@ def _linear_relaxation_property_coefficient_1D_field_target_impl(
     -----
     This factory function is cached to avoid recompilation for the same interpolation half-width.
     """
-    interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
+    interpolator = lagrange_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def linear_relaxation(
@@ -591,7 +593,7 @@ def _linear_relaxation_property_coefficient_2D_field_target_impl(
     -----
     This factory function is cached to avoid recompilation for the same interpolation half-width.
     """
-    interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
+    interpolator = lagrange_2D_particle_factory(interpolation_half_width, interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def linear_relaxation(
@@ -663,7 +665,9 @@ def _linear_relaxation_property_coefficient_3D_field_target_impl(
     -----
     This factory function is cached to avoid recompilation for the same interpolation half-width.
     """
-    interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
+    interpolator = lagrange_3D_particle_factory(
+        interpolation_half_width, interpolation_half_width, interpolation_half_width
+    )
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def linear_relaxation(
@@ -845,7 +849,7 @@ def _linear_relaxation_scalar_coefficient_1D_field_target_impl(
     -----
     This factory function is cached to avoid recompilation for the same interpolation half-width.
     """
-    interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
+    interpolator = lagrange_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def linear_relaxation(
@@ -911,7 +915,7 @@ def _linear_relaxation_scalar_coefficient_2D_field_target_impl(
     -----
     This factory function is cached to avoid recompilation for the same interpolation half-width.
     """
-    interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
+    interpolator = lagrange_2D_particle_factory(interpolation_half_width, interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def linear_relaxation(
@@ -979,7 +983,9 @@ def _linear_relaxation_scalar_coefficient_3D_field_target_impl(
     Callable
         A numba jitted function that applies linear relaxation with scalar coefficient and 3D field target.
     """
-    interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
+    interpolator = lagrange_3D_particle_factory(
+        interpolation_half_width, interpolation_half_width, interpolation_half_width
+    )
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def linear_relaxation(
@@ -1179,7 +1185,7 @@ def _quadratic_relaxation_constant_coefficient_1D_field_target_impl(
     -----
     This factory function is cached to avoid recompilation for the same relaxation coefficient and interpolation half-width.
     """
-    interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
+    interpolator = lagrange_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def quadratic_relaxation(
@@ -1247,7 +1253,7 @@ def _quadratic_relaxation_constant_coefficient_2D_field_target_impl(
     -----
     This factory function is cached to avoid recompilation for the same relaxation coefficient and interpolation half-width.
     """
-    interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
+    interpolator = lagrange_2D_particle_factory(interpolation_half_width, interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def quadratic_relaxation(
@@ -1321,7 +1327,9 @@ def _quadratic_relaxation_constant_coefficient_3D_field_target_impl(
     -----
     This factory function is cached to avoid recompilation for the same relaxation coefficient and interpolation half-width.
     """
-    interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
+    interpolator = lagrange_3D_particle_factory(
+        interpolation_half_width, interpolation_half_width, interpolation_half_width
+    )
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def quadratic_relaxation(
@@ -1505,7 +1513,7 @@ def _quadratic_relaxation_property_coefficient_1D_field_target_impl(
     -----
     This factory function is cached to avoid recompilation for the same interpolation half-width.
     """
-    interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
+    interpolator = lagrange_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def quadratic_relaxation(
@@ -1572,7 +1580,7 @@ def _quadratic_relaxation_property_coefficient_2D_field_target_impl(
     -----
     This factory function is cached to avoid recompilation for the same interpolation half-width.
     """
-    interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
+    interpolator = lagrange_2D_particle_factory(interpolation_half_width, interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def quadratic_relaxation(
@@ -1645,7 +1653,9 @@ def _quadratic_relaxation_property_coefficient_3D_field_target_impl(
     -----
     This factory function is cached to avoid recompilation for the same interpolation half-width.
     """
-    interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
+    interpolator = lagrange_3D_particle_factory(
+        interpolation_half_width, interpolation_half_width, interpolation_half_width
+    )
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def quadratic_relaxation(
@@ -1831,7 +1841,7 @@ def _quadratic_relaxation_scalar_coefficient_1D_field_target_impl(
     -----
     This factory function is cached to avoid recompilation for the same interpolation half-width.
     """
-    interpolator = lagrange2N_1D_particle_factory(interpolation_half_width)
+    interpolator = lagrange_1D_particle_factory(interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def quadratic_relaxation(
@@ -1898,7 +1908,7 @@ def _quadratic_relaxation_scalar_coefficient_2D_field_target_impl(
     -----
     This factory function is cached to avoid recompilation for the same interpolation half-width.
     """
-    interpolator = lagrange2N_2D_particle_factory(interpolation_half_width)
+    interpolator = lagrange_2D_particle_factory(interpolation_half_width, interpolation_half_width)
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def quadratic_relaxation(
@@ -1971,7 +1981,9 @@ def _quadratic_relaxation_scalar_coefficient_3D_field_target_impl(
     -----
     This factory function is cached to avoid recompilation for the same interpolation half-width.
     """
-    interpolator = lagrange2N_3D_particle_factory(interpolation_half_width)
+    interpolator = lagrange_3D_particle_factory(
+        interpolation_half_width, interpolation_half_width, interpolation_half_width
+    )
 
     @numba.njit(parallel=True, fastmath=True, nogil=True)
     def quadratic_relaxation(
