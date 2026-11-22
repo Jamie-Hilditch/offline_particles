@@ -1,12 +1,12 @@
-"""Tests for `LinearVerticalTransform2` (issue #147 refactor, stage 1).
+"""Tests for `LinearVerticalTransform2` (issue #147 refactor, stages 1-2).
 
 `Cs_w` (the stretching function at w points, matching ROMS' own output variable name) is captured
 directly by the dataclass and closed over by the compiled kernels, rather than fetched per-call as
 windowed field data - these tests check construction validation, the deliberately-chosen
 per-instance-only caching behavior, numerical correctness against the existing scalar helpers
 (using the fixed `C_offset=0.5` that maps a continuous rho-point `zidx` onto the w-point array),
-and that the window-bracketing bug (see `test_window_bracketing.py`) is structurally impossible
-here, since there is no window at all.
+and that the original window-bracketing bug (issue #147) is structurally impossible here, since
+there is no window at all - `Cs_w` is always the complete array.
 """
 
 import numpy as np
@@ -404,11 +404,11 @@ def test_skips_inactive_particles() -> None:
     assert particle_properties["zidx"][1] == pytest.approx(-999.0)
 
 
-# --- the actual fix: no window, so no window-bracketing bug (contrast with test_window_bracketing.py) ---
+# --- the actual fix: no window at all, so the original issue #147 bracketing bug is impossible ---
 
 
 def test_computes_the_correct_zidx_far_from_index_zero_with_no_bracketing_window_at_all() -> None:
-    """Contrast with `test_window_bracketing.py`: no window means no bracketing bug is possible."""
+    """Issue #147: no window means no bracketing bug is possible, regardless of placeholder zidx."""
     HC, H, ZETA, NZ = 5.0, 45.0, 1.0, 20
     Cs_w = -1.0 + (np.arange(NZ + 1, dtype=np.float64) / NZ) ** 2  # exact boundaries, strictly increasing
     z = -30.0  # true zidx far from the zero-fill placeholder; old windowed approach got it wrong

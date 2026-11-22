@@ -1,10 +1,10 @@
 """Shared test support for tests/kernels/roms."""
 
 import numpy as np
-import numpy.typing as npt
 import pytest
 
 from offline_particles.fields import FieldData
+from offline_particles.kernels.roms import LinearVerticalTransform2
 
 NZ = 4
 HC = 5.0
@@ -16,9 +16,14 @@ def hc_nz() -> tuple[float, int]:
     return HC, NZ
 
 
-def _sigma_grid(Nz: int) -> npt.NDArray[np.float64]:
-    # vectorized form of _reference.sigma_coordinate, sampled at each integer zidx in [0, Nz)
-    return (np.arange(Nz, dtype=np.float64) + 0.5) / Nz - 1.0
+# a representative LinearVerticalTransform2 (linear-in-sigma Cs_w, so Cs_w == sigma_w exactly,
+# degenerating the S-coordinate transform to plain sigma coordinates) for wiring-level tests that
+# don't care about the specifics of the vertical-coordinate math
+@pytest.fixture
+def linear_vertical_transform(hc_nz: tuple[float, int]) -> LinearVerticalTransform2:
+    hc, NZ = hc_nz
+    Cs_w = np.arange(NZ + 1, dtype=np.float64) / NZ - 1.0
+    return LinearVerticalTransform2(NZ=NZ, hc=hc, Cs_w=Cs_w)
 
 
 # uniform h/zeta fields, so horizontal bilinear interpolation is trivial to reason about;
@@ -31,36 +36,6 @@ def uniform_h_zeta_field_data() -> dict[str, FieldData]:
         "h": FieldData(h_array, (0.3, -0.2)),
         "zeta": FieldData(zeta_array, (-0.1, 0.15)),
     }
-
-
-# h/zeta fields that vary bilinearly in (y, x), so bilinear interpolation is genuinely exercised
-@pytest.fixture
-def varying_h_zeta_field_data() -> dict[str, FieldData]:
-    ii = np.arange(4, dtype=np.float64)[:, None]
-    jj = np.arange(4, dtype=np.float64)[None, :]
-    h_array = 40.0 + 2.0 * ii + 3.0 * jj
-    zeta_array = 0.5 + 0.1 * ii - 0.05 * jj
-    return {
-        "h": FieldData(h_array, (0.1, -0.15)),
-        "zeta": FieldData(zeta_array, (-0.05, 0.2)),
-    }
-
-
-# a stretching function C that is linear in sigma (C = sigma). This degenerates the S-coordinate
-# transform to plain sigma coordinates (S == sigma everywhere), acting as a simple sanity
-# baseline distinct from the more realistic nonlinear stretching function below.
-@pytest.fixture
-def linear_C_field_data() -> dict[str, FieldData]:
-    C_array = _sigma_grid(NZ)
-    return {"C": FieldData(C_array, (0.0,))}
-
-
-# a strictly-monotonic, nonlinear-in-sigma stretching function, sampled at each rho level
-@pytest.fixture
-def nonlinear_C_field_data() -> dict[str, FieldData]:
-    sigma_grid = _sigma_grid(NZ)
-    C_array = sigma_grid + 0.05 * sigma_grid**3
-    return {"C": FieldData(C_array, (0.0,))}
 
 
 # a builder for the particle-properties dict shared by both vertical-coordinate kernels
