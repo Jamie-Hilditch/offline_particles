@@ -11,6 +11,7 @@ from ...kernels.relaxation import (
     construct_quadratic_damping_kernel,
 )
 from ...kernels.roms import (
+    LinearVerticalTransform2,
     construct_compute_z_kernel,
     construct_compute_zidx_kernel,
 )
@@ -19,6 +20,7 @@ from ...spatial_arrays import ArrayAxis, ArrayLayout, Stagger
 from ...timestepping import ABTimestepper
 
 __all__ = [
+    "LinearVerticalTransform2",
     "construct_compute_z_kernel",
     "construct_compute_zidx_kernel",
     "roms_ab3_timestepper",
@@ -32,9 +34,8 @@ _DENSITY_FIELD_ARRAY_LAYOUT = ArrayLayout(
 
 
 def roms_ab3_timestepper(
+    transform: LinearVerticalTransform2,
     *,
-    hc: float,
-    NZ: int,
     vertical_velocity: bool = True,
     index_padding: int = 5,
     initialise_z: bool = False,
@@ -45,7 +46,6 @@ def roms_ab3_timestepper(
     pn: str = "pn",
     h: str = "h",
     zeta: str = "zeta",
-    C: str = "C",
     rho: str = "rho",
     constant_linear_damping_coefficient: np.inexact | float | None = None,
     constant_quadratic_damping_coefficient: np.inexact | float | None = None,
@@ -61,12 +61,9 @@ def roms_ab3_timestepper(
 
     Parameters
     ----------
-    hc : float
-        The critical depth. Baked into the compiled vertical-coordinate kernel as a compile-time
-        constant.
-    NZ : int
-        The total number of vertical rho levels. Baked into the compiled vertical-coordinate
-        kernel as a compile-time constant.
+    transform : LinearVerticalTransform2
+        The ROMS vertical transform, defining `NZ`, `hc`, `Cs_w`, and the horizontal interpolation
+        order used for the vertical-coordinate kernels.
     vertical_velocity : bool, optional
         Whether to include vertical velocity advection (default True).
     index_padding : int, optional
@@ -90,8 +87,6 @@ def roms_ab3_timestepper(
         Binding for the bathymetry field (default "h").
     zeta : str, optional
         Binding for the free surface field (default "zeta").
-    C : str, optional
-        Binding for the vertical stretching function field (default "C").
     rho : str, optional
         Binding for the ambient density field (default "rho"). Only used if buoyancy forcing is enabled,
         i.e. one of `constant_buoyancy_coefficient`, `property_buoyancy_coefficient`, or `scalar_buoyancy_coefficient`
@@ -240,7 +235,7 @@ def roms_ab3_timestepper(
         ab_kernels.append(construct_ab3_update_kernel("w_rel", "_dw_rel0", "_dw_rel1", "_dw_rel2"))
 
     # post step kernel to update zidx after advection
-    post_step_kernels = [construct_compute_zidx_kernel(hc=hc, NZ=NZ, h=h, zeta=zeta, C=C)]
+    post_step_kernels = [construct_compute_zidx_kernel(transform, h=h, zeta=zeta)]
 
     timestepper = ABTimestepper(
         index_padding=index_padding,
@@ -254,10 +249,10 @@ def roms_ab3_timestepper(
     # initialisation kernel to compute whichever of z/zidx is not already set
     if initialise_z:
         timestepper.add_initialisation_kernels(
-            construct_compute_z_kernel(hc=hc, NZ=NZ, h=h, zeta=zeta, C=C, only_initialising=True)
+            construct_compute_z_kernel(transform, h=h, zeta=zeta, only_initialising=True)
         )
     else:
         timestepper.add_initialisation_kernels(
-            construct_compute_zidx_kernel(hc=hc, NZ=NZ, h=h, zeta=zeta, C=C, only_initialising=True)
+            construct_compute_zidx_kernel(transform, h=h, zeta=zeta, only_initialising=True)
         )
     return timestepper

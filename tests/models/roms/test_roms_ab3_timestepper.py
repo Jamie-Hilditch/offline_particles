@@ -11,10 +11,17 @@ import offline_particles.models.roms as roms_models
 import offline_particles.timestepping as timestepping_module
 from offline_particles.fields import StaticField
 from offline_particles.fieldset import Fieldset
+from offline_particles.kernels.roms import LinearVerticalTransform2
+from offline_particles.kernels.roms._vertical_coordinate import compute_zidx
 from offline_particles.kernels.status import Status
 from offline_particles.launcher import Launcher
 from offline_particles.particles import Particles
 from offline_particles.timestepping import ABTimestepper
+
+
+def _make_transform(hc: float, NZ: int) -> LinearVerticalTransform2:
+    Cs_w = np.arange(NZ + 1, dtype=np.float64) / NZ - 1.0
+    return LinearVerticalTransform2(NZ=NZ, hc=hc, Cs_w=Cs_w)
 
 
 def _assert_initialises_to_multistep_2(timestepper: ABTimestepper) -> None:
@@ -129,8 +136,9 @@ def _install_constructor_spies(
 
 def test_roms_ab3_timestepper_default_constructor_wires_expected_kernels(monkeypatch: pytest.MonkeyPatch) -> None:
     calls, sentinels = _install_constructor_spies(monkeypatch)
+    transform = _make_transform(5.0, 4)
 
-    timestepper = roms_models.roms_ab3_timestepper(hc=5.0, NZ=4)
+    timestepper = roms_models.roms_ab3_timestepper(transform)
 
     assert isinstance(timestepper, ABTimestepper)
     assert timestepper._order == 3
@@ -142,13 +150,10 @@ def test_roms_ab3_timestepper_default_constructor_wires_expected_kernels(monkeyp
     assert calls["y_adv"]["kwargs"] == {"metric": True}
     assert calls["z_adv"]["args"] == ("_dz0", "w")
     assert calls["z_adv"]["kwargs"] == {"accumulate": True}
-    assert calls["compute_zidx"][0]["args"] == ()
+    assert calls["compute_zidx"][0]["args"] == (transform,)
     assert calls["compute_zidx"][0]["kwargs"] == {
-        "hc": 5.0,
-        "NZ": 4,
         "h": "h",
         "zeta": "zeta",
-        "C": "C",
     }
     assert calls["ab_bump_status"]["args"] == ()
     assert "linear_damping" not in calls
@@ -169,24 +174,20 @@ def test_roms_ab3_timestepper_default_constructor_wires_expected_kernels(monkeyp
 
 def test_roms_ab3_timestepper_forwards_compute_zidx_kwargs(monkeypatch: pytest.MonkeyPatch) -> None:
     calls, sentinels = _install_constructor_spies(monkeypatch)
+    transform = _make_transform(7.5, 10)
 
     timestepper = roms_models.roms_ab3_timestepper(
+        transform,
         vertical_velocity=False,
-        hc=7.5,
-        NZ=10,
         h="bathymetry",
         zeta="surface",
-        C="stretching",
     )
 
     assert isinstance(timestepper, ABTimestepper)
-    assert calls["compute_zidx"][0]["args"] == ()
+    assert calls["compute_zidx"][0]["args"] == (transform,)
     assert calls["compute_zidx"][0]["kwargs"] == {
-        "hc": 7.5,
-        "NZ": 10,
         "h": "bathymetry",
         "zeta": "surface",
-        "C": "stretching",
     }
     assert timestepper.post_step_kernels == [sentinels["compute_zidx"]]
     assert timestepper.initialisation_kernels == [sentinels["compute_zidx"]]
@@ -194,18 +195,16 @@ def test_roms_ab3_timestepper_forwards_compute_zidx_kwargs(monkeypatch: pytest.M
 
 def test_roms_ab3_timestepper_default_initialises_zidx_from_z(monkeypatch: pytest.MonkeyPatch) -> None:
     calls, sentinels = _install_constructor_spies(monkeypatch)
+    transform = _make_transform(5.0, 4)
 
-    timestepper = roms_models.roms_ab3_timestepper(hc=5.0, NZ=4)
+    timestepper = roms_models.roms_ab3_timestepper(transform)
 
     # called once for the post-step recompute and once as the initialisation kernel
     assert len(calls["compute_zidx"]) == 2
-    assert calls["compute_zidx"][1]["args"] == ()
+    assert calls["compute_zidx"][1]["args"] == (transform,)
     assert calls["compute_zidx"][1]["kwargs"] == {
-        "hc": 5.0,
-        "NZ": 4,
         "h": "h",
         "zeta": "zeta",
-        "C": "C",
         "only_initialising": True,
     }
     assert "compute_z" not in calls
@@ -214,18 +213,16 @@ def test_roms_ab3_timestepper_default_initialises_zidx_from_z(monkeypatch: pytes
 
 def test_roms_ab3_timestepper_initialise_z_true_initialises_z_from_zidx(monkeypatch: pytest.MonkeyPatch) -> None:
     calls, sentinels = _install_constructor_spies(monkeypatch)
+    transform = _make_transform(5.0, 4)
 
-    timestepper = roms_models.roms_ab3_timestepper(hc=5.0, NZ=4, initialise_z=True)
+    timestepper = roms_models.roms_ab3_timestepper(transform, initialise_z=True)
 
     # only the post-step recompute of zidx; z is initialised instead of zidx
     assert len(calls["compute_zidx"]) == 1
-    assert calls["compute_z"]["args"] == ()
+    assert calls["compute_z"]["args"] == (transform,)
     assert calls["compute_z"]["kwargs"] == {
-        "hc": 5.0,
-        "NZ": 4,
         "h": "h",
         "zeta": "zeta",
-        "C": "C",
         "only_initialising": True,
     }
     assert timestepper.initialisation_kernels == [sentinels["compute_z"]]
@@ -236,8 +233,10 @@ def test_roms_ab3_timestepper_with_buoyancy_and_damping_wires_optional_kernels(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls, sentinels = _install_constructor_spies(monkeypatch)
+    transform = _make_transform(7.5, 10)
 
     timestepper = roms_models.roms_ab3_timestepper(
+        transform,
         vertical_velocity=False,
         index_padding=9,
         u="u_field",
@@ -247,10 +246,7 @@ def test_roms_ab3_timestepper_with_buoyancy_and_damping_wires_optional_kernels(
         pn="pn_field",
         h="bathymetry",
         zeta="surface",
-        C="stretching",
         rho="density",
-        hc=7.5,
-        NZ=10,
         constant_linear_damping_coefficient=0.25,
         property_quadratic_damping_coefficient="quad_drag",
         scalar_buoyancy_coefficient="g_over_rho0",
@@ -311,11 +307,11 @@ def test_roms_ab3_timestepper_with_buoyancy_and_damping_wires_optional_kernels(
 
 def test_roms_ab3_timestepper_linear_scalar_damping_wires_scalar_coefficient(monkeypatch: pytest.MonkeyPatch) -> None:
     calls, sentinels = _install_constructor_spies(monkeypatch)
+    transform = _make_transform(5.0, 4)
 
     timestepper = roms_models.roms_ab3_timestepper(
+        transform,
         vertical_velocity=False,
-        hc=5.0,
-        NZ=4,
         constant_linear_damping_coefficient=None,
         property_linear_damping_coefficient=None,
         scalar_linear_damping_coefficient="linear_drag",
@@ -341,11 +337,11 @@ def test_roms_ab3_timestepper_quadratic_scalar_damping_wires_scalar_coefficient(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls, sentinels = _install_constructor_spies(monkeypatch)
+    transform = _make_transform(5.0, 4)
 
     timestepper = roms_models.roms_ab3_timestepper(
+        transform,
         vertical_velocity=False,
-        hc=5.0,
-        NZ=4,
         constant_quadratic_damping_coefficient=None,
         property_quadratic_damping_coefficient=None,
         scalar_quadratic_damping_coefficient="quadratic_drag",
@@ -407,9 +403,10 @@ def test_roms_ab3_timestepper_linear_damping_rejects_multiple_coefficient_select
         patch_linear_damping=patch_linear_damping,
         patch_quadratic_damping=patch_quadratic_damping,
     )
+    transform = _make_transform(5.0, 4)
 
     with pytest.raises(ValueError, match="Exactly one coefficient"):
-        roms_models.roms_ab3_timestepper(hc=5.0, NZ=4, **kwargs)  # type: ignore[call-arg]
+        roms_models.roms_ab3_timestepper(transform, **kwargs)  # type: ignore[call-arg]
 
 
 @pytest.mark.parametrize(
@@ -452,9 +449,10 @@ def test_roms_ab3_timestepper_quadratic_damping_rejects_multiple_coefficient_sel
         patch_linear_damping=patch_linear_damping,
         patch_quadratic_damping=patch_quadratic_damping,
     )
+    transform = _make_transform(5.0, 4)
 
     with pytest.raises(ValueError, match="Exactly one coefficient"):
-        roms_models.roms_ab3_timestepper(hc=5.0, NZ=4, **kwargs)  # type: ignore[call-arg]
+        roms_models.roms_ab3_timestepper(transform, **kwargs)  # type: ignore[call-arg]
 
 
 @pytest.mark.parametrize(
@@ -479,9 +477,10 @@ def test_roms_ab3_timestepper_buoyancy_rejects_multiple_coefficient_selectors(
     kwargs: dict[str, Any],
 ) -> None:
     _install_constructor_spies(monkeypatch, patch_buoyancy=False)
+    transform = _make_transform(5.0, 4)
 
     with pytest.raises(ValueError, match="Exactly one coefficient"):
-        roms_models.roms_ab3_timestepper(hc=5.0, NZ=4, **kwargs)  # type: ignore[call-arg]
+        roms_models.roms_ab3_timestepper(transform, **kwargs)  # type: ignore[call-arg]
 
 
 # --- end-to-end initialisation behaviour (issue #133), exercising the real kernels ---
@@ -490,12 +489,11 @@ _HC, _NZ, _Y, _X = 5.0, 4, 4, 4
 _H_VALUE, _ZETA_VALUE = 50.0, 0.5
 # a zidx=1.5, z=-24.75 pair for _HC/_NZ/_H_VALUE/_ZETA_VALUE below, computed with the real
 # compute_z/compute_zidx functions (offline_particles.kernels.roms._vertical_coordinate); this
-# choice of C makes C == sigma, so the S-coordinate transform is exactly invertible.
+# choice of Cs_w makes Cs_w == sigma_w, so the S-coordinate transform is exactly invertible.
 _ZIDX, _Z = 1.5, -24.75
 
 
 def _make_vertical_coordinate_fieldset() -> Fieldset:
-    C = (np.arange(_NZ, dtype=np.float64) + 0.5) / _NZ - 1.0
     fieldset = Fieldset(1, _NZ, _Y, _X)
     fieldset.add_field(
         "h", StaticField.from_numpy(np.full((_Y, _X), _H_VALUE), axes=("Y", "X"), staggers=("center", "center"))
@@ -504,7 +502,6 @@ def _make_vertical_coordinate_fieldset() -> Fieldset:
         "zeta",
         StaticField.from_numpy(np.full((_Y, _X), _ZETA_VALUE), axes=("Y", "X"), staggers=("center", "center")),
     )
-    fieldset.add_field("C", StaticField.from_numpy(C, axes=("Z",), staggers=("center",)))
     return fieldset
 
 
@@ -518,7 +515,7 @@ def test_roms_ab3_timestepper_run_initialisation_computes_zidx_from_z(make_clock
     particles["z"][:] = _Z
     particles["zidx"][:] = np.array([-999.0, 7.0])  # sentinel vs. an already-correct value
 
-    timestepper = roms_models.roms_ab3_timestepper(hc=_HC, NZ=_NZ)  # initialise_z=False (default)
+    timestepper = roms_models.roms_ab3_timestepper(_make_transform(_HC, _NZ))  # initialise_z=False (default)
     clock = make_clock(np.array([0.0, 1.0, 2.0], dtype=np.float64), 1.0)
 
     timestepper.run_initialisation(particles, launcher, clock)
@@ -540,7 +537,7 @@ def test_roms_ab3_timestepper_initialise_z_true_computes_z_from_zidx(make_clock)
     particles["zidx"][:] = _ZIDX
     particles["z"][:] = np.array([-999.0, 7.0])  # sentinel vs. an already-correct value
 
-    timestepper = roms_models.roms_ab3_timestepper(hc=_HC, NZ=_NZ, initialise_z=True)
+    timestepper = roms_models.roms_ab3_timestepper(_make_transform(_HC, _NZ), initialise_z=True)
     clock = make_clock(np.array([0.0, 1.0, 2.0], dtype=np.float64), 1.0)
 
     timestepper.run_initialisation(particles, launcher, clock)
@@ -550,3 +547,48 @@ def test_roms_ab3_timestepper_initialise_z_true_computes_z_from_zidx(make_clock)
     # the already-active particle is untouched by the initialisation kernel
     assert particles["z"][1] == 7.0
     assert particles["status"][1] == np.uint8(Status.NORMAL)
+
+
+# --- end-to-end initialisation, issue #147, resolved structurally ---
+#
+# `Cs_w` is no longer fetched as field data at all - it's part of `transform`, captured by the
+# compiled kernel. There is therefore no window for the placeholder zidx=0.0 at initialisation to
+# mis-center: the kernel always sees the complete Cs_w array, regardless of a particle's current
+# zidx. This replaces the old `xfail`'d dask-chunked-C reproduction of the bug.
+
+_NZ_LARGE = 40
+_CS_W_LARGE = -1.0 + (np.arange(_NZ_LARGE + 1, dtype=np.float64) / _NZ_LARGE) ** 2
+
+
+def _make_large_vertical_coordinate_fieldset() -> Fieldset:
+    fieldset = Fieldset(1, _NZ_LARGE, _Y, _X)
+    fieldset.add_field(
+        "h", StaticField.from_numpy(np.full((_Y, _X), _H_VALUE), axes=("Y", "X"), staggers=("center", "center"))
+    )
+    fieldset.add_field(
+        "zeta",
+        StaticField.from_numpy(np.full((_Y, _X), _ZETA_VALUE), axes=("Y", "X"), staggers=("center", "center")),
+    )
+    return fieldset
+
+
+def test_roms_ab3_timestepper_initialisation_computes_correct_zidx_far_from_placeholder(make_clock) -> None:
+    """Issue #147, resolved: placeholder zidx=0.0 has no bearing on which part of Cs_w is seen."""
+    transform = LinearVerticalTransform2(NZ=_NZ_LARGE, hc=_HC, Cs_w=_CS_W_LARGE)
+    z_target = -25.0
+    expected_zidx = compute_zidx(z_target, _H_VALUE, _ZETA_VALUE, _HC, _NZ_LARGE, _CS_W_LARGE, 0.5)
+    assert expected_zidx > 13  # sanity-check: far from the placeholder zidx=0.0, in index terms
+
+    launcher = Launcher(_make_large_vertical_coordinate_fieldset(), history_size=1)
+    particles = Particles(1, {"z": np.dtype(np.float64)})
+    particles["status"][:] = Status.INITIALISING
+    particles["yidx"][:] = 1.5
+    particles["xidx"][:] = 1.5
+    particles["z"][:] = z_target
+    # zidx left at its zero-fill default - this used to be the crux of the bug
+
+    timestepper = roms_models.roms_ab3_timestepper(transform)
+    clock = make_clock(np.array([0.0, 1.0, 2.0], dtype=np.float64), 1.0)
+    timestepper.run_initialisation(particles, launcher, clock)
+
+    assert particles["zidx"][0] == pytest.approx(expected_zidx)
