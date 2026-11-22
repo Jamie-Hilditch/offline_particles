@@ -136,7 +136,7 @@ def test_horizontal_stencil_half_width_2_matches_bicubic_interpolation_particle(
     jj = np.arange(6, dtype=np.float64)[None, :]
     h_array = 40.0 + 2.0 * ii**2 + 0.5 * jj
     zeta_array = np.full((6, 6), 0.5) + 0.1 * jj**2
-    yidx, xidx, zidx = 2.3, 2.7, 1.0
+    yidx, xidx, zidx = np.float64(2.3), np.float64(2.7), np.float64(1.0)
 
     transform = LinearVerticalTransform2(NZ=NZ, hc=hc, Cs_w=Cs_w, horizontal_stencil_half_width=2)
     kernel = transform.compute_z_kernel()
