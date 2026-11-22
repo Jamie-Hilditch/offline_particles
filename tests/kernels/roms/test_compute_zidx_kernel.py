@@ -1,8 +1,8 @@
 """Tests for the inverse ROMS vertical-coordinate transform (z -> zidx).
 
 Black-box tests against the reference oracle, mirroring `test_compute_z_kernel.py`, plus tests
-targeting the binary-search inverse specifically: the documented boundary-clamp contract, a
-minimum-size stretching array, and a degenerate/flat stretching-function segment.
+targeting the binary-search inverse specifically: the documented boundary-clamp contract and a
+minimum-size stretching array.
 """
 
 import copy

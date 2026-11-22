@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import dask.array as da
 import numpy as np
 import pytest
 
@@ -11,6 +12,7 @@ import offline_particles.models.roms as roms_models
 import offline_particles.timestepping as timestepping_module
 from offline_particles.fields import StaticField
 from offline_particles.fieldset import Fieldset
+from offline_particles.kernels.roms._vertical_coordinate import compute_zidx
 from offline_particles.kernels.status import Status
 from offline_particles.launcher import Launcher
 from offline_particles.particles import Particles
@@ -550,3 +552,72 @@ def test_roms_ab3_timestepper_initialise_z_true_computes_z_from_zidx(make_clock)
     # the already-active particle is untouched by the initialisation kernel
     assert particles["z"][1] == 7.0
     assert particles["status"][1] == np.uint8(Status.NORMAL)
+
+
+# --- end-to-end initialisation window-bracketing bug (issue #147) ---
+#
+# Unlike `_make_vertical_coordinate_fieldset` above, `C` here is dask-chunked (not NumPy-backed),
+# so `Launcher.construct_bbox`'s window actually gets sliced by `ChunkedDaskArray.get_data_subset`
+# instead of always returning the full array - this is what lets these tests actually exercise
+# the bbox/windowing machinery the bug lives in.
+
+_NZ_LARGE, _CHUNK = 40, 8
+_C_LARGE = -1.0 + (np.arange(_NZ_LARGE, dtype=np.float64) / (_NZ_LARGE - 1)) ** 2
+
+
+def _make_chunked_dask_vertical_coordinate_fieldset() -> Fieldset:
+    fieldset = Fieldset(1, _NZ_LARGE, _Y, _X)
+    fieldset.add_field(
+        "h", StaticField.from_numpy(np.full((_Y, _X), _H_VALUE), axes=("Y", "X"), staggers=("center", "center"))
+    )
+    fieldset.add_field(
+        "zeta",
+        StaticField.from_numpy(np.full((_Y, _X), _ZETA_VALUE), axes=("Y", "X"), staggers=("center", "center")),
+    )
+    C_dask = da.from_array(_C_LARGE, chunks=(_CHUNK,))
+    fieldset.add_field("C", StaticField.from_dask(C_dask, axes=("Z",), staggers=("center",)))
+    return fieldset
+
+
+@pytest.mark.xfail(
+    reason="issue #147: window doesn't bracket the solution, compute_zidx silently returns the wrong zidx"
+)
+def test_roms_ab3_timestepper_initialisation_computes_correct_zidx_with_chunked_dask_C(make_clock) -> None:
+    """Issue #147 end-to-end: placeholder zidx=0.0 drives a C window nowhere near the true depth."""
+    z_target = -25.0
+    expected_zidx = compute_zidx(z_target, _H_VALUE, _ZETA_VALUE, _HC, _NZ_LARGE, _C_LARGE, 0.0)
+    assert expected_zidx > _CHUNK + 5  # sanity-check: the scenario actually exercises the bug
+
+    launcher = Launcher(_make_chunked_dask_vertical_coordinate_fieldset(), history_size=1)
+    particles = Particles(1, {"z": np.dtype(np.float64)})
+    particles["status"][:] = Status.INITIALISING
+    particles["yidx"][:] = 1.5
+    particles["xidx"][:] = 1.5
+    particles["z"][:] = z_target
+    # zidx left at its zero-fill default - this is the crux of the bug
+
+    timestepper = roms_models.roms_ab3_timestepper(hc=_HC, NZ=_NZ_LARGE)
+    clock = make_clock(np.array([0.0, 1.0, 2.0], dtype=np.float64), 1.0)
+    timestepper.run_initialisation(particles, launcher, clock)
+
+    assert particles["zidx"][0] == pytest.approx(expected_zidx)
+
+
+def test_roms_ab3_timestepper_post_step_computes_correct_zidx_with_chunked_dask_C(make_clock) -> None:
+    """Control: the same chunked fieldset works fine post-step, once zidx is already correct."""
+    z_target = -25.0
+    expected_zidx = compute_zidx(z_target, _H_VALUE, _ZETA_VALUE, _HC, _NZ_LARGE, _C_LARGE, 0.0)
+
+    launcher = Launcher(_make_chunked_dask_vertical_coordinate_fieldset(), history_size=1)
+    particles = Particles(1, {"z": np.dtype(np.float64)})
+    particles["status"][:] = Status.NORMAL
+    particles["yidx"][:] = 1.5
+    particles["xidx"][:] = 1.5
+    particles["z"][:] = z_target
+    particles["zidx"][:] = expected_zidx  # already approximately correct, as if from a prior step
+
+    timestepper = roms_models.roms_ab3_timestepper(hc=_HC, NZ=_NZ_LARGE)
+    clock = make_clock(np.array([0.0, 1.0, 2.0], dtype=np.float64), 1.0)
+    timestepper.run_post_step(particles, launcher, clock)
+
+    assert particles["zidx"][0] == pytest.approx(expected_zidx)

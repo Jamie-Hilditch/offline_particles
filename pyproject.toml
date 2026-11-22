@@ -66,3 +66,4 @@ testpaths = [
 addopts = [
   "--doctest-modules",
 ]
+xfail_strict = true

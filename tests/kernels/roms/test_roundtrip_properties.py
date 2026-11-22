@@ -14,11 +14,10 @@ then linearly inverts that same affine map). This also extends to mild extrapola
 zidx in [0, NZ-1], because both the forward interpolation's index-clamp and the inverse binary
 search's S-value clamp lock onto the *same* boundary cell -- provided the stretching function C
 is strictly monotonic with a slope bounded away from zero (so S is never ambiguous) and hc/h/zeta
-keep every denominator away from zero. `test_compute_zidx_kernel.py`'s
-`test_compute_zidx_swallows_zero_division_on_degenerate_C_segment` documents a case (a flat
-C segment) where that precondition fails and round-tripping breaks down -- these hypothesis
-strategies deliberately avoid that regime (strictly increasing C, bounded-away-from-zero slope)
-rather than re-testing it.
+keep every denominator away from zero -- a flat/degenerate C segment violates this and is not a
+valid input (C must be strictly increasing, per the module contract in `_vertical_coordinate.py`),
+so these hypothesis strategies simply generate within the valid regime (strictly increasing C,
+bounded-away-from-zero slope).
 """
 
 import numpy as np
