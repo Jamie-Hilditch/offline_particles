@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 from offline_particles.kernels.roms._vertical_coordinate import (
-    LinearVerticalTransform2,
+    LinearVerticalTransform,
     VerticalTransform,
     _C_double_stretching,
     _Cs_w_Vstretching_1,
@@ -210,10 +210,10 @@ def test_Vstretching_5_differs_from_Vstretching_4_for_the_same_parameters() -> N
     list(zip(_FROM_VSTRETCHING_NAMES, ["linear", "linear", "linear", "linear", "quadratic"], strict=True)),
 )
 def test_from_Vstretching_builds_with_the_correct_sigma_method(name: str, expected_sigma_method: str) -> None:
-    constructor = getattr(LinearVerticalTransform2, name)
+    constructor = getattr(LinearVerticalTransform, name)
     transform = constructor(NZ=_NZ, hc=5.0, theta_s=3.0, theta_b=1.0)
 
-    assert isinstance(transform, LinearVerticalTransform2)
+    assert isinstance(transform, LinearVerticalTransform)
     assert transform.sigma_method == expected_sigma_method
     assert transform.NZ == _NZ
     assert transform.hc == 5.0
@@ -221,7 +221,7 @@ def test_from_Vstretching_builds_with_the_correct_sigma_method(name: str, expect
 
 @pytest.mark.parametrize("name", _FROM_VSTRETCHING_NAMES)
 def test_from_Vstretching_forwards_kwargs_to_the_concrete_constructor(name: str) -> None:
-    constructor = getattr(LinearVerticalTransform2, name)
+    constructor = getattr(LinearVerticalTransform, name)
     transform = constructor(NZ=_NZ, hc=5.0, theta_s=3.0, theta_b=1.0, horizontal_stencil_half_width=2)
 
     assert transform.horizontal_stencil_half_width == 2

@@ -11,17 +11,17 @@ import offline_particles.models.roms as roms_models
 import offline_particles.timestepping as timestepping_module
 from offline_particles.fields import StaticField
 from offline_particles.fieldset import Fieldset
-from offline_particles.kernels.roms import LinearVerticalTransform2
-from offline_particles.kernels.roms._vertical_coordinate import _sigma_w_array, compute_zidx
+from offline_particles.kernels.roms import LinearVerticalTransform
+from offline_particles.kernels.roms._vertical_coordinate import _sigma_w_array, _tau_Vtransform_2, compute_zidx
 from offline_particles.kernels.status import Status
 from offline_particles.launcher import Launcher
 from offline_particles.particles import Particles
 from offline_particles.timestepping import ABTimestepper
 
 
-def _make_transform(hc: float, NZ: int) -> LinearVerticalTransform2:
+def _make_transform(hc: float, NZ: int) -> LinearVerticalTransform:
     Cs_w = np.arange(NZ + 1, dtype=np.float64) / NZ - 1.0
-    return LinearVerticalTransform2(NZ=NZ, hc=hc, Cs_w=Cs_w)
+    return LinearVerticalTransform(NZ=NZ, hc=hc, Cs_w=Cs_w)
 
 
 def _assert_initialises_to_multistep_2(timestepper: ABTimestepper) -> None:
@@ -574,9 +574,10 @@ def _make_large_vertical_coordinate_fieldset() -> Fieldset:
 
 def test_roms_ab3_timestepper_initialisation_computes_correct_zidx_far_from_placeholder(make_clock) -> None:
     """Issue #147, resolved: placeholder zidx=0.0 has no bearing on which part of Cs_w is seen."""
-    transform = LinearVerticalTransform2(NZ=_NZ_LARGE, hc=_HC, Cs_w=_CS_W_LARGE)
+    transform = LinearVerticalTransform(NZ=_NZ_LARGE, hc=_HC, Cs_w=_CS_W_LARGE)
     z_target = -25.0
-    expected_zidx = compute_zidx(z_target, _H_VALUE, _ZETA_VALUE, _HC, _sigma_w_array(_NZ_LARGE, "linear"), _CS_W_LARGE)
+    tau = _tau_Vtransform_2(_HC, _H_VALUE)
+    expected_zidx = compute_zidx(z_target, _H_VALUE, _ZETA_VALUE, tau, _sigma_w_array(_NZ_LARGE, "linear"), _CS_W_LARGE)
     assert expected_zidx > 13  # sanity-check: far from the placeholder zidx=0.0, in index terms
 
     launcher = Launcher(_make_large_vertical_coordinate_fieldset(), history_size=1)

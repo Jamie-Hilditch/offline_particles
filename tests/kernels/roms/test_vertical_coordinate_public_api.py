@@ -2,7 +2,7 @@
 
 These check the *wiring* (declarations, bindings, and that custom bindings actually work when the
 kernel runs) rather than the vertical-coordinate math itself, which is covered by
-`test_linear_vertical_transform_2.py`.
+`test_linear_vertical_transform.py`.
 """
 
 import numpy as np
@@ -11,7 +11,7 @@ import pytest
 from offline_particles.fields import StaticField
 from offline_particles.kernels._kernels import BoundKernel
 from offline_particles.kernels.roms import (
-    LinearVerticalTransform2,
+    LinearVerticalTransform,
     construct_compute_z_kernel,
     construct_compute_zidx_kernel,
 )
@@ -21,7 +21,7 @@ _CONSTRUCTORS = (construct_compute_z_kernel, construct_compute_zidx_kernel)
 
 @pytest.mark.parametrize("constructor", _CONSTRUCTORS)
 def test_constructor_uses_declared_names_as_default_bindings(
-    constructor, linear_vertical_transform: LinearVerticalTransform2
+    constructor, linear_vertical_transform: LinearVerticalTransform
 ) -> None:
     bound_kernel = constructor(linear_vertical_transform)
 
@@ -35,7 +35,7 @@ def test_constructor_uses_declared_names_as_default_bindings(
 
 
 @pytest.mark.parametrize("constructor", _CONSTRUCTORS)
-def test_constructor_honours_custom_bindings(constructor, linear_vertical_transform: LinearVerticalTransform2) -> None:
+def test_constructor_honours_custom_bindings(constructor, linear_vertical_transform: LinearVerticalTransform) -> None:
     bound_kernel = constructor(linear_vertical_transform, z="my_z", h="my_h", zeta="my_zeta")
 
     assert bound_kernel.particle_property_bindings["z"] == "my_z"
@@ -45,7 +45,7 @@ def test_constructor_honours_custom_bindings(constructor, linear_vertical_transf
 
 @pytest.mark.parametrize("constructor", _CONSTRUCTORS)
 def test_constructor_declares_the_full_shared_input_set(
-    constructor, linear_vertical_transform: LinearVerticalTransform2
+    constructor, linear_vertical_transform: LinearVerticalTransform
 ) -> None:
     bound_kernel = constructor(linear_vertical_transform)
 
@@ -56,7 +56,7 @@ def test_constructor_declares_the_full_shared_input_set(
 
 @pytest.mark.parametrize("constructor", _CONSTRUCTORS)
 def test_constructor_forwards_only_initialising(
-    constructor, linear_vertical_transform: LinearVerticalTransform2
+    constructor, linear_vertical_transform: LinearVerticalTransform
 ) -> None:
     default_kernel = constructor(linear_vertical_transform)
     initialising_kernel = constructor(linear_vertical_transform, only_initialising=True)
@@ -64,7 +64,7 @@ def test_constructor_forwards_only_initialising(
     assert default_kernel.kernel is not initialising_kernel.kernel
 
 
-def test_both_constructors_declare_identical_inputs(linear_vertical_transform: LinearVerticalTransform2) -> None:
+def test_both_constructors_declare_identical_inputs(linear_vertical_transform: LinearVerticalTransform) -> None:
     """`roms_ab3_timestepper` shares bindings between the two kernels, relying on this implicitly."""
     z_kernel = construct_compute_z_kernel(linear_vertical_transform).kernel
     zidx_kernel = construct_compute_zidx_kernel(linear_vertical_transform).kernel
@@ -76,7 +76,7 @@ def test_both_constructors_declare_identical_inputs(linear_vertical_transform: L
 
 @pytest.mark.parametrize("constructor", _CONSTRUCTORS)
 def test_constructor_rejects_h_field_with_wrong_axis_ordering(
-    constructor, linear_vertical_transform: LinearVerticalTransform2
+    constructor, linear_vertical_transform: LinearVerticalTransform
 ) -> None:
     bound_kernel = constructor(linear_vertical_transform)
     bad_h_field = StaticField.from_arraylike(np.zeros((3, 3)), axes=("X", "Y"), staggers=("center", "center"))
@@ -86,7 +86,7 @@ def test_constructor_rejects_h_field_with_wrong_axis_ordering(
 
 
 def test_construct_compute_z_kernel_runs_correctly_with_custom_bindings(
-    linear_vertical_transform: LinearVerticalTransform2,
+    linear_vertical_transform: LinearVerticalTransform,
     uniform_h_zeta_field_data,
     make_particle_properties,
     run_bound_kernel,
@@ -111,7 +111,7 @@ def test_construct_compute_z_kernel_runs_correctly_with_custom_bindings(
 
 
 def test_construct_compute_zidx_kernel_runs_correctly_with_custom_bindings(
-    linear_vertical_transform: LinearVerticalTransform2,
+    linear_vertical_transform: LinearVerticalTransform,
     uniform_h_zeta_field_data,
     make_particle_properties,
     run_bound_kernel,

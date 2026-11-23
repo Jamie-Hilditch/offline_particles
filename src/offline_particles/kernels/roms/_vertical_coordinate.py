@@ -11,13 +11,29 @@ We follow the same variable naming conventions as ROMS:
 - zeta: free surface elevation
 - z: physical vertical coordinate
 
-Notes
------
 Both sigma and C (the stretching function) are defined only at the `NZ + 1` w points. `S`, and
 therefore `z`, is defined on the continuous vertical index by interpolating between those w-point
-values - linearly, for `LinearVerticalTransform2`. `compute_zidx` is an
-*exact* inverse of `compute_z` on every grid cell, for either `sigma_method`, because both
-directions operate on the same interpolated representation of `S`.
+values - linearly, for `LinearVerticalTransform`. `compute_zidx` is an *exact* inverse of
+`compute_z` on every grid cell, for either `sigma_method`, because both directions operate on the
+same interpolated representation of `S`.
+
+Notes
+-----
+ROMS supports two vertical transforms (`Vtransform`). Both reduce to the same shape once `S` is
+defined as a nondimensional quantity: `z = zeta + (zeta + h) * S`, where
+`S = tau * sigma + (1 - tau) * C` and `tau` depends only on `hc` and `h`:
+`tau = hc / h` for `Vtransform=1`, `tau = hc / (hc + h)` for `Vtransform=2`. ROMS's own
+`Vtransform=2` formula, `(hc*sigma + h*C) / (hc + h)`, is already this nondimensional `S` exactly.
+ROMS's own `Vtransform=1` formula instead produces a dimensional quantity (call it `Zo`, units of
+length): `Zo = hc*sigma + (h-hc)*C`, `z = Zo + zeta*(1 + Zo/h)`; dividing through by `h` gives
+`S := Zo/h`, which is what makes the two transforms share one `z`/`S` formula here.
+
+`C` (the vertical stretching function) must be strictly increasing along the vertical axis. This
+is a physical requirement of the ROMS S-coordinate system: a valid vertical grid never has
+degenerate or crossing levels. `compute_zidx`'s binary search over `C` assumes this; behavior is
+undefined if it does not hold. The same requirement applies to the tabulated `sigma_w` array built
+internally from `sigma_method` - guaranteed by construction for both the linear and quadratic
+formulae, for any `NZ >= 2`, and not re-validated at runtime.
 """
 
 import abc
@@ -34,8 +50,9 @@ from ..status import INACTIVE_FLAG, Status
 
 _INITIALISING = np.uint8(Status.INITIALISING)
 
-# the w-point-to-rho-point-index offset: w-point j's sigma/C value equals rho-point (j - 0.5)'s
-_C_OFFSET = 0.5
+# the w-point-to-rho-point-index offset, shared by sigma_w and C alike: w-point j's sigma/C value
+# equals rho-point (j - 0.5)'s
+_W_OFFSET = 0.5
 
 #####################################
 ### sigma coordinate at w points  ###
@@ -116,7 +133,75 @@ def _sigma_w_array(NZ: int, sigma_method: str) -> npt.NDArray[np.float64]:
     """
     sigma_fn = _sigma_coordinate_quadratic if sigma_method == "quadratic" else _sigma_coordinate_linear
     k = np.arange(NZ + 1, dtype=np.float64)
-    return np.array([sigma_fn(ki - _C_OFFSET, NZ) for ki in k])
+    return np.array([sigma_fn(ki - _W_OFFSET, NZ) for ki in k])
+
+
+#################################################
+### ROMS vertical transform (tau)            ###
+#################################################
+
+
+@numba.njit(nogil=True, fastmath=True)
+def _tau_Vtransform_1(hc: float, h: float) -> float:
+    """tau(hc, h) for ROMS Vtransform=1 (Song & Haidvogel 1994 lineage): hc / h.
+
+    Parameters
+    ----------
+    hc : float
+        The critical depth.
+    h : float
+        The bathymetric depth.
+
+    Returns
+    -------
+    float
+        The blend weight `tau` used by `_S_coordinate`.
+    """
+    return hc / h
+
+
+@numba.njit(nogil=True, fastmath=True)
+def _tau_Vtransform_2(hc: float, h: float) -> float:
+    """tau(hc, h) for ROMS Vtransform=2 (Shchepetkin & McWilliams 2005): hc / (hc + h).
+
+    Parameters
+    ----------
+    hc : float
+        The critical depth.
+    h : float
+        The bathymetric depth.
+
+    Returns
+    -------
+    float
+        The blend weight `tau` used by `_S_coordinate`.
+    """
+    return hc / (hc + h)
+
+
+def _tau_fn_for_Vtransform(Vtransform: int):
+    """Select the tau(hc, h) numba dispatcher for the given ROMS Vtransform.
+
+    Parameters
+    ----------
+    Vtransform : int
+        Either 1 or 2.
+
+    Returns
+    -------
+    Callable[[float, float], float]
+        `_tau_Vtransform_1` or `_tau_Vtransform_2`.
+
+    Raises
+    ------
+    ValueError
+        If `Vtransform` is not 1 or 2.
+    """
+    if Vtransform == 1:
+        return _tau_Vtransform_1
+    elif Vtransform == 2:
+        return _tau_Vtransform_2
+    raise ValueError(f"Invalid Vtransform: {Vtransform!r}. Must be 1 or 2.")
 
 
 #############################
@@ -125,17 +210,16 @@ def _sigma_w_array(NZ: int, sigma_method: str) -> npt.NDArray[np.float64]:
 
 
 @numba.njit(nogil=True, fastmath=True)
-def _S_coordinate(hc: float, sigma: float, h: float, C: float) -> float:
+def _S_coordinate(tau: float, sigma: float, C: float) -> float:
     """Compute the S-coordinate transformation for ROMS vertical coordinates.
 
     Parameters
     ----------
-    hc : float
-        The critical depth.
+    tau : float
+        The blend weight, depending on the ROMS vertical transform (`tau = hc/h` for
+        Vtransform=1, `tau = hc/(hc+h)` for Vtransform=2).
     sigma : float
         The sigma coordinate.
-    h : float
-        The bathymetric depth.
     C : float
         The stretching function value.
 
@@ -144,7 +228,7 @@ def _S_coordinate(hc: float, sigma: float, h: float, C: float) -> float:
     float
         The S-coordinate value.
     """
-    return (hc * sigma + h * C) / (hc + h)
+    return tau * sigma + (1.0 - tau) * C
 
 
 @numba.njit(nogil=True, fastmath=True)
@@ -169,7 +253,7 @@ def _z_coordinate(S: float, h: float, zeta: float) -> float:
 
 
 @numba.njit(nogil=True, fastmath=True)
-def compute_z(sigma: float, hc: float, h: float, C: float, zeta: float) -> float:
+def compute_z(sigma: float, tau: float, h: float, C: float, zeta: float) -> float:
     """Compute the physical vertical coordinate from already-resolved sigma and C values.
 
     `sigma` and `C` must already be resolved at the particle's vertical index (e.g. by linearly
@@ -180,8 +264,9 @@ def compute_z(sigma: float, hc: float, h: float, C: float, zeta: float) -> float
     ----------
     sigma : float
         The sigma coordinate value.
-    hc : float
-        The critical depth.
+    tau : float
+        The blend weight, depending on the ROMS vertical transform (`tau = hc/h` for
+        Vtransform=1, `tau = hc/(hc+h)` for Vtransform=2).
     h : float
         The bathymetric depth.
     C : float
@@ -194,7 +279,7 @@ def compute_z(sigma: float, hc: float, h: float, C: float, zeta: float) -> float
     float
         The physical vertical coordinate.
     """
-    S = _S_coordinate(hc, sigma, h, C)
+    S = _S_coordinate(tau, sigma, C)
     return _z_coordinate(S, h, zeta)
 
 
@@ -225,31 +310,26 @@ def _S_from_z(z: float, h: float, zeta: float) -> float:
 
 
 @numba.njit(nogil=True, fastmath=True)
-def _compute_Cidx_from_S(
+def _compute_widx_from_S(
     S: float,
-    hc: float,
-    h: float,
+    tau: float,
     sigma_w: npt.NDArray[np.float64],
     C: npt.NDArray[np.float64],
 ) -> int:
-    """Compute the w-point array index bracketing the S coordinate.
+    """Binary search for the w-point index bracketing the given S coordinate.
 
-    C_idx corresponds to the index such that
-        S_coordinate(hc, sigma_w[C_idx], h, C[C_idx]) <= S
-    and
-        S_coordinate(hc, sigma_w[C_idx + 1], h, C[C_idx + 1]) > S
-    This is done via a binary search over `C` (equivalently `sigma_w`, combined through
-    `_S_coordinate`), which assumes `C` is strictly increasing (see the module docstring). If S is
-    outside the range of S values defined by `C`, the first or penultimate index is returned.
+    Returns `widx` such that `_S_coordinate(tau, sigma_w[widx], C[widx]) <= S` and
+    `_S_coordinate(tau, sigma_w[widx + 1], C[widx + 1]) > S`. This assumes `C` is strictly
+    increasing (see the module docstring). If `S` is outside the range of S values defined by
+    `C`, the first or penultimate index is returned.
 
     Parameters
     ----------
     S : float
         The S-coordinate value.
-    hc : float
-        The critical depth.
-    h : float
-        The bathymetric depth.
+    tau : float
+        The blend weight, depending on the ROMS vertical transform (`tau = hc/h` for
+        Vtransform=1, `tau = hc/(hc+h)` for Vtransform=2).
     sigma_w : npt.NDArray[np.float64]
         The sigma coordinate tabulated at the w points. Must have the same length as `C`.
     C : npt.NDArray[np.float64]
@@ -265,15 +345,15 @@ def _compute_Cidx_from_S(
     hi = C_size - 2
 
     # handle edge cases where S is outside the range of S values
-    if S <= _S_coordinate(hc, sigma_w[0], h, C[0]):
+    if S <= _S_coordinate(tau, sigma_w[0], C[0]):
         return 0
-    elif S >= _S_coordinate(hc, sigma_w[C_size - 2], h, C[C_size - 2]):
+    elif S >= _S_coordinate(tau, sigma_w[C_size - 2], C[C_size - 2]):
         return C_size - 2
 
     # binary search
     while lo < hi - 1:
         mid = (lo + hi) // 2
-        S_mid = _S_coordinate(hc, sigma_w[mid], h, C[mid])
+        S_mid = _S_coordinate(tau, sigma_w[mid], C[mid])
         if S_mid <= S:
             lo = mid
         else:
@@ -282,23 +362,21 @@ def _compute_Cidx_from_S(
 
 
 @numba.njit(nogil=True, fastmath=True)
-def _zidx_from_S(
+def _linear_zidx_from_S(
     S: float,
-    hc: float,
-    h: float,
+    tau: float,
     sigma_w: npt.NDArray[np.float64],
     C: npt.NDArray[np.float64],
 ) -> float:
-    """Compute the vertical index from the S coordinate.
+    """Fractional vertical index, linearly interpolating S within the bracketing w-point cell.
 
     Parameters
     ----------
     S : float
         The S-coordinate value.
-    hc : float
-        The critical depth.
-    h : float
-        The bathymetric depth.
+    tau : float
+        The blend weight, depending on the ROMS vertical transform (`tau = hc/h` for
+        Vtransform=1, `tau = hc/(hc+h)` for Vtransform=2).
     sigma_w : npt.NDArray[np.float64]
         The sigma coordinate tabulated at the w points. Must have the same length as `C`.
     C : npt.NDArray[np.float64]
@@ -309,14 +387,11 @@ def _zidx_from_S(
     float
         The vertical index.
     """
-    # find the w-point index bracketing S
-    Cidx = _compute_Cidx_from_S(S, hc, h, sigma_w, C)
-    # linear interpolation to find the fractional index - exact, since this is the same
-    # linear-interpolation-between-w-points representation of S that the forward transform uses
-    S_low = _S_coordinate(hc, sigma_w[Cidx], h, C[Cidx])
-    S_high = _S_coordinate(hc, sigma_w[Cidx + 1], h, C[Cidx + 1])
+    widx = _compute_widx_from_S(S, tau, sigma_w, C)
+    S_low = _S_coordinate(tau, sigma_w[widx], C[widx])
+    S_high = _S_coordinate(tau, sigma_w[widx + 1], C[widx + 1])
     f = (S - S_low) / (S_high - S_low)
-    return Cidx - _C_OFFSET + f
+    return widx - _W_OFFSET + f
 
 
 @numba.njit(nogil=True, fastmath=True)
@@ -324,7 +399,7 @@ def compute_zidx(
     z: float,
     h: float,
     zeta: float,
-    hc: float,
+    tau: float,
     sigma_w: npt.NDArray[np.float64],
     C: npt.NDArray[np.float64],
 ) -> float:
@@ -338,8 +413,9 @@ def compute_zidx(
         The bathymetric depth.
     zeta : float
         The free surface elevation.
-    hc : float
-        The critical depth.
+    tau : float
+        The blend weight, depending on the ROMS vertical transform (`tau = hc/h` for
+        Vtransform=1, `tau = hc/(hc+h)` for Vtransform=2).
     sigma_w : npt.NDArray[np.float64]
         The sigma coordinate tabulated at the w points. Must have the same length as `C`.
     C : npt.NDArray[np.float64]
@@ -352,7 +428,7 @@ def compute_zidx(
         The vertical index.
     """
     S = _S_from_z(z, h, zeta)
-    return _zidx_from_S(S, hc, h, sigma_w, C)
+    return _linear_zidx_from_S(S, tau, sigma_w, C)
 
 
 #################################################
@@ -592,28 +668,28 @@ def _Cs_w_Vstretching_5(NZ: int, theta_s: float, theta_b: float) -> npt.NDArray[
 class VerticalTransform(abc.ABC):
     r"""Abstract base class for ROMS vertical coordinate transforms.
 
-    The physical vertical position :math:`z` is given in terms of the sigma coordinate
-    :math:`\sigma \in [-1, 0]` by
+    The physical vertical position :math:`z` is
 
     .. math::
 
-        z = \zeta + (\zeta + h) S(\sigma)
+        z = \zeta + (\zeta + h) S
 
     where :math:`\zeta` is the free surface elevation and :math:`h` is the bathymetric depth. The
-    S-coordinate :math:`S` is
+    nondimensional S-coordinate :math:`S` is
 
     .. math::
 
-        S(\sigma) = \frac{h_c \sigma + h \, C_s(\sigma)}{h_c + h}
+        S = \tau \sigma + (1 - \tau) C_s(\sigma)
 
-    where :math:`h_c` is the critical depth and :math:`C_s` is the stretching function. Both
-    :math:`\sigma` and :math:`C_s` are defined only at the `NZ + 1` w-point sigma values -
-    `Cs_w` gives :math:`C_s` directly (matching ROMS' own `Cs_w` output variable), while
-    :math:`\sigma` is tabulated internally from `sigma_method`: linearly,
-    :math:`\sigma_w(j) = j / NZ - 1` (ROMS Vstretching 1-4), or quadratically (ROMS Vstretching=5,
-    see `_sigma_coordinate_quadratic`). A valid stretching function satisfies
-    :math:`C_s(-1) = -1` and :math:`C_s(0) = 0`. Concrete subclasses define how `S` (and therefore
-    `z`/`zidx`) is computed between these tabulated w points.
+    where :math:`C_s` is the stretching function and :math:`\tau` depends on `Vtransform` and the
+    critical depth :math:`h_c`: :math:`\tau = h_c/h` for `Vtransform=1`, or
+    :math:`\tau = h_c/(h_c+h)` for `Vtransform=2`. Both :math:`\sigma` and :math:`C_s` are defined
+    only at the `NZ + 1` w-point sigma values - `Cs_w` gives :math:`C_s` directly (matching ROMS'
+    own `Cs_w` output variable), while :math:`\sigma` is tabulated internally from
+    `sigma_method`: linearly, :math:`\sigma_w(j) = j / NZ - 1` (ROMS Vstretching 1-4), or
+    quadratically (ROMS Vstretching=5, see `_sigma_coordinate_quadratic`). A valid stretching
+    function satisfies :math:`C_s(-1) = -1` and :math:`C_s(0) = 0`. Concrete subclasses define how
+    `S` (and therefore `z`/`zidx`) is computed between these tabulated w points.
 
     Parameters
     ----------
@@ -628,6 +704,9 @@ class VerticalTransform(abc.ABC):
     sigma_method : {"linear", "quadratic"}, optional
         Whether the sigma coordinate is tabulated at the w points using the linear formula (ROMS
         Vstretching 1-4) or the quadratic formula (ROMS Vstretching 5). Defaults to "linear".
+    Vtransform : {1, 2}, optional
+        The ROMS vertical transform, determining how :math:`\tau` is computed from :math:`h_c`
+        and :math:`h`. Defaults to 2.
 
     Raises
     ------
@@ -640,6 +719,7 @@ class VerticalTransform(abc.ABC):
         If `Cs_w[0]` is not equal to -1 (to within floating-point tolerance).
         If `Cs_w[-1]` is not equal to 0 (to within floating-point tolerance).
         If `sigma_method` is not "linear" or "quadratic".
+        If `Vtransform` is not 1 or 2.
 
     Notes
     -----
@@ -651,6 +731,7 @@ class VerticalTransform(abc.ABC):
     hc: float
     Cs_w: npt.NDArray[np.float64]
     sigma_method: Literal["linear", "quadratic"] = "linear"
+    Vtransform: Literal[1, 2] = 2
     _kernel_cache: dict[tuple[str, bool], KernelFunction] = field(
         default_factory=dict, init=False, repr=False, compare=False
     )
@@ -662,6 +743,8 @@ class VerticalTransform(abc.ABC):
             raise ValueError(f"hc must be strictly positive, got {self.hc}.")
         if self.sigma_method not in ("linear", "quadratic"):
             raise ValueError(f"Invalid sigma_method: {self.sigma_method!r}. Must be 'linear' or 'quadratic'.")
+        if self.Vtransform not in (1, 2):
+            raise ValueError(f"Invalid Vtransform: {self.Vtransform!r}. Must be 1 or 2.")
 
         # validate Cs_w array
         Cs_w = np.array(self.Cs_w, dtype=np.float64, copy=True)
@@ -683,7 +766,7 @@ class VerticalTransform(abc.ABC):
         object.__setattr__(self, "Cs_w", Cs_w)
 
     def __eq__(self, other: object) -> bool:
-        """Compare every dataclass field (NZ, hc, Cs_w, sigma_method, and any subclass fields).
+        """Compare every dataclass field: NZ, hc, Cs_w, sigma_method, Vtransform, and any subclass fields.
 
         Returns
         -------
@@ -765,7 +848,8 @@ class VerticalTransform(abc.ABC):
         theta_b : float
             Bottom control parameter.
         **kwargs
-            Forwarded to the concrete subclass's constructor (e.g. `horizontal_stencil_half_width`).
+            Forwarded to the concrete subclass's constructor (e.g. `horizontal_stencil_half_width`,
+            `Vtransform`).
 
         Returns
         -------
@@ -810,7 +894,8 @@ class VerticalTransform(abc.ABC):
         theta_b : float
             Bottom control parameter.
         **kwargs
-            Forwarded to the concrete subclass's constructor (e.g. `horizontal_stencil_half_width`).
+            Forwarded to the concrete subclass's constructor (e.g. `horizontal_stencil_half_width`,
+            `Vtransform`).
 
         Returns
         -------
@@ -857,7 +942,8 @@ class VerticalTransform(abc.ABC):
         theta_b : float
             Bottom stretching exponent (beta).
         **kwargs
-            Forwarded to the concrete subclass's constructor (e.g. `horizontal_stencil_half_width`).
+            Forwarded to the concrete subclass's constructor (e.g. `horizontal_stencil_half_width`,
+            `Vtransform`).
 
         Returns
         -------
@@ -895,7 +981,8 @@ class VerticalTransform(abc.ABC):
         theta_b : float
             Bottom control parameter.
         **kwargs
-            Forwarded to the concrete subclass's constructor (e.g. `horizontal_stencil_half_width`).
+            Forwarded to the concrete subclass's constructor (e.g. `horizontal_stencil_half_width`,
+            `Vtransform`).
 
         Returns
         -------
@@ -935,7 +1022,8 @@ class VerticalTransform(abc.ABC):
         theta_b : float
             Bottom control parameter (as for Vstretching=4).
         **kwargs
-            Forwarded to the concrete subclass's constructor (e.g. `horizontal_stencil_half_width`).
+            Forwarded to the concrete subclass's constructor (e.g. `horizontal_stencil_half_width`,
+            `Vtransform`).
 
         Returns
         -------
@@ -953,17 +1041,29 @@ class VerticalTransform(abc.ABC):
 
 
 #####################################################
-### LinearVerticalTransform2 (ROMS Vtransform=2) ###
+### LinearVerticalTransform                      ###
 #####################################################
 
 
 @dataclass(frozen=True, eq=False)
-class LinearVerticalTransform2(VerticalTransform):
-    r"""ROMS vertical transform 2, with sigma and the stretching function interpolated linearly.
+class LinearVerticalTransform(VerticalTransform):
+    r"""ROMS vertical transform, with sigma and the stretching function interpolated linearly.
 
     `S` (and therefore `z`) is computed by linearly interpolating between the tabulated w-point
     values of `sigma` and `Cs_w` - see `VerticalTransform` for the shared S-coordinate/z-coordinate
-    transform and the `NZ`/`hc`/`Cs_w`/`sigma_method` parameters.
+    transform and the `NZ`/`hc`/`Cs_w`/`sigma_method`/`Vtransform` parameters.
+
+    For `Vtransform=1`, `hc` must not exceed the shallowest bathymetric depth anywhere particles
+    are tracked (`hc <= hmin`), a well-known ROMS constraint: `tau = hc/h` otherwise exceeds 1
+    somewhere in the domain, and the blend `S = tau*sigma + (1-tau)*C` of two independently
+    strictly-increasing sequences is no longer guaranteed increasing *between* grid points, which
+    the binary search in `compute_zidx_kernel` assumes. Documented, not runtime validated, since
+    `h` is runtime domain data unknown to `__post_init__` - consistent with `Cs_w`'s own
+    strictly-increasing requirement. This caveat never affects the boundary values themselves:
+    `sigma_w[0] = Cs_w[0] = -1` and `sigma_w[-1] = Cs_w[-1] = 0` make `S` exactly `-1`/`0` at those
+    two grid points for any `tau`, since blending two identical values by any weight returns that
+    same value. `Vtransform=2`'s `tau = hc/(hc+h)` is always in `(0, 1)` for any `hc, h > 0`, so no
+    analogous caveat applies there.
 
     Parameters
     ----------
@@ -978,6 +1078,8 @@ class LinearVerticalTransform2(VerticalTransform):
     sigma_method : {"linear", "quadratic"}, optional
         Whether the sigma coordinate is tabulated at the w points using the linear formula (ROMS
         Vstretching 1-4) or the quadratic formula (ROMS Vstretching 5). Defaults to "linear".
+    Vtransform : {1, 2}, optional
+        The ROMS vertical transform. Defaults to 2.
     horizontal_stencil_half_width : int, optional
         The half-width `N` of the Lagrange interpolation stencil used for `h` and `zeta` (`2N`
         points in each horizontal dimension). Defaults to 1, i.e. bilinear interpolation.
@@ -994,11 +1096,12 @@ class LinearVerticalTransform2(VerticalTransform):
         If `Cs_w[0]` is not equal to -1 (to within floating-point tolerance).
         If `Cs_w[-1]` is not equal to 0 (to within floating-point tolerance).
         If `sigma_method` is not "linear" or "quadratic".
+        If `Vtransform` is not 1 or 2.
 
     Notes
     -----
-    Two instances are equal if they have the same `NZ`, `hc`, `Cs_w`, `sigma_method`, and
-    `horizontal_stencil_half_width`. Instances are not hashable.
+    Two instances are equal if they have the same `NZ`, `hc`, `Cs_w`, `sigma_method`,
+    `Vtransform`, and `horizontal_stencil_half_width`. Instances are not hashable.
     """
 
     horizontal_stencil_half_width: int = 1
@@ -1028,8 +1131,14 @@ class LinearVerticalTransform2(VerticalTransform):
         """
         key = ("z", bool(only_initialising))
         if key not in self._kernel_cache:
-            self._kernel_cache[key] = _linear_vertical_transform_2_compute_z_kernel(
-                self.NZ, self.hc, self.Cs_w, self.sigma_method, self.horizontal_stencil_half_width, only_initialising
+            self._kernel_cache[key] = _linear_vertical_transform_compute_z_kernel(
+                self.NZ,
+                self.hc,
+                self.Cs_w,
+                self.sigma_method,
+                self.Vtransform,
+                self.horizontal_stencil_half_width,
+                only_initialising,
             )
         return self._kernel_cache[key]
 
@@ -1050,25 +1159,32 @@ class LinearVerticalTransform2(VerticalTransform):
         """
         key = ("zidx", bool(only_initialising))
         if key not in self._kernel_cache:
-            self._kernel_cache[key] = _linear_vertical_transform_2_compute_zidx_kernel(
-                self.NZ, self.hc, self.Cs_w, self.sigma_method, self.horizontal_stencil_half_width, only_initialising
+            self._kernel_cache[key] = _linear_vertical_transform_compute_zidx_kernel(
+                self.NZ,
+                self.hc,
+                self.Cs_w,
+                self.sigma_method,
+                self.Vtransform,
+                self.horizontal_stencil_half_width,
+                only_initialising,
             )
         return self._kernel_cache[key]
 
 
-def _linear_vertical_transform_2_compute_z_kernel(
+def _linear_vertical_transform_compute_z_kernel(
     NZ: int,
     hc: float,
     C: npt.NDArray[np.float64],
     sigma_method: str,
+    Vtransform: int,
     horizontal_stencil_half_width: int,
     only_initialising: bool,
 ) -> KernelFunction:
-    """Build the compiled kernel function backing `LinearVerticalTransform2.compute_z_kernel`.
+    """Build the compiled kernel function backing `LinearVerticalTransform.compute_z_kernel`.
 
     `C` and the sigma coordinate tabulated from `sigma_method` are both captured by closure and
     linearly interpolated at each particle's continuous `zidx` - `field_data_keys` below is
-    `["h", "zeta"]` only, with no `C`/`sigma`/`C_offset` declared as field data.
+    `["h", "zeta"]` only, with no `C`/`sigma` declared as field data.
 
     Parameters
     ----------
@@ -1082,6 +1198,8 @@ def _linear_vertical_transform_2_compute_z_kernel(
         Captured by closure.
     sigma_method : str
         Either "linear" or "quadratic"; determines the tabulated sigma array captured by closure.
+    Vtransform : int
+        Either 1 or 2; determines the `tau(hc, h)` function captured by closure.
     horizontal_stencil_half_width : int
         The half-width `N` of the Lagrange interpolation stencil used for `h` and `zeta`.
     only_initialising : bool
@@ -1092,7 +1210,7 @@ def _linear_vertical_transform_2_compute_z_kernel(
     -------
     KernelFunction
         A kernel function that computes the physical vertical position `z`, specialized for the
-        given `NZ`, `hc`, `C`, `sigma_method`, `horizontal_stencil_half_width`, and
+        given `NZ`, `hc`, `C`, `sigma_method`, `Vtransform`, `horizontal_stencil_half_width`, and
         `only_initialising`.
     """
     hc_: np.float64 = np.float64(hc)
@@ -1100,6 +1218,7 @@ def _linear_vertical_transform_2_compute_z_kernel(
     C_max_idx = C_.shape[0] - 2
     sigma_w_: npt.NDArray[np.float64] = _sigma_w_array(NZ, sigma_method)
     sigma_max_idx = sigma_w_.shape[0] - 2
+    tau_fn = _tau_fn_for_Vtransform(Vtransform)
     N = int(horizontal_stencil_half_width)
     horizontal_interpolation_particle = lagrange_2D_particle_factory(N, N)
     only_initialising_: bool = bool(only_initialising)
@@ -1185,22 +1304,24 @@ def _linear_vertical_transform_2_compute_z_kernel(
             zeta_value = horizontal_interpolation_particle(
                 zeta_array, yidx[i] + zeta_offy, xidx[i] + zeta_offx, zeta_max_idx_0, zeta_max_idx_1
             )
-            sigma_value = linear_interpolation_particle(sigma_w_, zidx[i] + _C_OFFSET, sigma_max_idx)
-            C_value = linear_interpolation_particle(C_, zidx[i] + _C_OFFSET, C_max_idx)
-            z[i] = compute_z(sigma_value, hc_, h_value, C_value, zeta_value)
+            tau_value = tau_fn(hc_, h_value)
+            sigma_value = linear_interpolation_particle(sigma_w_, zidx[i] + _W_OFFSET, sigma_max_idx)
+            C_value = linear_interpolation_particle(C_, zidx[i] + _W_OFFSET, C_max_idx)
+            z[i] = compute_z(sigma_value, tau_value, h_value, C_value, zeta_value)
 
     return compute_z_kernel_function
 
 
-def _linear_vertical_transform_2_compute_zidx_kernel(
+def _linear_vertical_transform_compute_zidx_kernel(
     NZ: int,
     hc: float,
     C: npt.NDArray[np.float64],
     sigma_method: str,
+    Vtransform: int,
     horizontal_stencil_half_width: int,
     only_initialising: bool,
 ) -> KernelFunction:
-    """Build the compiled kernel function backing `LinearVerticalTransform2.compute_zidx_kernel`.
+    """Build the compiled kernel function backing `LinearVerticalTransform.compute_zidx_kernel`.
 
     `C` and the sigma coordinate tabulated from `sigma_method` are both captured by closure -
     `field_data_keys` below is `["h", "zeta"]` only.
@@ -1217,6 +1338,8 @@ def _linear_vertical_transform_2_compute_zidx_kernel(
         Captured by closure.
     sigma_method : str
         Either "linear" or "quadratic"; determines the tabulated sigma array captured by closure.
+    Vtransform : int
+        Either 1 or 2; determines the `tau(hc, h)` function captured by closure.
     horizontal_stencil_half_width : int
         The half-width `N` of the Lagrange interpolation stencil used for `h` and `zeta`.
     only_initialising : bool
@@ -1227,11 +1350,13 @@ def _linear_vertical_transform_2_compute_zidx_kernel(
     -------
     KernelFunction
         A kernel function that computes the vertical index `zidx`, specialized for the given
-        `NZ`, `hc`, `C`, `sigma_method`, `horizontal_stencil_half_width`, and `only_initialising`.
+        `NZ`, `hc`, `C`, `sigma_method`, `Vtransform`, `horizontal_stencil_half_width`, and
+        `only_initialising`.
     """
     hc_: np.float64 = np.float64(hc)
     C_: npt.NDArray[np.float64] = np.array(C, dtype=np.float64)
     sigma_w_: npt.NDArray[np.float64] = _sigma_w_array(NZ, sigma_method)
+    tau_fn = _tau_fn_for_Vtransform(Vtransform)
     N = int(horizontal_stencil_half_width)
     horizontal_interpolation_particle = lagrange_2D_particle_factory(N, N)
     only_initialising_: bool = bool(only_initialising)
@@ -1317,6 +1442,7 @@ def _linear_vertical_transform_2_compute_zidx_kernel(
             zeta_value = horizontal_interpolation_particle(
                 zeta_array, yidx[i] + zeta_offy, xidx[i] + zeta_offx, zeta_max_idx_0, zeta_max_idx_1
             )
-            zidx[i] = compute_zidx(z[i], h_value, zeta_value, hc_, sigma_w_, C_)
+            tau_value = tau_fn(hc_, h_value)
+            zidx[i] = compute_zidx(z[i], h_value, zeta_value, tau_value, sigma_w_, C_)
 
     return compute_zidx_kernel_function

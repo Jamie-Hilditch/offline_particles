@@ -14,7 +14,7 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 
-_C_OFFSET = 0.5
+_W_OFFSET = 0.5
 
 # --- interpolation helpers, mirroring the linear-interpolation kernel implementation ---
 
@@ -71,15 +71,28 @@ def sigma_coordinate_quadratic(zidx: float, Nz: int) -> float:
 def sigma_w_array(NZ: int, sigma_method: str) -> npt.NDArray[np.float64]:
     sigma_fn = sigma_coordinate_quadratic if sigma_method == "quadratic" else sigma_coordinate_linear
     k = np.arange(NZ + 1, dtype=np.float64)
-    return np.array([sigma_fn(ki - _C_OFFSET, NZ) for ki in k])
+    return np.array([sigma_fn(ki - _W_OFFSET, NZ) for ki in k])
+
+
+# --- ROMS vertical transform (tau), mirroring _vertical_coordinate.py ---
+
+
+# mirrors _tau_Vtransform_1
+def tau_Vtransform_1(hc: float, h: float) -> float:
+    return hc / h
+
+
+# mirrors _tau_Vtransform_2
+def tau_Vtransform_2(hc: float, h: float) -> float:
+    return hc / (hc + h)
 
 
 # --- core S-coordinate transform, mirroring _vertical_coordinate.py ---
 
 
 # mirrors _S_coordinate
-def S_coordinate(hc: float, sigma: float, h: float, C: float) -> float:
-    return (hc * sigma + h * C) / (hc + h)
+def S_coordinate(tau: float, sigma: float, C: float) -> float:
+    return tau * sigma + (1.0 - tau) * C
 
 
 # mirrors _z_coordinate
@@ -88,8 +101,8 @@ def z_coordinate(S: float, h: float, zeta: float) -> float:
 
 
 # mirrors compute_z: physical vertical coordinate from already-resolved sigma and C values
-def compute_z(sigma: float, hc: float, h: float, C: float, zeta: float) -> float:
-    S = S_coordinate(hc, sigma, h, C)
+def compute_z(sigma: float, tau: float, h: float, C: float, zeta: float) -> float:
+    S = S_coordinate(tau, sigma, C)
     return z_coordinate(S, h, zeta)
 
 
@@ -98,11 +111,10 @@ def S_from_z(z: float, h: float, zeta: float) -> float:
     return (z - zeta) / (zeta + h)
 
 
-# mirrors _compute_Cidx_from_S: binary search over the stretching function array
-def compute_Cidx_from_S(
+# mirrors _compute_widx_from_S: binary search over the stretching function array
+def compute_widx_from_S(
     S: float,
-    hc: float,
-    h: float,
+    tau: float,
     sigma_w: npt.NDArray[np.float64],
     C: npt.NDArray[np.float64],
 ) -> int:
@@ -111,14 +123,14 @@ def compute_Cidx_from_S(
     hi = C_size - 2
 
     # boundary clamps, exactly as documented in the kernel implementation's docstring
-    if S <= S_coordinate(hc, sigma_w[0], h, C[0]):
+    if S <= S_coordinate(tau, sigma_w[0], C[0]):
         return 0
-    if S >= S_coordinate(hc, sigma_w[C_size - 2], h, C[C_size - 2]):
+    if S >= S_coordinate(tau, sigma_w[C_size - 2], C[C_size - 2]):
         return C_size - 2
 
     while lo < hi - 1:
         mid = (lo + hi) // 2
-        S_mid = S_coordinate(hc, sigma_w[mid], h, C[mid])
+        S_mid = S_coordinate(tau, sigma_w[mid], C[mid])
         if S_mid <= S:
             lo = mid
         else:
@@ -126,19 +138,18 @@ def compute_Cidx_from_S(
     return lo
 
 
-# mirrors _zidx_from_S
-def zidx_from_S(
+# mirrors _linear_zidx_from_S
+def linear_zidx_from_S(
     S: float,
-    hc: float,
-    h: float,
+    tau: float,
     sigma_w: npt.NDArray[np.float64],
     C: npt.NDArray[np.float64],
 ) -> float:
-    Cidx = compute_Cidx_from_S(S, hc, h, sigma_w, C)
-    S_low = S_coordinate(hc, sigma_w[Cidx], h, C[Cidx])
-    S_high = S_coordinate(hc, sigma_w[Cidx + 1], h, C[Cidx + 1])
+    widx = compute_widx_from_S(S, tau, sigma_w, C)
+    S_low = S_coordinate(tau, sigma_w[widx], C[widx])
+    S_high = S_coordinate(tau, sigma_w[widx + 1], C[widx + 1])
     f = (S - S_low) / (S_high - S_low)
-    return Cidx - _C_OFFSET + f
+    return widx - _W_OFFSET + f
 
 
 # mirrors compute_zidx: vertical index from the physical vertical coordinate
@@ -146,9 +157,9 @@ def compute_zidx(
     z: float,
     h: float,
     zeta: float,
-    hc: float,
+    tau: float,
     sigma_w: npt.NDArray[np.float64],
     C: npt.NDArray[np.float64],
 ) -> float:
     S = S_from_z(z, h, zeta)
-    return zidx_from_S(S, hc, h, sigma_w, C)
+    return linear_zidx_from_S(S, tau, sigma_w, C)

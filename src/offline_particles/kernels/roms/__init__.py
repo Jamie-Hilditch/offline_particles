@@ -10,10 +10,10 @@ from .._kernels import (
 )
 from ..input_declarations import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
 from ..layout_validators import validate_YX_ordering
-from ._vertical_coordinate import LinearVerticalTransform2, VerticalTransform
+from ._vertical_coordinate import LinearVerticalTransform, VerticalTransform
 
 __all__ = [
-    "LinearVerticalTransform2",
+    "LinearVerticalTransform",
     "VerticalTransform",
     "construct_compute_z_kernel",
     "construct_compute_zidx_kernel",
@@ -36,7 +36,7 @@ def construct_compute_z_kernel(
     Parameters
     ----------
     transform : VerticalTransform
-        The vertical transform defining `NZ`, `hc`, `Cs_w`, and `sigma_method`.
+        The vertical transform defining `NZ`, `hc`, `Cs_w`, `sigma_method`, and `Vtransform`.
     z : str, optional
         Binding for the particle property to store the computed physical vertical position.
     h : str, optional
@@ -93,7 +93,7 @@ def construct_compute_zidx_kernel(
     Parameters
     ----------
     transform : VerticalTransform
-        The vertical transform defining `NZ`, `hc`, `Cs_w`, and `sigma_method`.
+        The vertical transform defining `NZ`, `hc`, `Cs_w`, `sigma_method`, and `Vtransform`.
     z : str, optional
         Binding for the particle property giving the physical vertical position.
     h : str, optional

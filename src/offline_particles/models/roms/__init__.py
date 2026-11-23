@@ -11,7 +11,7 @@ from ...kernels.relaxation import (
     construct_quadratic_damping_kernel,
 )
 from ...kernels.roms import (
-    LinearVerticalTransform2,
+    LinearVerticalTransform,
     VerticalTransform,
     construct_compute_z_kernel,
     construct_compute_zidx_kernel,
@@ -21,7 +21,7 @@ from ...spatial_arrays import ArrayAxis, ArrayLayout, Stagger
 from ...timestepping import ABTimestepper
 
 __all__ = [
-    "LinearVerticalTransform2",
+    "LinearVerticalTransform",
     "VerticalTransform",
     "construct_compute_z_kernel",
     "construct_compute_zidx_kernel",
@@ -64,7 +64,8 @@ def roms_ab3_timestepper(
     Parameters
     ----------
     transform : VerticalTransform
-        The ROMS vertical transform, defining `NZ`, `hc`, `Cs_w`, and `sigma_method`.
+        The ROMS vertical transform, defining `NZ`, `hc`, `Cs_w`, `sigma_method`, and
+        `Vtransform`.
     vertical_velocity : bool, optional
         Whether to include vertical velocity advection (default True).
     index_padding : int, optional
