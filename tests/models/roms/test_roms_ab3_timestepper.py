@@ -12,7 +12,7 @@ import offline_particles.timestepping as timestepping_module
 from offline_particles.fields import StaticField
 from offline_particles.fieldset import Fieldset
 from offline_particles.kernels.roms import LinearVerticalTransform2
-from offline_particles.kernels.roms._vertical_coordinate import compute_zidx
+from offline_particles.kernels.roms._vertical_coordinate import _sigma_w_array, compute_zidx
 from offline_particles.kernels.status import Status
 from offline_particles.launcher import Launcher
 from offline_particles.particles import Particles
@@ -576,7 +576,7 @@ def test_roms_ab3_timestepper_initialisation_computes_correct_zidx_far_from_plac
     """Issue #147, resolved: placeholder zidx=0.0 has no bearing on which part of Cs_w is seen."""
     transform = LinearVerticalTransform2(NZ=_NZ_LARGE, hc=_HC, Cs_w=_CS_W_LARGE)
     z_target = -25.0
-    expected_zidx = compute_zidx(z_target, _H_VALUE, _ZETA_VALUE, _HC, _NZ_LARGE, _CS_W_LARGE, 0.5)
+    expected_zidx = compute_zidx(z_target, _H_VALUE, _ZETA_VALUE, _HC, _sigma_w_array(_NZ_LARGE, "linear"), _CS_W_LARGE)
     assert expected_zidx > 13  # sanity-check: far from the placeholder zidx=0.0, in index terms
 
     launcher = Launcher(_make_large_vertical_coordinate_fieldset(), history_size=1)

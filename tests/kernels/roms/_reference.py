@@ -14,7 +14,7 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 
-from offline_particles.kernels.status import INACTIVE_FLAG
+_C_OFFSET = 0.5
 
 # --- interpolation helpers, mirroring the linear-interpolation kernel implementation ---
 
@@ -52,12 +52,29 @@ def bilinear_interpolation(array: npt.NDArray[np.float64], idx0: float, idx1: fl
     return g0 * g1 * v00 + g0 * f1 * v01 + f0 * g1 * v10 + f0 * f1 * v11
 
 
-# --- core S-coordinate transform, mirroring _vertical_coordinate.py ---
+# --- sigma coordinate at w points, mirroring _vertical_coordinate.py ---
 
 
-# mirrors _sigma_coordinate
-def sigma_coordinate(zidx: float, Nz: int) -> float:
+# mirrors _sigma_coordinate_linear
+def sigma_coordinate_linear(zidx: float, Nz: int) -> float:
     return (zidx + 0.5) / Nz - 1.0
+
+
+# mirrors _sigma_coordinate_quadratic
+def sigma_coordinate_quadratic(zidx: float, Nz: int) -> float:
+    x = zidx + 0.5
+    N = float(Nz)
+    return -(x**2 - 2.0 * x * N + x + N**2 - N) / (N**2 - N) - 0.01 * (x**2 - x * N) / (1.0 - N)
+
+
+# mirrors _sigma_w_array
+def sigma_w_array(NZ: int, sigma_method: str) -> npt.NDArray[np.float64]:
+    sigma_fn = sigma_coordinate_quadratic if sigma_method == "quadratic" else sigma_coordinate_linear
+    k = np.arange(NZ + 1, dtype=np.float64)
+    return np.array([sigma_fn(ki - _C_OFFSET, NZ) for ki in k])
+
+
+# --- core S-coordinate transform, mirroring _vertical_coordinate.py ---
 
 
 # mirrors _S_coordinate
@@ -70,9 +87,8 @@ def z_coordinate(S: float, h: float, zeta: float) -> float:
     return zeta + (zeta + h) * S
 
 
-# mirrors compute_z: physical vertical coordinate from the vertical index
-def compute_z(zidx: float, Nz: int, hc: float, h: float, C: float, zeta: float) -> float:
-    sigma = sigma_coordinate(zidx, Nz)
+# mirrors compute_z: physical vertical coordinate from already-resolved sigma and C values
+def compute_z(sigma: float, hc: float, h: float, C: float, zeta: float) -> float:
     S = S_coordinate(hc, sigma, h, C)
     return z_coordinate(S, h, zeta)
 
@@ -82,34 +98,27 @@ def S_from_z(z: float, h: float, zeta: float) -> float:
     return (z - zeta) / (zeta + h)
 
 
-# mirrors _sigma_from_Cidx
-def sigma_from_Cidx(Cidx: int, C_offset: float, Nz: int) -> float:
-    return sigma_coordinate(Cidx - C_offset, Nz)
-
-
 # mirrors _compute_Cidx_from_S: binary search over the stretching function array
 def compute_Cidx_from_S(
     S: float,
     hc: float,
-    NZ: int,
     h: float,
-    zeta: float,
+    sigma_w: npt.NDArray[np.float64],
     C: npt.NDArray[np.float64],
-    C_offset: float,
 ) -> int:
     C_size = C.shape[0]
     lo = 0
     hi = C_size - 2
 
     # boundary clamps, exactly as documented in the kernel implementation's docstring
-    if S <= S_coordinate(hc, sigma_from_Cidx(0, C_offset, NZ), h, C[0]):
+    if S <= S_coordinate(hc, sigma_w[0], h, C[0]):
         return 0
-    if S >= S_coordinate(hc, sigma_from_Cidx(C_size - 2, C_offset, NZ), h, C[C_size - 2]):
+    if S >= S_coordinate(hc, sigma_w[C_size - 2], h, C[C_size - 2]):
         return C_size - 2
 
     while lo < hi - 1:
         mid = (lo + hi) // 2
-        S_mid = S_coordinate(hc, sigma_from_Cidx(mid, C_offset, NZ), h, C[mid])
+        S_mid = S_coordinate(hc, sigma_w[mid], h, C[mid])
         if S_mid <= S:
             lo = mid
         else:
@@ -121,17 +130,15 @@ def compute_Cidx_from_S(
 def zidx_from_S(
     S: float,
     hc: float,
-    NZ: int,
     h: float,
-    zeta: float,
+    sigma_w: npt.NDArray[np.float64],
     C: npt.NDArray[np.float64],
-    C_offset: float,
 ) -> float:
-    Cidx = compute_Cidx_from_S(S, hc, NZ, h, zeta, C, C_offset)
-    S_low = S_coordinate(hc, sigma_from_Cidx(Cidx, C_offset, NZ), h, C[Cidx])
-    S_high = S_coordinate(hc, sigma_from_Cidx(Cidx + 1, C_offset, NZ), h, C[Cidx + 1])
+    Cidx = compute_Cidx_from_S(S, hc, h, sigma_w, C)
+    S_low = S_coordinate(hc, sigma_w[Cidx], h, C[Cidx])
+    S_high = S_coordinate(hc, sigma_w[Cidx + 1], h, C[Cidx + 1])
     f = (S - S_low) / (S_high - S_low)
-    return Cidx - C_offset + f
+    return Cidx - _C_OFFSET + f
 
 
 # mirrors compute_zidx: vertical index from the physical vertical coordinate
@@ -140,53 +147,8 @@ def compute_zidx(
     h: float,
     zeta: float,
     hc: float,
-    NZ: int,
+    sigma_w: npt.NDArray[np.float64],
     C: npt.NDArray[np.float64],
-    C_offset: float,
 ) -> float:
     S = S_from_z(z, h, zeta)
-    return zidx_from_S(S, hc, NZ, h, zeta, C, C_offset)
-
-
-# --- whole-kernel reference, mirroring _vertical_coordinate.py ---
-
-
-# reference re-implementation of compute_z_kernel_function
-def reference_compute_z_kernel_function(particle_properties, hc, NZ, field_data) -> None:
-    status = particle_properties["status"]
-    zidx = particle_properties["zidx"]
-    yidx = particle_properties["yidx"]
-    xidx = particle_properties["xidx"]
-    z = particle_properties["z"]
-
-    h_array, h_offy, h_offx = field_data["h"].unpack()
-    zeta_array, zeta_offy, zeta_offx = field_data["zeta"].unpack()
-    C_array, C_offz = field_data["C"].unpack()
-
-    for i in range(status.shape[0]):
-        if status[i] & INACTIVE_FLAG:
-            continue
-        h_value = bilinear_interpolation(h_array, yidx[i] + h_offy, xidx[i] + h_offx)
-        zeta_value = bilinear_interpolation(zeta_array, yidx[i] + zeta_offy, xidx[i] + zeta_offx)
-        C_value = linear_interpolation(C_array, zidx[i] + C_offz)
-        z[i] = compute_z(zidx[i], NZ, hc, h_value, C_value, zeta_value)
-
-
-# reference re-implementation of compute_zidx_kernel_function
-def reference_compute_zidx_kernel_function(particle_properties, hc, NZ, field_data) -> None:
-    status = particle_properties["status"]
-    zidx = particle_properties["zidx"]
-    yidx = particle_properties["yidx"]
-    xidx = particle_properties["xidx"]
-    z = particle_properties["z"]
-
-    h_array, h_offy, h_offx = field_data["h"].unpack()
-    zeta_array, zeta_offy, zeta_offx = field_data["zeta"].unpack()
-    C_array, C_offz = field_data["C"].unpack()
-
-    for i in range(status.shape[0]):
-        if status[i] & INACTIVE_FLAG:
-            continue
-        h_value = bilinear_interpolation(h_array, yidx[i] + h_offy, xidx[i] + h_offx)
-        zeta_value = bilinear_interpolation(zeta_array, yidx[i] + zeta_offy, xidx[i] + zeta_offx)
-        zidx[i] = compute_zidx(z[i], h_value, zeta_value, hc, NZ, C_array, C_offz)
+    return zidx_from_S(S, hc, h, sigma_w, C)

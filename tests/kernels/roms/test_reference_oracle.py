@@ -24,12 +24,13 @@ _SIGMA = -0.5
 _S = -0.5
 _Z = -22.0
 
-# C = sigma sampled at each rho level: sigma(k, 4) for k = 0, 1, 2, 3
-_LINEAR_C = np.array([-0.875, -0.625, -0.375, -0.125])
+# C == the real w-point sigma_w array for NZ=4 (Cs_w == sigma_w exactly, so S == sigma_w exactly
+# at every grid point, keeping the hand derivation simple)
+_LINEAR_C = np.array([-1.0, -0.75, -0.5, -0.25, 0.0])
 
 
-def test_sigma_coordinate_matches_hand_derivation() -> None:
-    assert ref.sigma_coordinate(_ZIDX, _NZ) == pytest.approx(_SIGMA)
+def test_sigma_coordinate_linear_matches_hand_derivation() -> None:
+    assert ref.sigma_coordinate_linear(_ZIDX, _NZ) == pytest.approx(_SIGMA)
 
 
 def test_S_coordinate_matches_hand_derivation() -> None:
@@ -41,7 +42,7 @@ def test_z_coordinate_matches_hand_derivation() -> None:
 
 
 def test_compute_z_matches_hand_derivation() -> None:
-    assert ref.compute_z(_ZIDX, _NZ, _HC, _H, _SIGMA, _ZETA) == pytest.approx(_Z)
+    assert ref.compute_z(_SIGMA, _HC, _H, _SIGMA, _ZETA) == pytest.approx(_Z)
 
 
 def test_S_from_z_matches_hand_derivation() -> None:
@@ -49,50 +50,24 @@ def test_S_from_z_matches_hand_derivation() -> None:
 
 
 def test_compute_Cidx_from_S_finds_the_bracketing_interior_cell() -> None:
-    # S=-0.5 lies strictly between S(Cidx=1)=-0.625 and S(Cidx=2)=-0.375 (since C == sigma here,
-    # S == sigma exactly at every grid point) so the binary search should land on Cidx=1.
-    assert ref.compute_Cidx_from_S(_S, _HC, _NZ, _H, _ZETA, _LINEAR_C, 0.0) == 1
+    # S=-0.5 == S(Cidx=2)==-0.5 exactly (since C == sigma here, S == sigma exactly at every grid
+    # point), so the binary search's "S_mid <= S -> lo = mid" rule lands on Cidx=2.
+    assert ref.compute_Cidx_from_S(_S, _HC, _H, _LINEAR_C, _LINEAR_C) == 2
 
 
 def test_compute_Cidx_from_S_clamps_below_the_lowest_cell() -> None:
-    # S(Cidx=0) == -0.875; anything at or below that clamps to Cidx=0.
-    assert ref.compute_Cidx_from_S(-0.9, _HC, _NZ, _H, _ZETA, _LINEAR_C, 0.0) == 0
+    # S(Cidx=0) == -1.0; anything at or below that clamps to Cidx=0.
+    assert ref.compute_Cidx_from_S(-1.1, _HC, _H, _LINEAR_C, _LINEAR_C) == 0
 
 
 def test_compute_Cidx_from_S_clamps_above_the_highest_cell() -> None:
-    # S(Cidx=C_size-2=2) == -0.375; anything at or above that clamps to Cidx=C_size-2=2.
-    assert ref.compute_Cidx_from_S(-0.1, _HC, _NZ, _H, _ZETA, _LINEAR_C, 0.0) == 2
+    # S(Cidx=C_size-2=3) == -0.25; anything at or above that clamps to Cidx=C_size-2=3.
+    assert ref.compute_Cidx_from_S(-0.1, _HC, _H, _LINEAR_C, _LINEAR_C) == 3
 
 
 def test_zidx_from_S_matches_hand_derivation() -> None:
-    assert ref.zidx_from_S(_S, _HC, _NZ, _H, _ZETA, _LINEAR_C, 0.0) == pytest.approx(_ZIDX)
+    assert ref.zidx_from_S(_S, _HC, _H, _LINEAR_C, _LINEAR_C) == pytest.approx(_ZIDX)
 
 
 def test_compute_zidx_matches_hand_derivation() -> None:
-    assert ref.compute_zidx(_Z, _H, _ZETA, _HC, _NZ, _LINEAR_C, 0.0) == pytest.approx(_ZIDX)
-
-
-def test_reference_kernel_functions_match_scalar_helpers() -> None:
-    # cross-check the whole-kernel reference wrappers against the scalar helpers above, since the
-    # kernel tests exercise the wrappers (not the scalar helpers) directly.
-    from offline_particles.fields import FieldData
-
-    particle_properties = {
-        "status": np.zeros(1, dtype=np.uint8),
-        "zidx": np.array([_ZIDX]),
-        "yidx": np.array([1.5]),
-        "xidx": np.array([1.5]),
-        "z": np.array([np.nan]),
-    }
-    field_data = {
-        "h": FieldData(np.full((4, 4), _H), (0.0, 0.0)),
-        "zeta": FieldData(np.full((4, 4), _ZETA), (0.0, 0.0)),
-        "C": FieldData(_LINEAR_C, (0.0,)),
-    }
-
-    ref.reference_compute_z_kernel_function(particle_properties, _HC, _NZ, field_data)
-    assert particle_properties["z"][0] == pytest.approx(_Z)
-
-    particle_properties["zidx"] = np.array([np.nan])
-    ref.reference_compute_zidx_kernel_function(particle_properties, _HC, _NZ, field_data)
-    assert particle_properties["zidx"][0] == pytest.approx(_ZIDX)
+    assert ref.compute_zidx(_Z, _H, _ZETA, _HC, _LINEAR_C, _LINEAR_C) == pytest.approx(_ZIDX)

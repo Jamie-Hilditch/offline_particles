@@ -7,16 +7,19 @@ consistency is a property of the real implementation, checked against itself.
 As you (the reviewer) pointed out: round-trip invertibility is *not* a blanket guarantee here,
 because the inverse has no closed form and is computed via a binary search plus a linear
 interpolation in S-space. It happens to be an *exact* inverse of the forward transform on any
-given grid cell, because both directions reduce to inverting the same affine map on that cell
-(the forward path linearly interpolates `Cs_w` at `zidx`, and sigma is itself linear in `zidx`, so
-`z` is an affine function of `zidx` within a cell; the inverse's binary search locates the correct
-cell and then linearly inverts that same affine map). This also extends to mild extrapolation
-beyond `zidx` in `[0, NZ-1]`, because both the forward interpolation's index-clamp and the inverse
-binary search's S-value clamp lock onto the *same* boundary cell -- provided the stretching
-function `Cs_w` is strictly monotonic with a slope bounded away from zero (so S is never
-ambiguous) and hc/h/zeta keep every denominator away from zero -- a flat/degenerate `Cs_w` segment
-violates this and is not a valid input (`Cs_w` must be strictly increasing, per
-`LinearVerticalTransform2`'s contract).
+given grid cell, because both directions reduce to inverting the same affine map on that cell: both
+`sigma` and `Cs_w` are only ever defined/interpolated at the w points (never evaluated from a
+continuous nonlinear formula at an arbitrary `zidx`), so `S` - and therefore `z` - is an affine
+function of `zidx` within a cell regardless of `sigma_method`; the inverse's binary search locates
+the correct cell and then linearly inverts that same affine map. This is why `sigma_method` makes
+no difference to the tolerance used below - quadratic sigma is exercised at the same tight
+tolerance as linear sigma, not a looser one. This also extends to mild extrapolation beyond `zidx`
+in `[0, NZ-1]`, because both the forward interpolation's index-clamp and the inverse binary
+search's S-value clamp lock onto the *same* boundary cell -- provided the stretching function
+`Cs_w` is strictly monotonic with a slope bounded away from zero (so S is never ambiguous) and
+hc/h/zeta keep every denominator away from zero -- a flat/degenerate `Cs_w` segment violates this
+and is not a valid input (`Cs_w` must be strictly increasing, per `LinearVerticalTransform2`'s
+contract).
 
 Unlike the old `@cache`'d `hc`/`NZ`-only factories this replaced, `Cs_w` is baked into the
 compiled kernel via closure, and `LinearVerticalTransform2` caches compiled kernels per-instance
@@ -30,6 +33,8 @@ size and curvature) rather than generated fresh per example, and `_get_transform
 of compiles to (at most) `len(_HC_CANDIDATES) * len(_CS_W_CANDIDATES)`, however many examples run.
 """
 
+from typing import Literal
+
 import numpy as np
 import pytest
 from hypothesis import given, settings
@@ -37,6 +42,8 @@ from hypothesis import strategies as st
 
 from offline_particles.fields import FieldData
 from offline_particles.kernels.roms import LinearVerticalTransform2
+
+_SigmaMethod = Literal["linear", "quadratic"]
 
 
 def _make_cs_w(size: int, curvature: float) -> np.ndarray:
@@ -52,24 +59,30 @@ def _make_cs_w(size: int, curvature: float) -> np.ndarray:
 _CS_W_CANDIDATES = [_make_cs_w(size, curvature) for size in (4, 6, 8, 10) for curvature in (-0.3, 0.0, 0.3)]
 _HC_CANDIDATES = [0.5, 1.0, 2.5, 5.0, 10.0, 25.0, 50.0]
 
-_transform_cache: dict[tuple[float, int], LinearVerticalTransform2] = {}
+_SIGMA_METHOD_CANDIDATES: tuple[_SigmaMethod, ...] = ("linear", "quadratic")
+
+_transform_cache: dict[tuple[float, int, str], LinearVerticalTransform2] = {}
 
 
-def _get_transform(hc: float, Cs_w: np.ndarray) -> LinearVerticalTransform2:
+def _get_transform(hc: float, Cs_w: np.ndarray, sigma_method: _SigmaMethod) -> LinearVerticalTransform2:
     # Cs_w is always one of the fixed _CS_W_CANDIDATES objects (via st.sampled_from, which yields
     # the original object, not a copy), so id(Cs_w) is a stable, reusable cache key
-    key = (hc, id(Cs_w))
+    key = (hc, id(Cs_w), sigma_method)
     if key not in _transform_cache:
-        _transform_cache[key] = LinearVerticalTransform2(NZ=Cs_w.shape[0] - 1, hc=hc, Cs_w=Cs_w)
+        _transform_cache[key] = LinearVerticalTransform2(
+            NZ=Cs_w.shape[0] - 1, hc=hc, Cs_w=Cs_w, sigma_method=sigma_method
+        )
     return _transform_cache[key]
 
 
-# a well-conditioned (hc, h, zeta, Cs_w, NZ) grid, plus a zidx within `extrapolation` of [0, NZ-1]
+# a well-conditioned (hc, h, zeta, Cs_w, sigma_method, NZ) grid, plus a zidx within
+# `extrapolation` of [0, NZ-1]
 @st.composite
 def _roms_grid_and_zidx(draw, extrapolation: float):
     Cs_w = draw(st.sampled_from(_CS_W_CANDIDATES))
     NZ = Cs_w.shape[0] - 1
     hc = draw(st.sampled_from(_HC_CANDIDATES))
+    sigma_method = draw(st.sampled_from(_SIGMA_METHOD_CANDIDATES))
     h = draw(st.floats(min_value=1.0, max_value=500.0, allow_nan=False, allow_infinity=False))
     # keep |zeta| well below h so zeta + h stays safely away from zero
     zeta = h * draw(st.floats(min_value=-0.4, max_value=0.4, allow_nan=False, allow_infinity=False))
@@ -81,7 +94,7 @@ def _roms_grid_and_zidx(draw, extrapolation: float):
             allow_infinity=False,
         )
     )
-    return hc, h, zeta, Cs_w, NZ, zidx
+    return hc, h, zeta, Cs_w, sigma_method, NZ, zidx
 
 
 def _build_particle_properties(zidx: float) -> dict[str, np.ndarray]:
@@ -94,8 +107,10 @@ def _build_particle_properties(zidx: float) -> dict[str, np.ndarray]:
     }
 
 
-def _round_trip_zidx_to_z_to_zidx(hc: float, h: float, zeta: float, Cs_w: np.ndarray, zidx: float):
-    transform = _get_transform(hc, Cs_w)
+def _round_trip_zidx_to_z_to_zidx(
+    hc: float, h: float, zeta: float, Cs_w: np.ndarray, sigma_method: _SigmaMethod, zidx: float
+):
+    transform = _get_transform(hc, Cs_w, sigma_method)
     field_data = {
         "h": FieldData(np.full((4, 4), h), (0.0, 0.0)),
         "zeta": FieldData(np.full((4, 4), zeta), (0.0, 0.0)),
@@ -115,8 +130,8 @@ def _round_trip_zidx_to_z_to_zidx(hc: float, h: float, zeta: float, Cs_w: np.nda
 @settings(max_examples=200, deadline=None)
 @given(params=_roms_grid_and_zidx(extrapolation=0.0))
 def test_interior_round_trip_zidx_to_z_to_zidx_is_exact(params) -> None:
-    hc, h, zeta, Cs_w, _, zidx = params
-    _, _, recovered_zidx = _round_trip_zidx_to_z_to_zidx(hc, h, zeta, Cs_w, zidx)
+    hc, h, zeta, Cs_w, sigma_method, _, zidx = params
+    _, _, recovered_zidx = _round_trip_zidx_to_z_to_zidx(hc, h, zeta, Cs_w, sigma_method, zidx)
     assert recovered_zidx == pytest.approx(zidx, rel=1e-9, abs=1e-9)
 
 
@@ -129,8 +144,8 @@ def test_mild_extrapolation_round_trip_zidx_to_z_to_zidx_is_exact(params) -> Non
     bounded-slope) `Cs_w`: the forward interpolation's index-clamp and the inverse binary search's
     boundary clamp both lock onto the same edge cell.
     """
-    hc, h, zeta, Cs_w, _, zidx = params
-    _, _, recovered_zidx = _round_trip_zidx_to_z_to_zidx(hc, h, zeta, Cs_w, zidx)
+    hc, h, zeta, Cs_w, sigma_method, _, zidx = params
+    _, _, recovered_zidx = _round_trip_zidx_to_z_to_zidx(hc, h, zeta, Cs_w, sigma_method, zidx)
     assert recovered_zidx == pytest.approx(zidx, rel=1e-9, abs=1e-9)
 
 
@@ -138,8 +153,8 @@ def test_mild_extrapolation_round_trip_zidx_to_z_to_zidx_is_exact(params) -> Non
 @given(params=_roms_grid_and_zidx(extrapolation=0.0))
 def test_interior_round_trip_z_to_zidx_to_z_is_exact(params) -> None:
     """The mirrored property: re-deriving z from the recovered zidx reproduces the original z."""
-    hc, h, zeta, Cs_w, _, zidx = params
-    transform, z, recovered_zidx = _round_trip_zidx_to_z_to_zidx(hc, h, zeta, Cs_w, zidx)
+    hc, h, zeta, Cs_w, sigma_method, _, zidx = params
+    transform, z, recovered_zidx = _round_trip_zidx_to_z_to_zidx(hc, h, zeta, Cs_w, sigma_method, zidx)
 
     field_data = {
         "h": FieldData(np.full((4, 4), h), (0.0, 0.0)),
