@@ -32,7 +32,7 @@ length): `Zo = hc*sigma + (h-hc)*C`, `z = Zo + zeta*(1 + Zo/h)`; dividing throug
 
 `C` (the vertical stretching function) must be strictly increasing along the vertical axis. This
 is a physical requirement of the ROMS S-coordinate system: a valid vertical grid never has
-degenerate or crossing levels. `compute_zidx_linear`'s binary search over `C` assumes this;
+degenerate or crossing levels. `compute_zidx_linear`'s index search over `C` assumes this;
 behavior is undefined if it does not hold. The same requirement applies to the tabulated `sigma_w`
 array built internally from `sigma_method` - guaranteed by construction for both the linear and
 quadratic formulae, for any `NZ >= 2`, and not re-validated at runtime.
@@ -318,12 +318,19 @@ def _compute_widx_from_S(
     sigma_w: npt.NDArray[np.float64],
     C: npt.NDArray[np.float64],
 ) -> int:
-    """Binary search for the w-point index bracketing the given S coordinate.
+    """Find the w-point index bracketing the given S coordinate.
 
     Returns `widx` such that `_S_coordinate(tau, sigma_w[widx], C[widx]) <= S` and
     `_S_coordinate(tau, sigma_w[widx + 1], C[widx + 1]) > S`. This assumes `C` is strictly
     increasing (see the module docstring). If `S` is outside the range of S values defined by
     `C`, the first or penultimate index is returned.
+
+    Guesses the bracketing index by linearly interpolating `S` between the two tabulated
+    endpoints, then expands outward from that guess with a doubling step size until the true
+    bracket is found, and finally bisects within that bracket. `sigma_w`/`C` are not uniformly
+    spaced in general, so the initial guess is only a starting point, not the answer - but for
+    the smooth, close-to-affine sigma/stretching curves ROMS uses, this reaches the bracket
+    touching far fewer array elements than bisecting from the middle of the whole array.
 
     Parameters
     ----------
@@ -343,16 +350,60 @@ def _compute_widx_from_S(
         The index into `C`/`sigma_w` bracketing S, clamped to [0, C.shape[0] - 2].
     """
     C_size = C.shape[0]
-    lo = 0
-    hi = C_size - 2
+    hi0 = C_size - 2
 
-    # handle edge cases where S is outside the range of S values
-    if S <= _S_coordinate(tau, sigma_w[0], C[0]):
+    S0 = _S_coordinate(tau, sigma_w[0], C[0])
+    S_end = _S_coordinate(tau, sigma_w[hi0], C[hi0])
+    if S <= S0:
         return 0
-    elif S >= _S_coordinate(tau, sigma_w[C_size - 2], C[C_size - 2]):
-        return C_size - 2
+    if S >= S_end:
+        return hi0
 
-    # binary search
+    frac = (S - S0) / (S_end - S0)
+    guess = int(frac * hi0)
+    if guess < 0:
+        guess = 0
+    elif guess > hi0:
+        guess = hi0
+
+    S_guess = _S_coordinate(tau, sigma_w[guess], C[guess])
+    if S_guess <= S:
+        lo = guess
+        probe = guess
+        step = 1
+        found = False
+        while not found:
+            probe = probe + step
+            if probe >= hi0:
+                probe = hi0
+                found = True
+            else:
+                S_probe = _S_coordinate(tau, sigma_w[probe], C[probe])
+                if S_probe > S:
+                    found = True
+                else:
+                    lo = probe
+            step = step * 2
+        hi = probe
+    else:
+        hi = guess
+        probe = guess
+        step = 1
+        found = False
+        while not found:
+            probe = probe - step
+            if probe <= 0:
+                probe = 0
+                found = True
+            else:
+                S_probe = _S_coordinate(tau, sigma_w[probe], C[probe])
+                if S_probe <= S:
+                    found = True
+                else:
+                    hi = probe
+            step = step * 2
+        lo = probe
+
     while lo < hi - 1:
         mid = (lo + hi) // 2
         S_mid = _S_coordinate(tau, sigma_w[mid], C[mid])
@@ -1412,7 +1463,7 @@ class LinearVerticalTransform(VerticalTransform):
     are tracked (`hc <= hmin`), a well-known ROMS constraint: `tau = hc/h` otherwise exceeds 1
     somewhere in the domain, and the blend `S = tau*sigma + (1-tau)*C` of two independently
     strictly-increasing sequences is no longer guaranteed increasing *between* grid points, which
-    the binary search in `compute_zidx_kernel` assumes.
+    the index search in `compute_zidx_kernel` assumes.
 
     Parameters
     ----------

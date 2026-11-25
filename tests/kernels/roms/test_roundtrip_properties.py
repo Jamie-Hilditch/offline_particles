@@ -5,16 +5,16 @@ then inverse (or vice versa) on the same grid -- so no reference oracle is neede
 consistency is a property of the real implementation, checked against itself.
 
 As you (the reviewer) pointed out: round-trip invertibility is *not* a blanket guarantee here,
-because the inverse has no closed form and is computed via a binary search plus a linear
+because the inverse has no closed form and is computed via an index search plus a linear
 interpolation in S-space. It happens to be an *exact* inverse of the forward transform on any
 given grid cell, because both directions reduce to inverting the same affine map on that cell: both
 `sigma` and `Cs_w` are only ever defined/interpolated at the w points (never evaluated from a
 continuous nonlinear formula at an arbitrary `zidx`), so `S` - and therefore `z` - is an affine
-function of `zidx` within a cell regardless of `sigma_method` or `Vtransform`; the inverse's binary
+function of `zidx` within a cell regardless of `sigma_method` or `Vtransform`; the inverse's index
 search locates the correct cell and then linearly inverts that same affine map. This is why neither
 `sigma_method` nor `Vtransform` make any difference to the tolerance used below - every combination
 is exercised at the same tight tolerance. This also extends to mild extrapolation beyond `zidx` in
-`[0, NZ-1]`, because both the forward interpolation's index-clamp and the inverse binary search's
+`[0, NZ-1]`, because both the forward interpolation's index-clamp and the inverse index search's
 S-value clamp lock onto the *same* boundary cell -- provided the stretching function `Cs_w` is
 strictly monotonic with a slope bounded away from zero (so S is never ambiguous) and hc/h/zeta keep
 every denominator away from zero -- a flat/degenerate `Cs_w` segment violates this and is not a
@@ -217,7 +217,7 @@ def test_mild_extrapolation_round_trip_zidx_to_z_to_zidx(params) -> None:
     `LinearVerticalTransform` only, by construction (see `_roms_grid_and_zidx`'s `transform_kinds`
     default) - see the module docstring for why `CubicVerticalTransform` is excluded here. This
     still holds for `LinearVerticalTransform` with well-conditioned (strictly monotonic,
-    bounded-slope) `Cs_w`: the forward interpolation's index-clamp and the inverse binary search's
+    bounded-slope) `Cs_w`: the forward interpolation's index-clamp and the inverse index search's
     boundary clamp both lock onto the same edge cell, and that cell's map is affine.
     """
     transform_kind, hc, h, zeta, Cs_w, sigma_method, Vtransform, _, zidx = params

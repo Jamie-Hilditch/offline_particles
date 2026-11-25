@@ -93,7 +93,7 @@ def test_S_from_z_matches_hand_derivation() -> None:
 
 def test_compute_widx_from_S_finds_the_bracketing_interior_cell() -> None:
     # S=-0.5 == S(widx=2)==-0.5 exactly (since C == sigma here, S == sigma exactly at every grid
-    # point), so the binary search's "S_mid <= S -> lo = mid" rule lands on widx=2.
+    # point); widx=2 is the correct bracket since S(2) <= S and S < S(3).
     assert _compute_widx_from_S(_S, _TAU, _LINEAR_C, _LINEAR_C) == 2
 
 

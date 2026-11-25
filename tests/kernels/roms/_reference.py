@@ -111,7 +111,7 @@ def S_from_z(z: float, h: float, zeta: float) -> float:
     return (z - zeta) / (zeta + h)
 
 
-# mirrors _compute_widx_from_S: binary search over the stretching function array
+# mirrors _compute_widx_from_S: interpolation-guided search over the stretching function array
 def compute_widx_from_S(
     S: float,
     tau: float,
@@ -119,14 +119,60 @@ def compute_widx_from_S(
     C: npt.NDArray[np.float64],
 ) -> int:
     C_size = C.shape[0]
-    lo = 0
-    hi = C_size - 2
+    hi0 = C_size - 2
 
     # boundary clamps, exactly as documented in the kernel implementation's docstring
-    if S <= S_coordinate(tau, sigma_w[0], C[0]):
+    S0 = S_coordinate(tau, sigma_w[0], C[0])
+    S_end = S_coordinate(tau, sigma_w[hi0], C[hi0])
+    if S <= S0:
         return 0
-    if S >= S_coordinate(tau, sigma_w[C_size - 2], C[C_size - 2]):
-        return C_size - 2
+    if S >= S_end:
+        return hi0
+
+    frac = (S - S0) / (S_end - S0)
+    guess = int(frac * hi0)
+    if guess < 0:
+        guess = 0
+    elif guess > hi0:
+        guess = hi0
+
+    S_guess = S_coordinate(tau, sigma_w[guess], C[guess])
+    if S_guess <= S:
+        lo = guess
+        probe = guess
+        step = 1
+        found = False
+        while not found:
+            probe = probe + step
+            if probe >= hi0:
+                probe = hi0
+                found = True
+            else:
+                S_probe = S_coordinate(tau, sigma_w[probe], C[probe])
+                if S_probe > S:
+                    found = True
+                else:
+                    lo = probe
+            step = step * 2
+        hi = probe
+    else:
+        hi = guess
+        probe = guess
+        step = 1
+        found = False
+        while not found:
+            probe = probe - step
+            if probe <= 0:
+                probe = 0
+                found = True
+            else:
+                S_probe = S_coordinate(tau, sigma_w[probe], C[probe])
+                if S_probe <= S:
+                    found = True
+                else:
+                    hi = probe
+            step = step * 2
+        lo = probe
 
     while lo < hi - 1:
         mid = (lo + hi) // 2
