@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from offline_particles.fields import FieldData
-from offline_particles.kernels.roms import LinearVerticalTransform2
+from offline_particles.kernels.roms import LinearVerticalTransform
 
 NZ = 4
 HC = 5.0
@@ -16,14 +16,14 @@ def hc_nz() -> tuple[float, int]:
     return HC, NZ
 
 
-# a representative LinearVerticalTransform2 (linear-in-sigma Cs_w, so Cs_w == sigma_w exactly,
+# a representative LinearVerticalTransform (linear-in-sigma Cs_w, so Cs_w == sigma_w exactly,
 # degenerating the S-coordinate transform to plain sigma coordinates) for wiring-level tests that
 # don't care about the specifics of the vertical-coordinate math
 @pytest.fixture
-def linear_vertical_transform(hc_nz: tuple[float, int]) -> LinearVerticalTransform2:
+def linear_vertical_transform(hc_nz: tuple[float, int]) -> LinearVerticalTransform:
     hc, NZ = hc_nz
     Cs_w = np.arange(NZ + 1, dtype=np.float64) / NZ - 1.0
-    return LinearVerticalTransform2(NZ=NZ, hc=hc, Cs_w=Cs_w)
+    return LinearVerticalTransform(NZ=NZ, hc=hc, Cs_w=Cs_w)
 
 
 # uniform h/zeta fields, so horizontal bilinear interpolation is trivial to reason about;

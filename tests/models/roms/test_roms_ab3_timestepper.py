@@ -11,17 +11,17 @@ import offline_particles.models.roms as roms_models
 import offline_particles.timestepping as timestepping_module
 from offline_particles.fields import StaticField
 from offline_particles.fieldset import Fieldset
-from offline_particles.kernels.roms import LinearVerticalTransform2
-from offline_particles.kernels.roms._vertical_coordinate import compute_zidx
+from offline_particles.kernels.roms import LinearVerticalTransform
+from offline_particles.kernels.roms._vertical_coordinate import _sigma_w_array, _tau_Vtransform_2, compute_zidx_linear
 from offline_particles.kernels.status import Status
 from offline_particles.launcher import Launcher
 from offline_particles.particles import Particles
 from offline_particles.timestepping import ABTimestepper
 
 
-def _make_transform(hc: float, NZ: int) -> LinearVerticalTransform2:
+def _make_transform(hc: float, NZ: int) -> LinearVerticalTransform:
     Cs_w = np.arange(NZ + 1, dtype=np.float64) / NZ - 1.0
-    return LinearVerticalTransform2(NZ=NZ, hc=hc, Cs_w=Cs_w)
+    return LinearVerticalTransform(NZ=NZ, hc=hc, Cs_w=Cs_w)
 
 
 def _assert_initialises_to_multistep_2(timestepper: ABTimestepper) -> None:
@@ -488,7 +488,7 @@ def test_roms_ab3_timestepper_buoyancy_rejects_multiple_coefficient_selectors(
 _HC, _NZ, _Y, _X = 5.0, 4, 4, 4
 _H_VALUE, _ZETA_VALUE = 50.0, 0.5
 # a zidx=1.5, z=-24.75 pair for _HC/_NZ/_H_VALUE/_ZETA_VALUE below, computed with the real
-# compute_z/compute_zidx functions (offline_particles.kernels.roms._vertical_coordinate); this
+# compute_z/compute_zidx_linear functions (offline_particles.kernels.roms._vertical_coordinate); this
 # choice of Cs_w makes Cs_w == sigma_w, so the S-coordinate transform is exactly invertible.
 _ZIDX, _Z = 1.5, -24.75
 
@@ -574,9 +574,12 @@ def _make_large_vertical_coordinate_fieldset() -> Fieldset:
 
 def test_roms_ab3_timestepper_initialisation_computes_correct_zidx_far_from_placeholder(make_clock) -> None:
     """Issue #147, resolved: placeholder zidx=0.0 has no bearing on which part of Cs_w is seen."""
-    transform = LinearVerticalTransform2(NZ=_NZ_LARGE, hc=_HC, Cs_w=_CS_W_LARGE)
+    transform = LinearVerticalTransform(NZ=_NZ_LARGE, hc=_HC, Cs_w=_CS_W_LARGE)
     z_target = -25.0
-    expected_zidx = compute_zidx(z_target, _H_VALUE, _ZETA_VALUE, _HC, _NZ_LARGE, _CS_W_LARGE, 0.5)
+    tau = _tau_Vtransform_2(_HC, _H_VALUE)
+    expected_zidx = compute_zidx_linear(
+        z_target, _H_VALUE, _ZETA_VALUE, tau, _sigma_w_array(_NZ_LARGE, "linear"), _CS_W_LARGE
+    )
     assert expected_zidx > 13  # sanity-check: far from the placeholder zidx=0.0, in index terms
 
     launcher = Launcher(_make_large_vertical_coordinate_fieldset(), history_size=1)

@@ -1,20 +1,31 @@
-"""Tests for `LinearVerticalTransform2` (issue #147 refactor, stages 1-2).
+"""Tests for `LinearVerticalTransform` (issue #147 refactor, stages 1-2, plus Vtransform 1/2).
 
 `Cs_w` (the stretching function at w points, matching ROMS' own output variable name) is captured
 directly by the dataclass and closed over by the compiled kernels, rather than fetched per-call as
 windowed field data - these tests check construction validation, the deliberately-chosen
-per-instance-only caching behavior, numerical correctness against the existing scalar helpers
-(using the fixed `C_offset=0.5` that maps a continuous rho-point `zidx` onto the w-point array),
-and that the original window-bracketing bug (issue #147) is structurally impossible here, since
-there is no window at all - `Cs_w` is always the complete array.
+per-instance-only caching behavior, numerical correctness against the existing scalar helpers, and
+that the original window-bracketing bug (issue #147) is structurally impossible here, since there
+is no window at all - `Cs_w` is always the complete array. Covers both `Vtransform` values (1 and
+2): structural properties (equality, caching, boundary exactness, round-trip exactness) are
+parametrized across both, while hand-derived numeric checks are kept separate per `Vtransform`
+since the two transforms' formulae genuinely differ.
 """
+
+from typing import Literal
 
 import numpy as np
 import pytest
 
 from offline_particles.fields import FieldData
 from offline_particles.kernels.interpolation import bicubic_interpolation_particle
-from offline_particles.kernels.roms._vertical_coordinate import LinearVerticalTransform2, compute_z, compute_zidx
+from offline_particles.kernels.roms._vertical_coordinate import (
+    LinearVerticalTransform,
+    VerticalTransform,
+    _sigma_w_array,
+    _tau_Vtransform_2,
+    compute_z,
+    compute_zidx_linear,
+)
 from offline_particles.kernels.status import INACTIVE_FLAG, Status
 
 
@@ -34,28 +45,28 @@ def _nonlinear_Cs_w(NZ: int) -> np.ndarray:
 
 def test_rejects_NZ_below_2() -> None:
     with pytest.raises(ValueError, match="NZ"):
-        LinearVerticalTransform2(NZ=1, hc=5.0, Cs_w=_linear_Cs_w(1))
+        LinearVerticalTransform(NZ=1, hc=5.0, Cs_w=_linear_Cs_w(1))
 
 
 @pytest.mark.parametrize("hc", [0.0, -1.0])
 def test_rejects_non_positive_hc(hc: float) -> None:
     with pytest.raises(ValueError, match="hc"):
-        LinearVerticalTransform2(NZ=2, hc=hc, Cs_w=_linear_Cs_w(2))
+        LinearVerticalTransform(NZ=2, hc=hc, Cs_w=_linear_Cs_w(2))
 
 
 def test_rejects_Cs_w_with_wrong_length() -> None:
     with pytest.raises(ValueError, match="Cs_w"):
-        LinearVerticalTransform2(NZ=4, hc=5.0, Cs_w=_linear_Cs_w(3))  # NZ+1 != 4+1
+        LinearVerticalTransform(NZ=4, hc=5.0, Cs_w=_linear_Cs_w(3))  # NZ+1 != 4+1
 
 
 def test_rejects_Cs_w_with_wrong_ndim() -> None:
     with pytest.raises(ValueError, match="Cs_w"):
-        LinearVerticalTransform2(NZ=4, hc=5.0, Cs_w=np.zeros((2, 2)))
+        LinearVerticalTransform(NZ=4, hc=5.0, Cs_w=np.zeros((2, 2)))
 
 
 def test_rejects_Cs_w_that_is_not_strictly_increasing() -> None:
     with pytest.raises(ValueError, match="strictly increasing"):
-        LinearVerticalTransform2(NZ=3, hc=5.0, Cs_w=np.array([-1.0, -0.6, -0.7, 0.0]))
+        LinearVerticalTransform(NZ=3, hc=5.0, Cs_w=np.array([-1.0, -0.6, -0.7, 0.0]))
 
 
 @pytest.mark.parametrize("bad_first_value", [-0.9, -1.1])
@@ -63,7 +74,7 @@ def test_rejects_Cs_w_with_wrong_lower_boundary(bad_first_value: float) -> None:
     Cs_w = _linear_Cs_w(3)
     Cs_w[0] = bad_first_value
     with pytest.raises(ValueError, match=r"Cs_w\[0\]"):
-        LinearVerticalTransform2(NZ=3, hc=5.0, Cs_w=np.sort(Cs_w))
+        LinearVerticalTransform(NZ=3, hc=5.0, Cs_w=np.sort(Cs_w))
 
 
 @pytest.mark.parametrize("bad_last_value", [0.1, -0.1])
@@ -71,12 +82,12 @@ def test_rejects_Cs_w_with_wrong_upper_boundary(bad_last_value: float) -> None:
     Cs_w = _linear_Cs_w(3)
     Cs_w[-1] = bad_last_value
     with pytest.raises(ValueError, match=r"Cs_w\[-1\]"):
-        LinearVerticalTransform2(NZ=3, hc=5.0, Cs_w=np.sort(Cs_w))
+        LinearVerticalTransform(NZ=3, hc=5.0, Cs_w=np.sort(Cs_w))
 
 
 def test_Cs_w_is_defensively_copied_and_read_only() -> None:
     original = _linear_Cs_w(3)
-    transform = LinearVerticalTransform2(NZ=3, hc=5.0, Cs_w=original)
+    transform = LinearVerticalTransform(NZ=3, hc=5.0, Cs_w=original)
 
     assert transform.Cs_w is not original
     assert not transform.Cs_w.flags.writeable
@@ -85,7 +96,7 @@ def test_Cs_w_is_defensively_copied_and_read_only() -> None:
 
 
 def test_horizontal_stencil_half_width_defaults_to_1() -> None:
-    transform = LinearVerticalTransform2(NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3))
+    transform = LinearVerticalTransform(NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3))
 
     assert transform.horizontal_stencil_half_width == 1
 
@@ -93,17 +104,63 @@ def test_horizontal_stencil_half_width_defaults_to_1() -> None:
 @pytest.mark.parametrize("horizontal_stencil_half_width", [0, -1])
 def test_rejects_non_positive_horizontal_stencil_half_width(horizontal_stencil_half_width: int) -> None:
     with pytest.raises(ValueError, match="horizontal_stencil_half_width"):
-        LinearVerticalTransform2(
+        LinearVerticalTransform(
             NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3), horizontal_stencil_half_width=horizontal_stencil_half_width
         )
 
 
+def test_sigma_method_defaults_to_linear() -> None:
+    transform = LinearVerticalTransform(NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3))
+
+    assert transform.sigma_method == "linear"
+
+
+def test_rejects_invalid_sigma_method() -> None:
+    with pytest.raises(ValueError, match="sigma_method"):
+        LinearVerticalTransform(
+            NZ=3,
+            hc=5.0,
+            Cs_w=_linear_Cs_w(3),
+            sigma_method="cubic",  # ty: ignore[invalid-argument-type]
+        )
+
+
+def test_Vtransform_defaults_to_2() -> None:
+    transform = LinearVerticalTransform(NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3))
+
+    assert transform.Vtransform == 2
+
+
+def test_rejects_invalid_Vtransform() -> None:
+    with pytest.raises(ValueError, match="Vtransform"):
+        LinearVerticalTransform(
+            NZ=3,
+            hc=5.0,
+            Cs_w=_linear_Cs_w(3),
+            Vtransform=3,  # ty: ignore[invalid-argument-type]
+        )
+
+
+def test_ABC_validation_still_runs_when_subclass_post_init_forgets_nothing() -> None:
+    """Regression guard: LinearVerticalTransform.__post_init__ must call super().__post_init__().
+
+    If it didn't, none of VerticalTransform's NZ/hc/Cs_w/sigma_method/Vtransform validation would
+    run at all.
+    """
+    with pytest.raises(ValueError, match=r"Cs_w\[0\]"):
+        bad_Cs_w = _linear_Cs_w(3)
+        bad_Cs_w[0] = -0.9
+        LinearVerticalTransform(NZ=3, hc=5.0, Cs_w=np.sort(bad_Cs_w))
+
+
 # --- the w-point boundary values are interpolated exactly, not extrapolated ---
+# --- (holds for any Vtransform/tau, since Cs_w[0]=sigma_w[0]=-1 and Cs_w[-1]=sigma_w[-1]=0) ---
 
 
-def test_z_at_the_exact_seafloor_and_surface_matches_minus_h_and_zeta() -> None:
+@pytest.mark.parametrize("Vtransform", [1, 2])
+def test_z_at_the_exact_seafloor_and_surface_matches_minus_h_and_zeta(Vtransform: Literal[1, 2]) -> None:
     NZ, hc, h, zeta = 20, 5.0, 45.0, 1.0
-    transform = LinearVerticalTransform2(NZ=NZ, hc=hc, Cs_w=_nonlinear_Cs_w(NZ))
+    transform = LinearVerticalTransform(NZ=NZ, hc=hc, Cs_w=_nonlinear_Cs_w(NZ), Vtransform=Vtransform)
     kernel = transform.compute_z_kernel()
 
     def _z_at(zidx: float) -> float:
@@ -138,7 +195,7 @@ def test_horizontal_stencil_half_width_2_matches_bicubic_interpolation_particle(
     zeta_array = np.full((6, 6), 0.5) + 0.1 * jj**2
     yidx, xidx, zidx = np.float64(2.3), np.float64(2.7), np.float64(1.0)
 
-    transform = LinearVerticalTransform2(NZ=NZ, hc=hc, Cs_w=Cs_w, horizontal_stencil_half_width=2)
+    transform = LinearVerticalTransform(NZ=NZ, hc=hc, Cs_w=Cs_w, horizontal_stencil_half_width=2)
     kernel = transform.compute_z_kernel()
     particle_properties = {
         "status": np.zeros(1, dtype=np.uint8),
@@ -154,8 +211,11 @@ def test_horizontal_stencil_half_width_2_matches_bicubic_interpolation_particle(
     expected_zeta = bicubic_interpolation_particle(
         zeta_array, yidx, xidx, zeta_array.shape[0] - 4, zeta_array.shape[1] - 4
     )
-    expected_C_value = np.interp(zidx + 0.5, np.arange(NZ + 1, dtype=np.float64), Cs_w)
-    expected_z = compute_z(zidx, NZ, hc, expected_h, expected_C_value, expected_zeta)
+    nodes = np.arange(NZ + 1, dtype=np.float64)
+    expected_sigma_value = np.interp(zidx + 0.5, nodes, _sigma_w_array(NZ, "linear"))
+    expected_C_value = np.interp(zidx + 0.5, nodes, Cs_w)
+    expected_tau = _tau_Vtransform_2(hc, expected_h)
+    expected_z = compute_z(expected_sigma_value, expected_tau, expected_h, expected_C_value, expected_zeta)
     assert particle_properties["z"][0] == pytest.approx(expected_z)
 
 
@@ -176,11 +236,11 @@ def test_horizontal_stencil_half_width_1_and_2_give_different_results_for_a_curv
     field_data = {"h": FieldData(h_array, (0.0, 0.0)), "zeta": FieldData(zeta_array, (0.0, 0.0))}
 
     pp1 = {k: np.array(v) for k, v in particle_properties_template.items()}
-    LinearVerticalTransform2(NZ=NZ, hc=hc, Cs_w=Cs_w, horizontal_stencil_half_width=1).compute_z_kernel()(
+    LinearVerticalTransform(NZ=NZ, hc=hc, Cs_w=Cs_w, horizontal_stencil_half_width=1).compute_z_kernel()(
         pp1, {}, field_data
     )
     pp2 = {k: np.array(v) for k, v in particle_properties_template.items()}
-    LinearVerticalTransform2(NZ=NZ, hc=hc, Cs_w=Cs_w, horizontal_stencil_half_width=2).compute_z_kernel()(
+    LinearVerticalTransform(NZ=NZ, hc=hc, Cs_w=Cs_w, horizontal_stencil_half_width=2).compute_z_kernel()(
         pp2, {}, field_data
     )
 
@@ -190,7 +250,7 @@ def test_horizontal_stencil_half_width_1_and_2_give_different_results_for_a_curv
 def test_rejects_h_field_too_small_for_the_stencil() -> None:
     NZ, hc = 3, 5.0
     Cs_w = _linear_Cs_w(NZ)
-    transform = LinearVerticalTransform2(NZ=NZ, hc=hc, Cs_w=Cs_w, horizontal_stencil_half_width=2)
+    transform = LinearVerticalTransform(NZ=NZ, hc=hc, Cs_w=Cs_w, horizontal_stencil_half_width=2)
     kernel = transform.compute_z_kernel()
 
     particle_properties = {
@@ -209,13 +269,13 @@ def test_rejects_h_field_too_small_for_the_stencil() -> None:
         kernel(particle_properties, {}, field_data)
 
 
-# --- equality is value-based (NZ, hc, horizontal_stencil_half_width, every element of Cs_w); ---
-# --- instances are therefore unhashable, since __eq__ is defined without a matching __hash__ ---
+# --- equality is value-based (every dataclass field); instances are therefore unhashable, ---
+# --- since __eq__ is defined without a matching __hash__ ---
 
 
 def test_equal_valued_instances_are_equal() -> None:
-    a = LinearVerticalTransform2(NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3))
-    b = LinearVerticalTransform2(NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3))
+    a = LinearVerticalTransform(NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3))
+    b = LinearVerticalTransform(NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3))
 
     assert a == b
     assert a is not b
@@ -228,28 +288,51 @@ def test_equal_valued_instances_are_equal() -> None:
         {"NZ": 3, "hc": 6.0, "Cs_w": _linear_Cs_w(3)},
         {"NZ": 3, "hc": 5.0, "Cs_w": _linear_Cs_w(3), "horizontal_stencil_half_width": 2},
         {"NZ": 3, "hc": 5.0, "Cs_w": _nonlinear_Cs_w(3)},
+        {"NZ": 3, "hc": 5.0, "Cs_w": _linear_Cs_w(3), "sigma_method": "quadratic"},
+        {"NZ": 3, "hc": 5.0, "Cs_w": _linear_Cs_w(3), "Vtransform": 1},
     ],
-    ids=["different_NZ", "different_hc", "different_horizontal_stencil_half_width", "different_Cs_w"],
+    ids=[
+        "different_NZ",
+        "different_hc",
+        "different_horizontal_stencil_half_width",
+        "different_Cs_w",
+        "different_sigma_method",
+        "different_Vtransform",
+    ],
 )
 def test_instances_differing_in_any_field_are_not_equal(other_kwargs: dict) -> None:
-    a = LinearVerticalTransform2(NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3))
-    b = LinearVerticalTransform2(**other_kwargs)
+    a = LinearVerticalTransform(NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3))
+    b = LinearVerticalTransform(**other_kwargs)
 
     assert a != b
 
 
 def test_not_equal_to_an_unrelated_object() -> None:
-    a = LinearVerticalTransform2(NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3))
+    a = LinearVerticalTransform(NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3))
 
     assert a != "not a transform"
 
 
 def test_instances_are_not_hashable() -> None:
     """Intentional per the class docstring: a content-based __hash__ was deliberately not added."""
-    transform = LinearVerticalTransform2(NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3))
+    transform = LinearVerticalTransform(NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3))
 
     with pytest.raises(TypeError, match="unhashable"):
         hash(transform)
+
+
+# --- ABC behavior ---
+
+
+def test_vertical_transform_cannot_be_instantiated_directly() -> None:
+    with pytest.raises(TypeError, match="abstract"):
+        VerticalTransform(NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3))
+
+
+def test_linear_vertical_transform_is_a_vertical_transform() -> None:
+    transform = LinearVerticalTransform(NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3))
+
+    assert isinstance(transform, VerticalTransform)
 
 
 # --- caching is per-instance only, not cross-instance ---
@@ -257,7 +340,7 @@ def test_instances_are_not_hashable() -> None:
 
 @pytest.mark.parametrize("method_name", ["compute_z_kernel", "compute_zidx_kernel"])
 def test_same_instance_same_only_initialising_returns_the_same_object(method_name: str) -> None:
-    transform = LinearVerticalTransform2(NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3))
+    transform = LinearVerticalTransform(NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3))
     method = getattr(transform, method_name)
 
     assert method(only_initialising=False) is method(only_initialising=False)
@@ -266,7 +349,7 @@ def test_same_instance_same_only_initialising_returns_the_same_object(method_nam
 
 @pytest.mark.parametrize("method_name", ["compute_z_kernel", "compute_zidx_kernel"])
 def test_same_instance_different_only_initialising_returns_different_objects(method_name: str) -> None:
-    transform = LinearVerticalTransform2(NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3))
+    transform = LinearVerticalTransform(NZ=3, hc=5.0, Cs_w=_linear_Cs_w(3))
     method = getattr(transform, method_name)
 
     assert method(only_initialising=False) is not method(only_initialising=True)
@@ -276,21 +359,24 @@ def test_same_instance_different_only_initialising_returns_different_objects(met
 def test_different_instances_with_equal_values_do_not_share_a_cached_kernel(method_name: str) -> None:
     """Documents the trade-off: no cross-instance caching, unlike the old @cache'd hc/NZ factories."""
     Cs_w = _linear_Cs_w(3)
-    a = LinearVerticalTransform2(NZ=3, hc=5.0, Cs_w=Cs_w)
-    b = LinearVerticalTransform2(NZ=3, hc=5.0, Cs_w=Cs_w)
+    a = LinearVerticalTransform(NZ=3, hc=5.0, Cs_w=Cs_w)
+    b = LinearVerticalTransform(NZ=3, hc=5.0, Cs_w=Cs_w)
 
     assert getattr(a, method_name)() is not getattr(b, method_name)()
 
 
 # --- numerical correctness, against the existing scalar helpers ---
+# --- Vtransform=1 and Vtransform=2 get their own hand-derived examples: the formulae genuinely ---
+# --- differ, so each is checked against its own worked-out expected value ---
 
 
-def test_compute_z_kernel_matches_hand_derivation() -> None:
+def test_compute_z_kernel_matches_hand_derivation_Vtransform_2() -> None:
     # NZ=4, hc=5.0, h=45.0, zeta=1.0, zidx=1.5, Cs_w == sigma_w -> local index zidx+0.5 == 2.0
-    # exactly, Cs_w[2] == -0.5 -> z == -22.0 (same hand-derived case as
-    # test_vertical_coordinate_helpers.py, since Cs_w==sigma_w degenerates identically to C==sigma)
+    # exactly, Cs_w[2] == -0.5, tau = hc/(hc+h) = 0.1 -> S == -0.5 -> z == -22.0 (same hand-derived
+    # case as test_vertical_coordinate_helpers.py, since Cs_w==sigma_w degenerates identically to
+    # C==sigma, so S==sigma==-0.5 regardless of tau)
     NZ, hc, h, zeta, zidx = 4, 5.0, 45.0, 1.0, 1.5
-    transform = LinearVerticalTransform2(NZ=NZ, hc=hc, Cs_w=_linear_Cs_w(NZ))
+    transform = LinearVerticalTransform(NZ=NZ, hc=hc, Cs_w=_linear_Cs_w(NZ))
     kernel = transform.compute_z_kernel()
 
     particle_properties = {
@@ -309,11 +395,36 @@ def test_compute_z_kernel_matches_hand_derivation() -> None:
     assert particle_properties["z"][0] == pytest.approx(-22.0)
 
 
+def test_compute_z_kernel_matches_hand_derivation_Vtransform_1() -> None:
+    # NZ=4, hc=5.0, h=50.0, zeta=1.0, zidx=1.5 (hc <= h, satisfying the Vtransform=1 caveat):
+    # local index zidx+0.5 == 2.0 exactly -> sigma = sigma_w[2] = -0.5, C = Cs_w[2] = -0.575
+    # (_nonlinear_Cs_w(4)[2] = -0.5 + 0.3*(-0.5)*0.5 = -0.575); tau = hc/h = 0.1
+    # S = 0.1*(-0.5) + 0.9*(-0.575) = -0.5675; z = 1.0 + 51*(-0.5675) = -27.9425
+    NZ, hc, h, zeta, zidx = 4, 5.0, 50.0, 1.0, 1.5
+    transform = LinearVerticalTransform(NZ=NZ, hc=hc, Cs_w=_nonlinear_Cs_w(NZ), Vtransform=1)
+    kernel = transform.compute_z_kernel()
+
+    particle_properties = {
+        "status": np.zeros(1, dtype=np.uint8),
+        "zidx": np.array([zidx]),
+        "yidx": np.array([1.5]),
+        "xidx": np.array([1.5]),
+        "z": np.array([np.nan]),
+    }
+    field_data = {
+        "h": FieldData(np.full((2, 2), h), (0.0, 0.0)),
+        "zeta": FieldData(np.full((2, 2), zeta), (0.0, 0.0)),
+    }
+    kernel(particle_properties, {}, field_data)
+
+    assert particle_properties["z"][0] == pytest.approx(-27.9425)
+
+
 @pytest.mark.parametrize("z", [-1000.0, -22.0, -10.0, 5.0, 200.0])
 def test_compute_zidx_kernel_matches_scalar_helper_with_nonlinear_Cs_w(z: float) -> None:
     NZ, hc, h, zeta = 4, 5.0, 50.0, 0.5
     Cs_w = _nonlinear_Cs_w(NZ)
-    transform = LinearVerticalTransform2(NZ=NZ, hc=hc, Cs_w=Cs_w)
+    transform = LinearVerticalTransform(NZ=NZ, hc=hc, Cs_w=Cs_w)
     kernel = transform.compute_zidx_kernel()
 
     particle_properties = {
@@ -329,14 +440,16 @@ def test_compute_zidx_kernel_matches_scalar_helper_with_nonlinear_Cs_w(z: float)
     }
     kernel(particle_properties, {}, field_data)
 
-    expected_zidx = compute_zidx(z, h, zeta, hc, NZ, Cs_w, 0.5)
+    tau = _tau_Vtransform_2(hc, h)
+    expected_zidx = compute_zidx_linear(z, h, zeta, tau, _sigma_w_array(NZ, "linear"), Cs_w)
     assert particle_properties["zidx"][0] == pytest.approx(expected_zidx)
 
 
-def test_compute_z_and_compute_zidx_kernels_round_trip() -> None:
+@pytest.mark.parametrize("Vtransform", [1, 2])
+def test_compute_z_and_compute_zidx_kernels_round_trip(Vtransform: Literal[1, 2]) -> None:
     NZ, hc, h, zeta, zidx = 6, 5.0, 45.0, 1.0, 2.5
     Cs_w = _nonlinear_Cs_w(NZ)
-    transform = LinearVerticalTransform2(NZ=NZ, hc=hc, Cs_w=Cs_w)
+    transform = LinearVerticalTransform(NZ=NZ, hc=hc, Cs_w=Cs_w, Vtransform=Vtransform)
 
     particle_properties = {
         "status": np.zeros(1, dtype=np.uint8),
@@ -355,10 +468,39 @@ def test_compute_z_and_compute_zidx_kernels_round_trip() -> None:
     assert particle_properties["zidx"][0] == pytest.approx(zidx)
 
 
+@pytest.mark.parametrize("Vtransform", [1, 2])
+def test_compute_z_and_compute_zidx_kernels_round_trip_with_quadratic_sigma_method(Vtransform: Literal[1, 2]) -> None:
+    """The quadratic-sigma inversion is exact, at the same tight tolerance as linear sigma.
+
+    Both sigma and C are only ever defined/interpolated at the w points (see the module
+    docstring), so the inverse is an exact inverse of the forward transform regardless of
+    `sigma_method` or `Vtransform`.
+    """
+    NZ, hc, h, zeta, zidx = 6, 5.0, 45.0, 1.0, 2.5
+    Cs_w = _nonlinear_Cs_w(NZ)
+    transform = LinearVerticalTransform(NZ=NZ, hc=hc, Cs_w=Cs_w, sigma_method="quadratic", Vtransform=Vtransform)
+
+    particle_properties = {
+        "status": np.zeros(1, dtype=np.uint8),
+        "zidx": np.array([zidx]),
+        "yidx": np.array([1.5]),
+        "xidx": np.array([1.5]),
+        "z": np.array([np.nan]),
+    }
+    field_data = {
+        "h": FieldData(np.full((2, 2), h), (0.0, 0.0)),
+        "zeta": FieldData(np.full((2, 2), zeta), (0.0, 0.0)),
+    }
+    transform.compute_z_kernel()(particle_properties, {}, field_data)
+    transform.compute_zidx_kernel()(particle_properties, {}, field_data)
+
+    assert particle_properties["zidx"][0] == pytest.approx(zidx, rel=1e-9, abs=1e-9)
+
+
 def test_only_initialising_updates_initialising_particles_only() -> None:
     NZ, hc, h, zeta = 4, 5.0, 50.0, 0.5
     Cs_w = _nonlinear_Cs_w(NZ)
-    transform = LinearVerticalTransform2(NZ=NZ, hc=hc, Cs_w=Cs_w)
+    transform = LinearVerticalTransform(NZ=NZ, hc=hc, Cs_w=Cs_w)
     kernel = transform.compute_zidx_kernel(only_initialising=True)
 
     particle_properties = {
@@ -384,7 +526,7 @@ def test_only_initialising_updates_initialising_particles_only() -> None:
 def test_skips_inactive_particles() -> None:
     NZ, hc, h, zeta = 4, 5.0, 50.0, 0.5
     Cs_w = _nonlinear_Cs_w(NZ)
-    transform = LinearVerticalTransform2(NZ=NZ, hc=hc, Cs_w=Cs_w)
+    transform = LinearVerticalTransform(NZ=NZ, hc=hc, Cs_w=Cs_w)
     kernel = transform.compute_zidx_kernel()
 
     particle_properties = {
@@ -412,7 +554,7 @@ def test_computes_the_correct_zidx_far_from_index_zero_with_no_bracketing_window
     HC, H, ZETA, NZ = 5.0, 45.0, 1.0, 20
     Cs_w = -1.0 + (np.arange(NZ + 1, dtype=np.float64) / NZ) ** 2  # exact boundaries, strictly increasing
     z = -30.0  # true zidx far from the zero-fill placeholder; old windowed approach got it wrong
-    transform = LinearVerticalTransform2(NZ=NZ, hc=HC, Cs_w=Cs_w)
+    transform = LinearVerticalTransform(NZ=NZ, hc=HC, Cs_w=Cs_w)
     kernel = transform.compute_zidx_kernel()
 
     particle_properties = {
@@ -428,7 +570,8 @@ def test_computes_the_correct_zidx_far_from_index_zero_with_no_bracketing_window
     }
     kernel(particle_properties, {}, field_data)
 
-    expected_zidx = compute_zidx(z, H, ZETA, HC, NZ, Cs_w, 0.5)
+    tau = _tau_Vtransform_2(HC, H)
+    expected_zidx = compute_zidx_linear(z, H, ZETA, tau, _sigma_w_array(NZ, "linear"), Cs_w)
     assert expected_zidx > 8  # sanity-check: this would NOT have been bracketed by a small window
     assert particle_properties["zidx"][0] == pytest.approx(expected_zidx)
 
@@ -437,7 +580,7 @@ def test_compute_z_matches_scalar_helper_used_directly() -> None:
     """Sanity-check that the kernel's per-particle math is literally `compute_z`, unchanged."""
     NZ, hc, h, zeta, zidx = 10, 7.5, 60.0, 0.8, 4.25
     Cs_w = _nonlinear_Cs_w(NZ)
-    transform = LinearVerticalTransform2(NZ=NZ, hc=hc, Cs_w=Cs_w)
+    transform = LinearVerticalTransform(NZ=NZ, hc=hc, Cs_w=Cs_w)
     kernel = transform.compute_z_kernel()
 
     particle_properties = {
@@ -453,6 +596,9 @@ def test_compute_z_matches_scalar_helper_used_directly() -> None:
     }
     kernel(particle_properties, {}, field_data)
 
-    C_value = np.interp(zidx + 0.5, np.arange(NZ + 1, dtype=np.float64), Cs_w)
-    expected_z = compute_z(zidx, NZ, hc, h, C_value, zeta)
+    nodes = np.arange(NZ + 1, dtype=np.float64)
+    sigma_value = np.interp(zidx + 0.5, nodes, _sigma_w_array(NZ, "linear"))
+    C_value = np.interp(zidx + 0.5, nodes, Cs_w)
+    tau = _tau_Vtransform_2(hc, h)
+    expected_z = compute_z(sigma_value, tau, h, C_value, zeta)
     assert particle_properties["z"][0] == pytest.approx(expected_z)

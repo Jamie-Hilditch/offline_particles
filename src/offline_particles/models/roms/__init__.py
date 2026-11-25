@@ -11,7 +11,9 @@ from ...kernels.relaxation import (
     construct_quadratic_damping_kernel,
 )
 from ...kernels.roms import (
-    LinearVerticalTransform2,
+    CubicVerticalTransform,
+    LinearVerticalTransform,
+    VerticalTransform,
     construct_compute_z_kernel,
     construct_compute_zidx_kernel,
 )
@@ -20,7 +22,9 @@ from ...spatial_arrays import ArrayAxis, ArrayLayout, Stagger
 from ...timestepping import ABTimestepper
 
 __all__ = [
-    "LinearVerticalTransform2",
+    "CubicVerticalTransform",
+    "LinearVerticalTransform",
+    "VerticalTransform",
     "construct_compute_z_kernel",
     "construct_compute_zidx_kernel",
     "roms_ab3_timestepper",
@@ -34,7 +38,7 @@ _DENSITY_FIELD_ARRAY_LAYOUT = ArrayLayout(
 
 
 def roms_ab3_timestepper(
-    transform: LinearVerticalTransform2,
+    transform: VerticalTransform,
     *,
     vertical_velocity: bool = True,
     index_padding: int = 5,
@@ -61,9 +65,9 @@ def roms_ab3_timestepper(
 
     Parameters
     ----------
-    transform : LinearVerticalTransform2
-        The ROMS vertical transform, defining `NZ`, `hc`, `Cs_w`, and the horizontal interpolation
-        order used for the vertical-coordinate kernels.
+    transform : VerticalTransform
+        The ROMS vertical transform, defining `NZ`, `hc`, `Cs_w`, `sigma_method`, and
+        `Vtransform`.
     vertical_velocity : bool, optional
         Whether to include vertical velocity advection (default True).
     index_padding : int, optional

@@ -10,10 +10,12 @@ from .._kernels import (
 )
 from ..input_declarations import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
 from ..layout_validators import validate_YX_ordering
-from ._vertical_coordinate import LinearVerticalTransform2
+from ._vertical_coordinate import CubicVerticalTransform, LinearVerticalTransform, VerticalTransform
 
 __all__ = [
-    "LinearVerticalTransform2",
+    "CubicVerticalTransform",
+    "LinearVerticalTransform",
+    "VerticalTransform",
     "construct_compute_z_kernel",
     "construct_compute_zidx_kernel",
 ]
@@ -24,7 +26,7 @@ zeta_declaration = FieldDataDeclaration("zeta", np.floating, [validate_YX_orderi
 
 
 def construct_compute_z_kernel(
-    transform: LinearVerticalTransform2,
+    transform: VerticalTransform,
     z: str = "z",
     h: str = "h",
     zeta: str = "zeta",
@@ -34,8 +36,8 @@ def construct_compute_z_kernel(
 
     Parameters
     ----------
-    transform : LinearVerticalTransform2
-        The vertical transform defining `NZ`, `hc`, `Cs_w`, and the horizontal interpolation order.
+    transform : VerticalTransform
+        The vertical transform defining `NZ`, `hc`, `Cs_w`, `sigma_method`, and `Vtransform`.
     z : str, optional
         Binding for the particle property to store the computed physical vertical position.
     h : str, optional
@@ -81,7 +83,7 @@ def construct_compute_z_kernel(
 
 
 def construct_compute_zidx_kernel(
-    transform: LinearVerticalTransform2,
+    transform: VerticalTransform,
     z: str = "z",
     h: str = "h",
     zeta: str = "zeta",
@@ -91,8 +93,8 @@ def construct_compute_zidx_kernel(
 
     Parameters
     ----------
-    transform : LinearVerticalTransform2
-        The vertical transform defining `NZ`, `hc`, `Cs_w`, and the horizontal interpolation order.
+    transform : VerticalTransform
+        The vertical transform defining `NZ`, `hc`, `Cs_w`, `sigma_method`, and `Vtransform`.
     z : str, optional
         Binding for the particle property giving the physical vertical position.
     h : str, optional

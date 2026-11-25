@@ -14,7 +14,7 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 
-from offline_particles.kernels.status import INACTIVE_FLAG
+_W_OFFSET = 0.5
 
 # --- interpolation helpers, mirroring the linear-interpolation kernel implementation ---
 
@@ -52,17 +52,47 @@ def bilinear_interpolation(array: npt.NDArray[np.float64], idx0: float, idx1: fl
     return g0 * g1 * v00 + g0 * f1 * v01 + f0 * g1 * v10 + f0 * f1 * v11
 
 
-# --- core S-coordinate transform, mirroring _vertical_coordinate.py ---
+# --- sigma coordinate at w points, mirroring _vertical_coordinate.py ---
 
 
-# mirrors _sigma_coordinate
-def sigma_coordinate(zidx: float, Nz: int) -> float:
+# mirrors _sigma_coordinate_linear
+def sigma_coordinate_linear(zidx: float, Nz: int) -> float:
     return (zidx + 0.5) / Nz - 1.0
 
 
+# mirrors _sigma_coordinate_quadratic
+def sigma_coordinate_quadratic(zidx: float, Nz: int) -> float:
+    x = zidx + 0.5
+    N = float(Nz)
+    return -(x**2 - 2.0 * x * N + x + N**2 - N) / (N**2 - N) - 0.01 * (x**2 - x * N) / (1.0 - N)
+
+
+# mirrors _sigma_w_array
+def sigma_w_array(NZ: int, sigma_method: str) -> npt.NDArray[np.float64]:
+    sigma_fn = sigma_coordinate_quadratic if sigma_method == "quadratic" else sigma_coordinate_linear
+    k = np.arange(NZ + 1, dtype=np.float64)
+    return np.array([sigma_fn(ki - _W_OFFSET, NZ) for ki in k])
+
+
+# --- ROMS vertical transform (tau), mirroring _vertical_coordinate.py ---
+
+
+# mirrors _tau_Vtransform_1
+def tau_Vtransform_1(hc: float, h: float) -> float:
+    return hc / h
+
+
+# mirrors _tau_Vtransform_2
+def tau_Vtransform_2(hc: float, h: float) -> float:
+    return hc / (hc + h)
+
+
+# --- core S-coordinate transform, mirroring _vertical_coordinate.py ---
+
+
 # mirrors _S_coordinate
-def S_coordinate(hc: float, sigma: float, h: float, C: float) -> float:
-    return (hc * sigma + h * C) / (hc + h)
+def S_coordinate(tau: float, sigma: float, C: float) -> float:
+    return tau * sigma + (1.0 - tau) * C
 
 
 # mirrors _z_coordinate
@@ -70,10 +100,9 @@ def z_coordinate(S: float, h: float, zeta: float) -> float:
     return zeta + (zeta + h) * S
 
 
-# mirrors compute_z: physical vertical coordinate from the vertical index
-def compute_z(zidx: float, Nz: int, hc: float, h: float, C: float, zeta: float) -> float:
-    sigma = sigma_coordinate(zidx, Nz)
-    S = S_coordinate(hc, sigma, h, C)
+# mirrors compute_z: physical vertical coordinate from already-resolved sigma and C values
+def compute_z(sigma: float, tau: float, h: float, C: float, zeta: float) -> float:
+    S = S_coordinate(tau, sigma, C)
     return z_coordinate(S, h, zeta)
 
 
@@ -82,34 +111,72 @@ def S_from_z(z: float, h: float, zeta: float) -> float:
     return (z - zeta) / (zeta + h)
 
 
-# mirrors _sigma_from_Cidx
-def sigma_from_Cidx(Cidx: int, C_offset: float, Nz: int) -> float:
-    return sigma_coordinate(Cidx - C_offset, Nz)
-
-
-# mirrors _compute_Cidx_from_S: binary search over the stretching function array
-def compute_Cidx_from_S(
+# mirrors _compute_widx_from_S: interpolation-guided search over the stretching function array
+def compute_widx_from_S(
     S: float,
-    hc: float,
-    NZ: int,
-    h: float,
-    zeta: float,
+    tau: float,
+    sigma_w: npt.NDArray[np.float64],
     C: npt.NDArray[np.float64],
-    C_offset: float,
 ) -> int:
     C_size = C.shape[0]
-    lo = 0
-    hi = C_size - 2
+    hi0 = C_size - 2
 
     # boundary clamps, exactly as documented in the kernel implementation's docstring
-    if S <= S_coordinate(hc, sigma_from_Cidx(0, C_offset, NZ), h, C[0]):
+    S0 = S_coordinate(tau, sigma_w[0], C[0])
+    S_end = S_coordinate(tau, sigma_w[hi0], C[hi0])
+    if S <= S0:
         return 0
-    if S >= S_coordinate(hc, sigma_from_Cidx(C_size - 2, C_offset, NZ), h, C[C_size - 2]):
-        return C_size - 2
+    if S >= S_end:
+        return hi0
+
+    frac = (S - S0) / (S_end - S0)
+    guess = int(frac * hi0)
+    if guess < 0:
+        guess = 0
+    elif guess > hi0:
+        guess = hi0
+
+    S_guess = S_coordinate(tau, sigma_w[guess], C[guess])
+    if S_guess <= S:
+        lo = guess
+        probe = guess
+        step = 1
+        found = False
+        while not found:
+            probe = probe + step
+            if probe >= hi0:
+                probe = hi0
+                found = True
+            else:
+                S_probe = S_coordinate(tau, sigma_w[probe], C[probe])
+                if S_probe > S:
+                    found = True
+                else:
+                    lo = probe
+            step = step * 2
+        hi = probe
+    else:
+        hi = guess
+        probe = guess
+        step = 1
+        found = False
+        while not found:
+            probe = probe - step
+            if probe <= 0:
+                probe = 0
+                found = True
+            else:
+                S_probe = S_coordinate(tau, sigma_w[probe], C[probe])
+                if S_probe <= S:
+                    found = True
+                else:
+                    hi = probe
+            step = step * 2
+        lo = probe
 
     while lo < hi - 1:
         mid = (lo + hi) // 2
-        S_mid = S_coordinate(hc, sigma_from_Cidx(mid, C_offset, NZ), h, C[mid])
+        S_mid = S_coordinate(tau, sigma_w[mid], C[mid])
         if S_mid <= S:
             lo = mid
         else:
@@ -117,76 +184,143 @@ def compute_Cidx_from_S(
     return lo
 
 
-# mirrors _zidx_from_S
-def zidx_from_S(
+# mirrors _linear_zidx_from_S
+def linear_zidx_from_S(
     S: float,
-    hc: float,
-    NZ: int,
-    h: float,
-    zeta: float,
+    tau: float,
+    sigma_w: npt.NDArray[np.float64],
     C: npt.NDArray[np.float64],
-    C_offset: float,
 ) -> float:
-    Cidx = compute_Cidx_from_S(S, hc, NZ, h, zeta, C, C_offset)
-    S_low = S_coordinate(hc, sigma_from_Cidx(Cidx, C_offset, NZ), h, C[Cidx])
-    S_high = S_coordinate(hc, sigma_from_Cidx(Cidx + 1, C_offset, NZ), h, C[Cidx + 1])
+    widx = compute_widx_from_S(S, tau, sigma_w, C)
+    S_low = S_coordinate(tau, sigma_w[widx], C[widx])
+    S_high = S_coordinate(tau, sigma_w[widx + 1], C[widx + 1])
     f = (S - S_low) / (S_high - S_low)
-    return Cidx - C_offset + f
+    return widx - _W_OFFSET + f
 
 
-# mirrors compute_zidx: vertical index from the physical vertical coordinate
-def compute_zidx(
+# mirrors compute_zidx_linear: vertical index from the physical vertical coordinate, linearly
+def compute_zidx_linear(
     z: float,
     h: float,
     zeta: float,
-    hc: float,
-    NZ: int,
+    tau: float,
+    sigma_w: npt.NDArray[np.float64],
     C: npt.NDArray[np.float64],
-    C_offset: float,
 ) -> float:
     S = S_from_z(z, h, zeta)
-    return zidx_from_S(S, hc, NZ, h, zeta, C, C_offset)
+    return linear_zidx_from_S(S, tau, sigma_w, C)
 
 
-# --- whole-kernel reference, mirroring _vertical_coordinate.py ---
+# --- monotone cubic Hermite interpolation, mirroring _vertical_coordinate.py ---
 
 
-# reference re-implementation of compute_z_kernel_function
-def reference_compute_z_kernel_function(particle_properties, hc, NZ, field_data) -> None:
-    status = particle_properties["status"]
-    zidx = particle_properties["zidx"]
-    yidx = particle_properties["yidx"]
-    xidx = particle_properties["xidx"]
-    z = particle_properties["z"]
-
-    h_array, h_offy, h_offx = field_data["h"].unpack()
-    zeta_array, zeta_offy, zeta_offx = field_data["zeta"].unpack()
-    C_array, C_offz = field_data["C"].unpack()
-
-    for i in range(status.shape[0]):
-        if status[i] & INACTIVE_FLAG:
-            continue
-        h_value = bilinear_interpolation(h_array, yidx[i] + h_offy, xidx[i] + h_offx)
-        zeta_value = bilinear_interpolation(zeta_array, yidx[i] + zeta_offy, xidx[i] + zeta_offx)
-        C_value = linear_interpolation(C_array, zidx[i] + C_offz)
-        z[i] = compute_z(zidx[i], NZ, hc, h_value, C_value, zeta_value)
+# mirrors _hermite_cubic_coefficients
+def hermite_cubic_coefficients(f0: float, f1: float, d0: float, d1: float) -> tuple[float, float, float, float]:
+    a = 2.0 * f0 + d0 - 2.0 * f1 + d1
+    b = -3.0 * f0 - 2.0 * d0 + 3.0 * f1 - d1
+    return a, b, d0, f0
 
 
-# reference re-implementation of compute_zidx_kernel_function
-def reference_compute_zidx_kernel_function(particle_properties, hc, NZ, field_data) -> None:
-    status = particle_properties["status"]
-    zidx = particle_properties["zidx"]
-    yidx = particle_properties["yidx"]
-    xidx = particle_properties["xidx"]
-    z = particle_properties["z"]
+# mirrors _cubic_eval
+def cubic_eval(a: float, b: float, c: float, d: float, t: float) -> float:
+    return ((a * t + b) * t + c) * t + d
 
-    h_array, h_offy, h_offx = field_data["h"].unpack()
-    zeta_array, zeta_offy, zeta_offx = field_data["zeta"].unpack()
-    C_array, C_offz = field_data["C"].unpack()
 
-    for i in range(status.shape[0]):
-        if status[i] & INACTIVE_FLAG:
-            continue
-        h_value = bilinear_interpolation(h_array, yidx[i] + h_offy, xidx[i] + h_offx)
-        zeta_value = bilinear_interpolation(zeta_array, yidx[i] + zeta_offy, xidx[i] + zeta_offx)
-        zidx[i] = compute_zidx(z[i], h_value, zeta_value, hc, NZ, C_array, C_offz)
+# mirrors _cubic_eval_with_derivatives
+def cubic_eval_with_derivatives(a: float, b: float, c: float, d: float, t: float) -> tuple[float, float, float]:
+    value = ((a * t + b) * t + c) * t + d
+    first_derivative = (3.0 * a * t + 2.0 * b) * t + c
+    second_derivative = 6.0 * a * t + 2.0 * b
+    return value, first_derivative, second_derivative
+
+
+# mirrors _hermite_interpolation_particle
+def hermite_interpolation(
+    value_array: npt.NDArray[np.float64],
+    derivative_array: npt.NDArray[np.float64],
+    offset_idx: float,
+) -> float:
+    I0 = truncate_index(offset_idx, value_array.shape[0] - 2)
+    t = offset_idx - I0
+    a, b, c, d = hermite_cubic_coefficients(
+        value_array[I0], value_array[I0 + 1], derivative_array[I0], derivative_array[I0 + 1]
+    )
+    return cubic_eval(a, b, c, d, t)
+
+
+# mirrors _bessel_node_derivative_array
+def bessel_node_derivative_array(f: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    delta = np.diff(f)
+    derivative = np.empty_like(f)
+    derivative[1:-1] = (delta[:-1] + delta[1:]) / 2.0
+    derivative[0] = (3.0 * delta[0] - delta[1]) / 2.0
+    derivative[-1] = (3.0 * delta[-1] - delta[-2]) / 2.0
+    return derivative
+
+
+# mirrors _hyman_filter_node_derivative_array
+def hyman_filter_node_derivative_array(
+    f: npt.NDArray[np.float64], raw_derivative: npt.NDArray[np.float64]
+) -> npt.NDArray[np.float64]:
+    delta = np.diff(f)
+    derivative = np.empty_like(f)
+    derivative[1:-1] = np.minimum(raw_derivative[1:-1], 3.0 * np.minimum(delta[:-1], delta[1:]))
+    derivative[0] = min(raw_derivative[0], 3.0 * delta[0]) if np.sign(raw_derivative[0]) == np.sign(delta[0]) else 0.0
+    derivative[-1] = (
+        min(raw_derivative[-1], 3.0 * delta[-1]) if np.sign(raw_derivative[-1]) == np.sign(delta[-1]) else 0.0
+    )
+    return derivative
+
+
+# mirrors _node_derivative_array
+def node_derivative_array(f: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    return hyman_filter_node_derivative_array(f, bessel_node_derivative_array(f))
+
+
+# mirrors _cubic_zidx_from_S_factory's inner function
+def cubic_zidx_from_S(
+    S: float,
+    tau: float,
+    sigma_w: npt.NDArray[np.float64],
+    sigma_w_derivative: npt.NDArray[np.float64],
+    C: npt.NDArray[np.float64],
+    C_derivative: npt.NDArray[np.float64],
+    halley_iterations: int,
+) -> float:
+    widx = compute_widx_from_S(S, tau, sigma_w, C)
+
+    S_low = S_coordinate(tau, sigma_w[widx], C[widx])
+    S_high = S_coordinate(tau, sigma_w[widx + 1], C[widx + 1])
+    t = (S - S_low) / (S_high - S_low)
+
+    a_sigma, b_sigma, c_sigma, d_sigma = hermite_cubic_coefficients(
+        sigma_w[widx], sigma_w[widx + 1], sigma_w_derivative[widx], sigma_w_derivative[widx + 1]
+    )
+    a_C, b_C, c_C, d_C = hermite_cubic_coefficients(C[widx], C[widx + 1], C_derivative[widx], C_derivative[widx + 1])
+    a = tau * a_sigma + (1.0 - tau) * a_C
+    b = tau * b_sigma + (1.0 - tau) * b_C
+    c = tau * c_sigma + (1.0 - tau) * c_C
+    d = tau * d_sigma + (1.0 - tau) * d_C - S
+
+    for _ in range(halley_iterations):
+        g, g_prime, g_double_prime = cubic_eval_with_derivatives(a, b, c, d, t)
+        t = t - 2.0 * g * g_prime / (2.0 * g_prime * g_prime - g * g_double_prime)
+
+    return widx - _W_OFFSET + t
+
+
+# mirrors _compute_zidx_cubic_factory's inner function: vertical index from the physical vertical
+# coordinate, via cubic Hermite interpolation
+def compute_zidx_cubic(
+    z: float,
+    h: float,
+    zeta: float,
+    tau: float,
+    sigma_w: npt.NDArray[np.float64],
+    sigma_w_derivative: npt.NDArray[np.float64],
+    C: npt.NDArray[np.float64],
+    C_derivative: npt.NDArray[np.float64],
+    halley_iterations: int,
+) -> float:
+    S = S_from_z(z, h, zeta)
+    return cubic_zidx_from_S(S, tau, sigma_w, sigma_w_derivative, C, C_derivative, halley_iterations)
