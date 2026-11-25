@@ -24,7 +24,7 @@ from offline_particles.kernels.roms._vertical_coordinate import (
     _sigma_w_array,
     _tau_Vtransform_2,
     compute_z,
-    compute_zidx,
+    compute_zidx_linear,
 )
 from offline_particles.kernels.status import INACTIVE_FLAG, Status
 
@@ -441,7 +441,7 @@ def test_compute_zidx_kernel_matches_scalar_helper_with_nonlinear_Cs_w(z: float)
     kernel(particle_properties, {}, field_data)
 
     tau = _tau_Vtransform_2(hc, h)
-    expected_zidx = compute_zidx(z, h, zeta, tau, _sigma_w_array(NZ, "linear"), Cs_w)
+    expected_zidx = compute_zidx_linear(z, h, zeta, tau, _sigma_w_array(NZ, "linear"), Cs_w)
     assert particle_properties["zidx"][0] == pytest.approx(expected_zidx)
 
 
@@ -571,7 +571,7 @@ def test_computes_the_correct_zidx_far_from_index_zero_with_no_bracketing_window
     kernel(particle_properties, {}, field_data)
 
     tau = _tau_Vtransform_2(HC, H)
-    expected_zidx = compute_zidx(z, H, ZETA, tau, _sigma_w_array(NZ, "linear"), Cs_w)
+    expected_zidx = compute_zidx_linear(z, H, ZETA, tau, _sigma_w_array(NZ, "linear"), Cs_w)
     assert expected_zidx > 8  # sanity-check: this would NOT have been bracketed by a small window
     assert particle_properties["zidx"][0] == pytest.approx(expected_zidx)
 

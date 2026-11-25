@@ -11,6 +11,7 @@ from ...kernels.relaxation import (
     construct_quadratic_damping_kernel,
 )
 from ...kernels.roms import (
+    CubicVerticalTransform,
     LinearVerticalTransform,
     VerticalTransform,
     construct_compute_z_kernel,
@@ -21,6 +22,7 @@ from ...spatial_arrays import ArrayAxis, ArrayLayout, Stagger
 from ...timestepping import ABTimestepper
 
 __all__ = [
+    "CubicVerticalTransform",
     "LinearVerticalTransform",
     "VerticalTransform",
     "construct_compute_z_kernel",

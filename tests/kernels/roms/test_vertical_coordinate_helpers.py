@@ -21,7 +21,7 @@ from offline_particles.kernels.roms._vertical_coordinate import (
     _tau_Vtransform_2,
     _z_coordinate,
     compute_z,
-    compute_zidx,
+    compute_zidx_linear,
 )
 
 # NZ=4, hc=5.0, h=45.0, zeta=1.0, zidx=1.5:
@@ -111,11 +111,11 @@ def test_linear_zidx_from_S_matches_hand_derivation() -> None:
     assert _linear_zidx_from_S(_S, _TAU, _LINEAR_C, _LINEAR_C) == pytest.approx(_ZIDX)
 
 
-def test_compute_zidx_matches_hand_derivation() -> None:
-    assert compute_zidx(_Z, _H, _ZETA, _TAU, _LINEAR_C, _LINEAR_C) == pytest.approx(_ZIDX)
+def test_compute_zidx_linear_matches_hand_derivation() -> None:
+    assert compute_zidx_linear(_Z, _H, _ZETA, _TAU, _LINEAR_C, _LINEAR_C) == pytest.approx(_ZIDX)
 
 
-def test_compute_z_and_compute_zidx_round_trip_on_the_hand_derived_case() -> None:
+def test_compute_z_and_compute_zidx_linear_round_trip_on_the_hand_derived_case() -> None:
     z = compute_z(_sigma_coordinate_linear(_ZIDX, _NZ), _TAU, _H, _SIGMA, _ZETA)
-    zidx = compute_zidx(z, _H, _ZETA, _TAU, _LINEAR_C, _LINEAR_C)
+    zidx = compute_zidx_linear(z, _H, _ZETA, _TAU, _LINEAR_C, _LINEAR_C)
     assert zidx == pytest.approx(_ZIDX)

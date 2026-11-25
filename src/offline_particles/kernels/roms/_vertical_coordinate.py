@@ -13,9 +13,11 @@ We follow the same variable naming conventions as ROMS:
 
 Both sigma and C (the stretching function) are defined only at the `NZ + 1` w points. `S`, and
 therefore `z`, is defined on the continuous vertical index by interpolating between those w-point
-values - linearly, for `LinearVerticalTransform`. `compute_zidx` is an *exact* inverse of
-`compute_z` on every grid cell, for either `sigma_method`, because both directions operate on the
-same interpolated representation of `S`.
+values - linearly, for `LinearVerticalTransform`, or via a monotone cubic Hermite spline, for
+`CubicVerticalTransform`. `compute_zidx_linear` is an *exact* inverse of `compute_z` on every grid
+cell, for either `sigma_method`, because both directions operate on the same interpolated
+representation of `S`; `compute_zidx_cubic` inverts the same `S` to within a small, fixed-iteration
+Halley residual (see `CubicVerticalTransform`'s docstring).
 
 Notes
 -----
@@ -30,10 +32,10 @@ length): `Zo = hc*sigma + (h-hc)*C`, `z = Zo + zeta*(1 + Zo/h)`; dividing throug
 
 `C` (the vertical stretching function) must be strictly increasing along the vertical axis. This
 is a physical requirement of the ROMS S-coordinate system: a valid vertical grid never has
-degenerate or crossing levels. `compute_zidx`'s binary search over `C` assumes this; behavior is
-undefined if it does not hold. The same requirement applies to the tabulated `sigma_w` array built
-internally from `sigma_method` - guaranteed by construction for both the linear and quadratic
-formulae, for any `NZ >= 2`, and not re-validated at runtime.
+degenerate or crossing levels. `compute_zidx_linear`'s binary search over `C` assumes this;
+behavior is undefined if it does not hold. The same requirement applies to the tabulated `sigma_w`
+array built internally from `sigma_method` - guaranteed by construction for both the linear and
+quadratic formulae, for any `NZ >= 2`, and not re-validated at runtime.
 """
 
 import abc
@@ -256,9 +258,9 @@ def _z_coordinate(S: float, h: float, zeta: float) -> float:
 def compute_z(sigma: float, tau: float, h: float, C: float, zeta: float) -> float:
     """Compute the physical vertical coordinate from already-resolved sigma and C values.
 
-    `sigma` and `C` must already be resolved at the particle's vertical index (e.g. by linearly
-    interpolating the tabulated `sigma_w`/`Cs_w` arrays) - this function only applies the
-    S-coordinate and z-coordinate transforms.
+    `sigma` and `C` must already be resolved at the particle's vertical index (e.g. by linearly or
+    cubic-Hermite interpolating the tabulated `sigma_w`/`Cs_w` arrays) - this function only applies
+    the S-coordinate and z-coordinate transforms.
 
     Parameters
     ----------
@@ -395,7 +397,7 @@ def _linear_zidx_from_S(
 
 
 @numba.njit(nogil=True, fastmath=True)
-def compute_zidx(
+def compute_zidx_linear(
     z: float,
     h: float,
     zeta: float,
@@ -403,7 +405,7 @@ def compute_zidx(
     sigma_w: npt.NDArray[np.float64],
     C: npt.NDArray[np.float64],
 ) -> float:
-    """Compute the vertical index from the physical vertical coordinate.
+    """Compute the vertical index from the physical vertical coordinate, via linear interpolation.
 
     Parameters
     ----------
@@ -657,6 +659,310 @@ def _Cs_w_Vstretching_5(NZ: int, theta_s: float, theta_b: float) -> npt.NDArray[
         `Cs_w`, tabulated at the `NZ + 1` w points.
     """
     return _C_double_stretching(_sigma_w_array(NZ, "quadratic"), theta_s, theta_b)
+
+
+#################################################
+### monotone cubic Hermite interpolation      ###
+#################################################
+
+
+@numba.njit(nogil=True, fastmath=True)
+def _hermite_cubic_coefficients(f0: float, f1: float, d0: float, d1: float) -> tuple[float, float, float, float]:
+    """Monomial coefficients of the cubic Hermite polynomial on a unit-width cell.
+
+    Parameters
+    ----------
+    f0 : float
+        The value at the cell's lower node (`t=0`).
+    f1 : float
+        The value at the cell's upper node (`t=1`).
+    d0 : float
+        The derivative (with respect to the array index) at the cell's lower node.
+    d1 : float
+        The derivative (with respect to the array index) at the cell's upper node.
+
+    Returns
+    -------
+    tuple[float, float, float, float]
+        `(a, b, c, d)` such that `f(t) = a*t**3 + b*t**2 + c*t + d` matches `f0`, `f1`, `d0`, `d1`
+        at `t=0`/`t=1`.
+    """
+    a = 2.0 * f0 + d0 - 2.0 * f1 + d1
+    b = -3.0 * f0 - 2.0 * d0 + 3.0 * f1 - d1
+    return a, b, d0, f0
+
+
+@numba.njit(nogil=True, fastmath=True)
+def _cubic_eval(a: float, b: float, c: float, d: float, t: float) -> float:
+    """Evaluate `a*t**3 + b*t**2 + c*t + d` by Horner's method.
+
+    Parameters
+    ----------
+    a : float
+        The cubic coefficient.
+    b : float
+        The quadratic coefficient.
+    c : float
+        The linear coefficient.
+    d : float
+        The constant coefficient.
+    t : float
+        The point at which to evaluate the cubic.
+
+    Returns
+    -------
+    float
+        The cubic's value at `t`.
+    """
+    return ((a * t + b) * t + c) * t + d
+
+
+@numba.njit(nogil=True, fastmath=True)
+def _cubic_eval_with_derivatives(a: float, b: float, c: float, d: float, t: float) -> tuple[float, float, float]:
+    """Evaluate a cubic and its first two derivatives at `t`, by Horner's method.
+
+    Parameters
+    ----------
+    a : float
+        The cubic coefficient.
+    b : float
+        The quadratic coefficient.
+    c : float
+        The linear coefficient.
+    d : float
+        The constant coefficient.
+    t : float
+        The point at which to evaluate the cubic.
+
+    Returns
+    -------
+    tuple[float, float, float]
+        The cubic's value, first derivative, and second derivative at `t`.
+    """
+    value = ((a * t + b) * t + c) * t + d
+    first_derivative = (3.0 * a * t + 2.0 * b) * t + c
+    second_derivative = 6.0 * a * t + 2.0 * b
+    return value, first_derivative, second_derivative
+
+
+@numba.njit(nogil=True, fastmath=True)
+def _hermite_interpolation_particle(
+    value_array: npt.NDArray[np.float64],
+    derivative_array: npt.NDArray[np.float64],
+    offset_idx: float,
+    max_idx: int,
+) -> float:
+    """Cubic Hermite interpolation of `value_array` (with matching `derivative_array`) at `offset_idx`.
+
+    Parameters
+    ----------
+    value_array : npt.NDArray[np.float64]
+        The tabulated node values.
+    derivative_array : npt.NDArray[np.float64]
+        The tabulated node derivatives (with respect to the array index), same length as
+        `value_array`.
+    offset_idx : float
+        The continuous index at which to interpolate.
+    max_idx : int
+        The largest valid lower-node index (`len(value_array) - 2`); `offset_idx` is clamped so
+        the resulting lower node and its neighbour both stay in bounds.
+
+    Returns
+    -------
+    float
+        The interpolated value.
+    """
+    I0 = int(offset_idx)
+    if I0 < 0:
+        I0 = 0
+    elif I0 > max_idx:
+        I0 = max_idx
+    t = offset_idx - I0
+    a, b, c, d = _hermite_cubic_coefficients(
+        value_array[I0], value_array[I0 + 1], derivative_array[I0], derivative_array[I0 + 1]
+    )
+    return _cubic_eval(a, b, c, d, t)
+
+
+def _bessel_node_derivative_array(f: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    """Unfiltered Bessel (three-point) node derivatives, for uniformly unit-spaced nodes.
+
+    Interior nodes use the arithmetic mean of the two adjacent secant slopes; boundary nodes use
+    the one-sided 3-point formula `(3*delta_near - delta_far) / 2`. Both are classical
+    finite-difference identities that are exact for any polynomial of degree at most 2, at every
+    node, regardless of the polynomial's behavior between nodes - this is what lets
+    `_node_derivative_array` reproduce `_sigma_coordinate_linear`/`_sigma_coordinate_quadratic`
+    exactly wherever `_hyman_filter_node_derivative_array` doesn't clamp it.
+
+    Parameters
+    ----------
+    f : npt.NDArray[np.float64]
+        Node values, uniformly unit-spaced in index space.
+
+    Returns
+    -------
+    npt.NDArray[np.float64]
+        The unfiltered node derivatives, same length as `f`.
+    """
+    delta = np.diff(f)
+    derivative = np.empty_like(f)
+    derivative[1:-1] = (delta[:-1] + delta[1:]) / 2.0
+    derivative[0] = (3.0 * delta[0] - delta[1]) / 2.0
+    derivative[-1] = (3.0 * delta[-1] - delta[-2]) / 2.0
+    return derivative
+
+
+def _hyman_filter_node_derivative_array(
+    f: npt.NDArray[np.float64], raw_derivative: npt.NDArray[np.float64]
+) -> npt.NDArray[np.float64]:
+    """Apply the Hyman (1983) monotonicity filter to unfiltered node derivatives.
+
+    Clamps `raw_derivative` so the resulting piecewise cubic Hermite interpolant never overshoots
+    or dips between nodes, given that `f` is strictly increasing (both `sigma_w` and `Cs_w` satisfy
+    this contract) and the nodes are uniformly unit-spaced in index space. Interior nodes are
+    capped at 3 times the smaller of the two adjacent secant slopes; boundary nodes are clamped to
+    0 if their sign disagrees with the adjacent secant, otherwise capped at 3 times that secant.
+    The general algorithm's opposite-sign-secants branch (which would also clamp interior nodes to
+    0) never triggers here, since `f`'s secants are always positive, and is omitted.
+
+    Parameters
+    ----------
+    f : npt.NDArray[np.float64]
+        Node values, uniformly unit-spaced in index space. Must be strictly increasing.
+    raw_derivative : npt.NDArray[np.float64]
+        Unfiltered node derivatives, e.g. from `_bessel_node_derivative_array`.
+
+    Returns
+    -------
+    npt.NDArray[np.float64]
+        The filtered node derivatives, same length as `f`.
+
+    References
+    ----------
+    Hyman, J.M., 1983: Accurate Monotonicity Preserving Cubic Interpolation. SIAM J. Sci. Stat.
+    Comput., 4, 645-654.
+    """
+    delta = np.diff(f)
+    derivative = np.empty_like(f)
+    derivative[1:-1] = np.minimum(raw_derivative[1:-1], 3.0 * np.minimum(delta[:-1], delta[1:]))
+    derivative[0] = min(raw_derivative[0], 3.0 * delta[0]) if np.sign(raw_derivative[0]) == np.sign(delta[0]) else 0.0
+    derivative[-1] = (
+        min(raw_derivative[-1], 3.0 * delta[-1]) if np.sign(raw_derivative[-1]) == np.sign(delta[-1]) else 0.0
+    )
+    return derivative
+
+
+def _node_derivative_array(f: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    """Monotone cubic Hermite node derivatives for `f` (Bessel slope, Hyman-filtered).
+
+    Used identically for both `sigma_w` and `Cs_w`: operates purely on the tabulated node values,
+    with no knowledge of which formula (if any) produced them. See `_bessel_node_derivative_array`
+    and `_hyman_filter_node_derivative_array` for the two steps.
+
+    Parameters
+    ----------
+    f : npt.NDArray[np.float64]
+        Node values, uniformly unit-spaced in index space. Must be strictly increasing.
+
+    Returns
+    -------
+    npt.NDArray[np.float64]
+        The node derivatives, same length as `f`.
+    """
+    return _hyman_filter_node_derivative_array(f, _bessel_node_derivative_array(f))
+
+
+def _cubic_zidx_from_S_factory(halley_iterations: int):
+    """Build a `_cubic_zidx_from_S` function with `halley_iterations` fixed as a compile-time constant.
+
+    Called once per `CubicVerticalTransform.compute_zidx_kernel` build (not per particle), so the
+    returned function is freshly compiled per distinct `halley_iterations` value, closed over
+    exactly like `NZ`, `hc`, and the other values baked into that kernel.
+
+    Parameters
+    ----------
+    halley_iterations : int
+        The number of Halley iterations to run (see `CubicVerticalTransform`'s docstring).
+
+    Returns
+    -------
+    Callable
+        A `@numba.njit` function `(S, tau, sigma_w, sigma_w_derivative, C, C_derivative) -> float`
+        giving the fractional vertical index, cubic-Hermite interpolating `S` within the
+        bracketing w-point cell. The bracketing cell is located exactly (via
+        `_compute_widx_from_S`, scheme-agnostic); the fractional position within it is then
+        refined from the exact linear estimate by `halley_iterations` Halley iterations, since `S`
+        has no closed-form inverse on a cubic cell.
+    """
+    halley_iterations_ = int(halley_iterations)
+
+    @numba.njit(nogil=True, fastmath=True)
+    def _cubic_zidx_from_S(
+        S: float,
+        tau: float,
+        sigma_w: npt.NDArray[np.float64],
+        sigma_w_derivative: npt.NDArray[np.float64],
+        C: npt.NDArray[np.float64],
+        C_derivative: npt.NDArray[np.float64],
+    ) -> float:
+        widx = _compute_widx_from_S(S, tau, sigma_w, C)
+
+        S_low = _S_coordinate(tau, sigma_w[widx], C[widx])
+        S_high = _S_coordinate(tau, sigma_w[widx + 1], C[widx + 1])
+        t = (S - S_low) / (S_high - S_low)
+
+        a_sigma, b_sigma, c_sigma, d_sigma = _hermite_cubic_coefficients(
+            sigma_w[widx], sigma_w[widx + 1], sigma_w_derivative[widx], sigma_w_derivative[widx + 1]
+        )
+        a_C, b_C, c_C, d_C = _hermite_cubic_coefficients(
+            C[widx], C[widx + 1], C_derivative[widx], C_derivative[widx + 1]
+        )
+        a = tau * a_sigma + (1.0 - tau) * a_C
+        b = tau * b_sigma + (1.0 - tau) * b_C
+        c = tau * c_sigma + (1.0 - tau) * c_C
+        d = tau * d_sigma + (1.0 - tau) * d_C - S
+
+        for _ in range(halley_iterations_):
+            g, g_prime, g_double_prime = _cubic_eval_with_derivatives(a, b, c, d, t)
+            t = t - 2.0 * g * g_prime / (2.0 * g_prime * g_prime - g * g_double_prime)
+
+        return widx - _W_OFFSET + t
+
+    return _cubic_zidx_from_S
+
+
+def _compute_zidx_cubic_factory(halley_iterations: int):
+    """Build a `compute_zidx_cubic` function with `halley_iterations` fixed as a compile-time constant.
+
+    Parameters
+    ----------
+    halley_iterations : int
+        The number of Halley iterations to run (see `CubicVerticalTransform`'s docstring).
+
+    Returns
+    -------
+    Callable
+        A `@numba.njit` function `(z, h, zeta, tau, sigma_w, sigma_w_derivative, C, C_derivative)
+        -> float` computing the vertical index from the physical vertical coordinate, via cubic
+        Hermite interpolation.
+    """
+    cubic_zidx_from_S = _cubic_zidx_from_S_factory(halley_iterations)
+
+    @numba.njit(nogil=True, fastmath=True)
+    def compute_zidx_cubic(
+        z: float,
+        h: float,
+        zeta: float,
+        tau: float,
+        sigma_w: npt.NDArray[np.float64],
+        sigma_w_derivative: npt.NDArray[np.float64],
+        C: npt.NDArray[np.float64],
+        C_derivative: npt.NDArray[np.float64],
+    ) -> float:
+        S = _S_from_z(z, h, zeta)
+        return cubic_zidx_from_S(S, tau, sigma_w, sigma_w_derivative, C, C_derivative)
+
+    return compute_zidx_cubic
 
 
 #####################################################
@@ -1040,6 +1346,55 @@ class VerticalTransform(abc.ABC):
         return cls(NZ=NZ, hc=hc, Cs_w=_Cs_w_Vstretching_5(NZ, theta_s, theta_b), sigma_method="quadratic", **kwargs)
 
 
+def _validate_horizontal_stencil_half_width(value: int) -> int:
+    """Validate and coerce `horizontal_stencil_half_width`.
+
+    Shared by every `VerticalTransform` subclass that offers a configurable horizontal
+    interpolation stencil.
+
+    Parameters
+    ----------
+    value : int
+        The proposed half-width.
+
+    Returns
+    -------
+    int
+        `value`, coerced to `int`.
+
+    Raises
+    ------
+    ValueError
+        If `value` is not a positive integer.
+    """
+    if value < 1:
+        raise ValueError(f"horizontal_stencil_half_width must be a positive integer, got {value}.")
+    return int(value)
+
+
+def _validate_halley_iterations(value: int) -> int:
+    """Validate and coerce `CubicVerticalTransform.halley_iterations`.
+
+    Parameters
+    ----------
+    value : int
+        The proposed iteration count.
+
+    Returns
+    -------
+    int
+        `value`, coerced to `int`.
+
+    Raises
+    ------
+    ValueError
+        If `value` is not a positive integer.
+    """
+    if value < 1:
+        raise ValueError(f"halley_iterations must be a positive integer, got {value}.")
+    return int(value)
+
+
 #####################################################
 ### LinearVerticalTransform                      ###
 #####################################################
@@ -1057,13 +1412,7 @@ class LinearVerticalTransform(VerticalTransform):
     are tracked (`hc <= hmin`), a well-known ROMS constraint: `tau = hc/h` otherwise exceeds 1
     somewhere in the domain, and the blend `S = tau*sigma + (1-tau)*C` of two independently
     strictly-increasing sequences is no longer guaranteed increasing *between* grid points, which
-    the binary search in `compute_zidx_kernel` assumes. Documented, not runtime validated, since
-    `h` is runtime domain data unknown to `__post_init__` - consistent with `Cs_w`'s own
-    strictly-increasing requirement. This caveat never affects the boundary values themselves:
-    `sigma_w[0] = Cs_w[0] = -1` and `sigma_w[-1] = Cs_w[-1] = 0` make `S` exactly `-1`/`0` at those
-    two grid points for any `tau`, since blending two identical values by any weight returns that
-    same value. `Vtransform=2`'s `tau = hc/(hc+h)` is always in `(0, 1)` for any `hc, h > 0`, so no
-    analogous caveat applies there.
+    the binary search in `compute_zidx_kernel` assumes.
 
     Parameters
     ----------
@@ -1108,11 +1457,11 @@ class LinearVerticalTransform(VerticalTransform):
 
     def __post_init__(self) -> None:
         super().__post_init__()
-        if self.horizontal_stencil_half_width < 1:
-            raise ValueError(
-                f"horizontal_stencil_half_width must be a positive integer, got {self.horizontal_stencil_half_width}."
-            )
-        object.__setattr__(self, "horizontal_stencil_half_width", int(self.horizontal_stencil_half_width))
+        object.__setattr__(
+            self,
+            "horizontal_stencil_half_width",
+            _validate_horizontal_stencil_half_width(self.horizontal_stencil_half_width),
+        )
 
     def compute_z_kernel(self, only_initialising: bool = False) -> KernelFunction:
         """Return a kernel function that computes the physical vertical position `z` from `zidx`.
@@ -1183,8 +1532,7 @@ def _linear_vertical_transform_compute_z_kernel(
     """Build the compiled kernel function backing `LinearVerticalTransform.compute_z_kernel`.
 
     `C` and the sigma coordinate tabulated from `sigma_method` are both captured by closure and
-    linearly interpolated at each particle's continuous `zidx` - `field_data_keys` below is
-    `["h", "zeta"]` only, with no `C`/`sigma` declared as field data.
+    linearly interpolated at each particle's continuous `zidx`.
 
     Parameters
     ----------
@@ -1443,6 +1791,449 @@ def _linear_vertical_transform_compute_zidx_kernel(
                 zeta_array, yidx[i] + zeta_offy, xidx[i] + zeta_offx, zeta_max_idx_0, zeta_max_idx_1
             )
             tau_value = tau_fn(hc_, h_value)
-            zidx[i] = compute_zidx(z[i], h_value, zeta_value, tau_value, sigma_w_, C_)
+            zidx[i] = compute_zidx_linear(z[i], h_value, zeta_value, tau_value, sigma_w_, C_)
+
+    return compute_zidx_kernel_function
+
+
+#####################################################
+### CubicVerticalTransform                       ###
+#####################################################
+
+
+@dataclass(frozen=True, eq=False)
+class CubicVerticalTransform(VerticalTransform):
+    r"""ROMS vertical transform, with sigma and the stretching function interpolated using monotone cubic Hermite splines.
+
+    `S` (and therefore `z`) is computed by cubic-Hermite interpolating between the tabulated
+    w-point values of `sigma` and `Cs_w` - see `VerticalTransform` for the shared
+    S-coordinate/z-coordinate transform and the `NZ`/`hc`/`Cs_w`/`sigma_method`/`Vtransform`
+    parameters. Both arrays' node derivatives are built identically, by an unfiltered Bessel
+    (three-point) slope estimate, then a Hyman (1983) monotonicity filter. This guarantees every
+    cell's cubic satisfies `d(sigma)/d(zidx) >= 0` and `d(Cs_w)/d(zidx) >= 0` everywhere, which
+    in turn guarantees `S` itself is monotonic everywhere in the domain -
+    `dS/d(zidx) = tau*d(sigma)/d(zidx) + (1-tau)*d(Cs_w)/d(zidx)`. The Bessel slope estimate is
+    exact for any polynomial of degree at most 2, at every node, regardless of its behavior
+    between nodes - since both `sigma_method` formulae are such polynomials, `sigma` is reproduced
+    exactly wherever the Hyman filter leaves that estimate unchanged, which holds everywhere for
+    `sigma_method="linear"` and everywhere `sigma_method="quadratic"`'s underlying continuous
+    formula is itself monotonic between its tabulated points; where that formula would otherwise
+    dip, the filter trades exact reproduction for guaranteed monotonicity of `S`. The inverse has
+    no closed form on a cubic cell and is instead computed with a fixed number of Halley iterations
+    (`halley_iterations`) seeded from the exact linear-interpolation estimate. The default (3)
+    converges to a residual far below any physically meaningful tolerance for typical grids, but
+    is not bit-exact, and convergence slows where the seed starts far from the true root -
+    notably where `tau` (`hc/h` for `Vtransform=1`, `hc/(hc+h)` for `Vtransform=2`) is close to
+    its maximum of 1, combined with a small `NZ`. Increase `halley_iterations` if round-tripping
+    such a grid needs more precision.
+
+    Parameters
+    ----------
+    NZ : int
+        The total number of vertical rho levels. Must be at least 2.
+    hc : float
+        The critical depth. Must be strictly positive.
+    Cs_w : npt.ArrayLike
+        The stretching function at w points, with exactly `NZ + 1` points. Must be strictly
+        increasing, with `Cs_w[0]` equal to -1 and `Cs_w[-1]` equal to 0 (to within floating-point
+        tolerance).
+    sigma_method : {"linear", "quadratic"}, optional
+        Whether the sigma coordinate is tabulated at the w points using the linear formula (ROMS
+        Vstretching 1-4) or the quadratic formula (ROMS Vstretching 5). Defaults to "linear".
+    Vtransform : {1, 2}, optional
+        The ROMS vertical transform. Defaults to 2.
+    horizontal_stencil_half_width : int, optional
+        The half-width `N` of the Lagrange interpolation stencil used for `h` and `zeta` (`2N`
+        points in each horizontal dimension). Defaults to 2, i.e. bicubic interpolation.
+    halley_iterations : int, optional
+        The number of Halley iterations used to invert `S` on a cubic cell. Defaults to 3, which
+        is sufficient for typical grids; see the class docstring above for when more may be
+        needed. Baked into the compiled `compute_zidx_kernel` as a compile-time constant.
+
+    Raises
+    ------
+    ValueError
+        If `NZ` is less than 2.
+        If `hc` is not strictly positive.
+        If `horizontal_stencil_half_width` is not a positive integer.
+        If `halley_iterations` is not a positive integer.
+        If `Cs_w` is not one-dimensional.
+        If `Cs_w` does not have exactly `NZ + 1` points.
+        If `Cs_w` is not strictly increasing.
+        If `Cs_w[0]` is not equal to -1 (to within floating-point tolerance).
+        If `Cs_w[-1]` is not equal to 0 (to within floating-point tolerance).
+        If `sigma_method` is not "linear" or "quadratic".
+        If `Vtransform` is not 1 or 2.
+
+    Notes
+    -----
+    Two instances are equal if they have the same `NZ`, `hc`, `Cs_w`, `sigma_method`,
+    `Vtransform`, `horizontal_stencil_half_width`, and `halley_iterations`. Instances are not
+    hashable.
+
+    References
+    ----------
+    Fritsch, F.N. and R.E. Carlson, 1980: Monotone Piecewise Cubic Interpolation. SIAM J. Numer.
+    Anal., 17, 238-246.
+
+    Hyman, J.M., 1983: Accurate Monotonicity Preserving Cubic Interpolation. SIAM J. Sci. Stat.
+    Comput., 4, 645-654.
+    """
+
+    horizontal_stencil_half_width: int = 2
+    halley_iterations: int = 3
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        object.__setattr__(
+            self,
+            "horizontal_stencil_half_width",
+            _validate_horizontal_stencil_half_width(self.horizontal_stencil_half_width),
+        )
+        object.__setattr__(self, "halley_iterations", _validate_halley_iterations(self.halley_iterations))
+
+    def compute_z_kernel(self, only_initialising: bool = False) -> KernelFunction:
+        """Return a kernel function that computes the physical vertical position `z` from `zidx`.
+
+        Parameters
+        ----------
+        only_initialising : bool, optional
+            If False (default), compute for any active particle.
+            If True, compute only for particles with status ``Status.INITIALISING``.
+
+        Returns
+        -------
+        KernelFunction
+            Cached on this instance: repeated calls with the same `only_initialising` return the
+            same compiled function without recompiling.
+        """
+        key = ("z", bool(only_initialising))
+        if key not in self._kernel_cache:
+            self._kernel_cache[key] = _cubic_vertical_transform_compute_z_kernel(
+                self.NZ,
+                self.hc,
+                self.Cs_w,
+                self.sigma_method,
+                self.Vtransform,
+                self.horizontal_stencil_half_width,
+                only_initialising,
+            )
+        return self._kernel_cache[key]
+
+    def compute_zidx_kernel(self, only_initialising: bool = False) -> KernelFunction:
+        """Return a kernel function that computes the vertical index `zidx` from `z`.
+
+        Parameters
+        ----------
+        only_initialising : bool, optional
+            If False (default), compute for any active particle.
+            If True, compute only for particles with status ``Status.INITIALISING``.
+
+        Returns
+        -------
+        KernelFunction
+            Cached on this instance: repeated calls with the same `only_initialising` return the
+            same compiled function without recompiling.
+        """
+        key = ("zidx", bool(only_initialising))
+        if key not in self._kernel_cache:
+            self._kernel_cache[key] = _cubic_vertical_transform_compute_zidx_kernel(
+                self.NZ,
+                self.hc,
+                self.Cs_w,
+                self.sigma_method,
+                self.Vtransform,
+                self.horizontal_stencil_half_width,
+                self.halley_iterations,
+                only_initialising,
+            )
+        return self._kernel_cache[key]
+
+
+def _cubic_vertical_transform_compute_z_kernel(
+    NZ: int,
+    hc: float,
+    C: npt.NDArray[np.float64],
+    sigma_method: str,
+    Vtransform: int,
+    horizontal_stencil_half_width: int,
+    only_initialising: bool,
+) -> KernelFunction:
+    """Build the compiled kernel function backing `CubicVerticalTransform.compute_z_kernel`.
+
+    `C`, the sigma coordinate tabulated from `sigma_method`, and both of their node derivatives
+    are captured by closure and cubic-Hermite interpolated at each particle's continuous `zidx` -
+    `field_data_keys` below is `["h", "zeta"]` only, with no `C`/`sigma` declared as field data.
+
+    Parameters
+    ----------
+    NZ : int
+        The total number of vertical rho levels. Baked into the compiled kernel as a compile-time
+        constant (via the tabulated `sigma_w` array it determines the shape of).
+    hc : float
+        The critical depth. Baked into the compiled kernel as a compile-time constant.
+    C : npt.NDArray[np.float64]
+        `Cs_w`, the complete stretching function array at w points, with exactly `NZ + 1` points.
+        Captured by closure.
+    sigma_method : str
+        Either "linear" or "quadratic"; determines the tabulated sigma array captured by closure.
+    Vtransform : int
+        Either 1 or 2; determines the `tau(hc, h)` function captured by closure.
+    horizontal_stencil_half_width : int
+        The half-width `N` of the Lagrange interpolation stencil used for `h` and `zeta`.
+    only_initialising : bool
+        If False, compute for any active particle. If True, compute only for particles with
+        status ``Status.INITIALISING``.
+
+    Returns
+    -------
+    KernelFunction
+        A kernel function that computes the physical vertical position `z`, specialized for the
+        given `NZ`, `hc`, `C`, `sigma_method`, `Vtransform`, `horizontal_stencil_half_width`, and
+        `only_initialising`.
+    """
+    hc_: np.float64 = np.float64(hc)
+    C_: npt.NDArray[np.float64] = np.array(C, dtype=np.float64)
+    C_max_idx = C_.shape[0] - 2
+    C_derivative_: npt.NDArray[np.float64] = _node_derivative_array(C_)
+    sigma_w_: npt.NDArray[np.float64] = _sigma_w_array(NZ, sigma_method)
+    sigma_max_idx = sigma_w_.shape[0] - 2
+    sigma_w_derivative_: npt.NDArray[np.float64] = _node_derivative_array(sigma_w_)
+    tau_fn = _tau_fn_for_Vtransform(Vtransform)
+    N = int(horizontal_stencil_half_width)
+    horizontal_interpolation_particle = lagrange_2D_particle_factory(N, N)
+    only_initialising_: bool = bool(only_initialising)
+
+    @kernel_function(
+        particle_property_keys=["status", "zidx", "yidx", "xidx", "z"],
+        field_data_keys=["h", "zeta"],
+    )
+    @numba.njit(parallel=True, nogil=True, fastmath=True)
+    def compute_z_kernel_function(
+        status: npt.NDArray[np.uint8],
+        zidx: npt.NDArray[np.float64],
+        yidx: npt.NDArray[np.float64],
+        xidx: npt.NDArray[np.float64],
+        z: npt.NDArray[np.float64],
+        h_array: npt.NDArray[np.float64],
+        h_offy: float,
+        h_offx: float,
+        zeta_array: npt.NDArray[np.float64],
+        zeta_offy: float,
+        zeta_offx: float,
+    ) -> None:
+        """Compute the vertical position 'z' of particles in ROMS vertical coordinates.
+
+        Parameters
+        ----------
+        status : npt.NDArray[np.uint8]
+            The particle property array of statuses.
+        zidx : npt.NDArray[np.float64]
+            The particle property array of vertical indices.
+        yidx : npt.NDArray[np.float64]
+            The particle property array of y indices.
+        xidx : npt.NDArray[np.float64]
+            The particle property array of x indices.
+        z : npt.NDArray[np.float64]
+            The particle property array to store the computed physical vertical position.
+        h_array : npt.NDArray[np.float64]
+            The bathymetry field array.
+        h_offy : float
+            The y offset for the bathymetry field.
+        h_offx : float
+            The x offset for the bathymetry field.
+        zeta_array : npt.NDArray[np.float64]
+            The free surface field array.
+        zeta_offy : float
+            The y offset for the free surface field.
+        zeta_offx : float
+            The x offset for the free surface field.
+
+        Raises
+        ------
+        ValueError
+            If the h or zeta field arrays do not have at least `2 * horizontal_stencil_half_width`
+            points in the relevant dimension(s) to avoid out-of-bounds memory access.
+        """
+        h_max_idx_0 = h_array.shape[0] - 2 * N
+        h_max_idx_1 = h_array.shape[1] - 2 * N
+        zeta_max_idx_0 = zeta_array.shape[0] - 2 * N
+        zeta_max_idx_1 = zeta_array.shape[1] - 2 * N
+        if h_max_idx_0 < 0 or h_max_idx_1 < 0:
+            raise ValueError(
+                "h field must have at least 2 * horizontal_stencil_half_width points in each "
+                "dimension to avoid out-of-bounds memory access."
+            )
+        if zeta_max_idx_0 < 0 or zeta_max_idx_1 < 0:
+            raise ValueError(
+                "zeta field must have at least 2 * horizontal_stencil_half_width points in each "
+                "dimension to avoid out-of-bounds memory access."
+            )
+
+        for i in numba.prange(status.shape[0]):  # ty: ignore[not-iterable]
+            # only_initialising_ is a compile-time constant, so this branch is optimized away at compile time
+            if only_initialising_:
+                if status[i] != _INITIALISING:  # only compute for initialising particles
+                    continue
+            else:
+                if status[i] & INACTIVE_FLAG:  # only compute for active particles
+                    continue
+
+            h_value = horizontal_interpolation_particle(
+                h_array, yidx[i] + h_offy, xidx[i] + h_offx, h_max_idx_0, h_max_idx_1
+            )
+            zeta_value = horizontal_interpolation_particle(
+                zeta_array, yidx[i] + zeta_offy, xidx[i] + zeta_offx, zeta_max_idx_0, zeta_max_idx_1
+            )
+            tau_value = tau_fn(hc_, h_value)
+            sigma_value = _hermite_interpolation_particle(
+                sigma_w_, sigma_w_derivative_, zidx[i] + _W_OFFSET, sigma_max_idx
+            )
+            C_value = _hermite_interpolation_particle(C_, C_derivative_, zidx[i] + _W_OFFSET, C_max_idx)
+            z[i] = compute_z(sigma_value, tau_value, h_value, C_value, zeta_value)
+
+    return compute_z_kernel_function
+
+
+def _cubic_vertical_transform_compute_zidx_kernel(
+    NZ: int,
+    hc: float,
+    C: npt.NDArray[np.float64],
+    sigma_method: str,
+    Vtransform: int,
+    horizontal_stencil_half_width: int,
+    halley_iterations: int,
+    only_initialising: bool,
+) -> KernelFunction:
+    """Build the compiled kernel function backing `CubicVerticalTransform.compute_zidx_kernel`.
+
+    `C`, the sigma coordinate tabulated from `sigma_method`, and both of their node derivatives
+    are captured by closure - `field_data_keys` below is `["h", "zeta"]` only.
+
+    Parameters
+    ----------
+    NZ : int
+        The total number of vertical rho levels. Baked into the compiled kernel as a compile-time
+        constant (via the tabulated `sigma_w` array it determines the shape of).
+    hc : float
+        The critical depth. Baked into the compiled kernel as a compile-time constant.
+    C : npt.NDArray[np.float64]
+        `Cs_w`, the complete stretching function array at w points, with exactly `NZ + 1` points.
+        Captured by closure.
+    sigma_method : str
+        Either "linear" or "quadratic"; determines the tabulated sigma array captured by closure.
+    Vtransform : int
+        Either 1 or 2; determines the `tau(hc, h)` function captured by closure.
+    horizontal_stencil_half_width : int
+        The half-width `N` of the Lagrange interpolation stencil used for `h` and `zeta`.
+    halley_iterations : int
+        The number of Halley iterations used to invert `S` on a cubic cell.
+    only_initialising : bool
+        If False, compute for any active particle. If True, compute only for particles with
+        status ``Status.INITIALISING``.
+
+    Returns
+    -------
+    KernelFunction
+        A kernel function that computes the vertical index `zidx`, specialized for the given
+        `NZ`, `hc`, `C`, `sigma_method`, `Vtransform`, `horizontal_stencil_half_width`,
+        `halley_iterations`, and `only_initialising`.
+    """
+    hc_: np.float64 = np.float64(hc)
+    C_: npt.NDArray[np.float64] = np.array(C, dtype=np.float64)
+    C_derivative_: npt.NDArray[np.float64] = _node_derivative_array(C_)
+    sigma_w_: npt.NDArray[np.float64] = _sigma_w_array(NZ, sigma_method)
+    sigma_w_derivative_: npt.NDArray[np.float64] = _node_derivative_array(sigma_w_)
+    tau_fn = _tau_fn_for_Vtransform(Vtransform)
+    N = int(horizontal_stencil_half_width)
+    horizontal_interpolation_particle = lagrange_2D_particle_factory(N, N)
+    compute_zidx_cubic = _compute_zidx_cubic_factory(halley_iterations)
+    only_initialising_: bool = bool(only_initialising)
+
+    @kernel_function(
+        particle_property_keys=["status", "zidx", "yidx", "xidx", "z"],
+        field_data_keys=["h", "zeta"],
+    )
+    @numba.njit(parallel=True, nogil=True, fastmath=True)
+    def compute_zidx_kernel_function(
+        status: npt.NDArray[np.uint8],
+        zidx: npt.NDArray[np.float64],
+        yidx: npt.NDArray[np.float64],
+        xidx: npt.NDArray[np.float64],
+        z: npt.NDArray[np.float64],
+        h_array: npt.NDArray[np.float64],
+        h_offy: float,
+        h_offx: float,
+        zeta_array: npt.NDArray[np.float64],
+        zeta_offy: float,
+        zeta_offx: float,
+    ) -> None:
+        """Compute the vertical index 'zidx' of particles in ROMS vertical coordinates.
+
+        Parameters
+        ----------
+        status : npt.NDArray[np.uint8]
+            The particle property array of statuses.
+        zidx : npt.NDArray[np.float64]
+            The particle property array to store the computed vertical index.
+        yidx : npt.NDArray[np.float64]
+            The particle property array of y indices.
+        xidx : npt.NDArray[np.float64]
+            The particle property array of x indices.
+        z : npt.NDArray[np.float64]
+            The particle property array of physical vertical positions.
+        h_array : npt.NDArray[np.float64]
+            The bathymetry field array.
+        h_offy : float
+            The y offset for the bathymetry field.
+        h_offx : float
+            The x offset for the bathymetry field.
+        zeta_array : npt.NDArray[np.float64]
+            The free surface field array.
+        zeta_offy : float
+            The y offset for the free surface field.
+        zeta_offx : float
+            The x offset for the free surface field.
+
+        Raises
+        ------
+        ValueError
+            If the h or zeta field arrays do not have at least `2 * horizontal_stencil_half_width`
+            points in the relevant dimension(s) to avoid out-of-bounds memory access.
+        """
+        h_max_idx_0 = h_array.shape[0] - 2 * N
+        h_max_idx_1 = h_array.shape[1] - 2 * N
+        zeta_max_idx_0 = zeta_array.shape[0] - 2 * N
+        zeta_max_idx_1 = zeta_array.shape[1] - 2 * N
+        if h_max_idx_0 < 0 or h_max_idx_1 < 0:
+            raise ValueError(
+                "h field must have at least 2 * horizontal_stencil_half_width points in each "
+                "dimension to avoid out-of-bounds memory access."
+            )
+        if zeta_max_idx_0 < 0 or zeta_max_idx_1 < 0:
+            raise ValueError(
+                "zeta field must have at least 2 * horizontal_stencil_half_width points in each "
+                "dimension to avoid out-of-bounds memory access."
+            )
+
+        for i in numba.prange(status.shape[0]):  # ty: ignore[not-iterable]
+            # only_initialising_ is a compile-time constant, so this branch is optimized away at compile time
+            if only_initialising_:
+                if status[i] != _INITIALISING:  # only compute for initialising particles
+                    continue
+            else:
+                if status[i] & INACTIVE_FLAG:  # only compute for active particles
+                    continue
+
+            h_value = horizontal_interpolation_particle(
+                h_array, yidx[i] + h_offy, xidx[i] + h_offx, h_max_idx_0, h_max_idx_1
+            )
+            zeta_value = horizontal_interpolation_particle(
+                zeta_array, yidx[i] + zeta_offy, xidx[i] + zeta_offx, zeta_max_idx_0, zeta_max_idx_1
+            )
+            tau_value = tau_fn(hc_, h_value)
+            zidx[i] = compute_zidx_cubic(
+                z[i], h_value, zeta_value, tau_value, sigma_w_, sigma_w_derivative_, C_, C_derivative_
+            )
 
     return compute_zidx_kernel_function

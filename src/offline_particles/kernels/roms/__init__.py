@@ -10,9 +10,10 @@ from .._kernels import (
 )
 from ..input_declarations import STATUS_DECLARATION, XIDX_DECLARATION, YIDX_DECLARATION, ZIDX_DECLARATION
 from ..layout_validators import validate_YX_ordering
-from ._vertical_coordinate import LinearVerticalTransform, VerticalTransform
+from ._vertical_coordinate import CubicVerticalTransform, LinearVerticalTransform, VerticalTransform
 
 __all__ = [
+    "CubicVerticalTransform",
     "LinearVerticalTransform",
     "VerticalTransform",
     "construct_compute_z_kernel",
